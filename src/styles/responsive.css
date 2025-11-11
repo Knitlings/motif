@@ -129,6 +129,16 @@
         background: var(--color-primary-light);
     }
 
+    /* Visual feedback during resize on touch devices */
+    .canvas-resize-container.is-resizing {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+
+    .canvas-resize-container.is-resizing .resize-handle {
+        background: var(--color-primary-light);
+    }
+
     /* === FORM ELEMENTS === */
     /* Make form elements easier to interact with on touch */
     input[type="text"],

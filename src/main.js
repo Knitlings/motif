@@ -1271,6 +1271,12 @@ function startResize(handle, clientX, clientY) {
     resizeStartSize.cellHeight = cellHeight;
 
     document.body.style.cursor = handle.style.cursor;
+
+    // Add visual feedback class (especially useful for touch devices)
+    const container = document.querySelector('.canvas-resize-container');
+    if (container) {
+        container.classList.add('is-resizing');
+    }
 }
 
 resizeHandles.forEach(handle => {
@@ -1338,6 +1344,12 @@ function endResize() {
         resizeStartSize = null;
         resizeStartPos = null;
         document.body.style.cursor = '';
+
+        // Remove visual feedback class
+        const container = document.querySelector('.canvas-resize-container');
+        if (container) {
+            container.classList.remove('is-resizing');
+        }
     }
 }
 
