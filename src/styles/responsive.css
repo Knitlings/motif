@@ -96,6 +96,39 @@
 
     /* Keep canvas headings visible in portrait - they fit fine */
 
+    /* === RESIZE HANDLES === */
+    /* Make resize handles larger and easier to grab on touch devices */
+    .resize-handle-top,
+    .resize-handle-bottom {
+        height: 20px; /* Increased from 8px for touch */
+    }
+
+    .resize-handle-top {
+        top: -10px; /* Adjusted to keep centered */
+    }
+
+    .resize-handle-bottom {
+        bottom: -10px;
+    }
+
+    .resize-handle-left,
+    .resize-handle-right {
+        width: 20px; /* Increased from 8px for touch */
+    }
+
+    .resize-handle-left {
+        left: -10px;
+    }
+
+    .resize-handle-right {
+        right: -10px;
+    }
+
+    /* Show visual hint that handles are draggable on mobile */
+    .resize-handle:active {
+        background: var(--color-primary-light);
+    }
+
     /* === FORM ELEMENTS === */
     /* Make form elements easier to interact with on touch */
     input[type="text"],

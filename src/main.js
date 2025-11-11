@@ -1257,31 +1257,45 @@ let resizeDirection = null;
 let resizeStartSize = null;
 let resizeStartPos = null;
 
+// Helper function to start resize (works for both mouse and touch)
+function startResize(handle, clientX, clientY) {
+    isResizing = true;
+    resizeDirection = handle.dataset.direction;
+    resizeStartSize = { width: gridWidth, height: gridHeight };
+    resizeStartPos = { x: clientX, y: clientY };
+
+    const canvas = document.getElementById('editCanvas');
+    const cellWidth = canvas.width / gridWidth;
+    const cellHeight = canvas.height / gridHeight;
+    resizeStartSize.cellWidth = cellWidth;
+    resizeStartSize.cellHeight = cellHeight;
+
+    document.body.style.cursor = handle.style.cursor;
+}
+
 resizeHandles.forEach(handle => {
+    // Mouse events
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-
-        isResizing = true;
-        resizeDirection = handle.dataset.direction;
-        resizeStartSize = { width: gridWidth, height: gridHeight };
-        resizeStartPos = { x: e.clientX, y: e.clientY };
-
-        const canvas = document.getElementById('editCanvas');
-        const cellWidth = canvas.width / gridWidth;
-        const cellHeight = canvas.height / gridHeight;
-        resizeStartSize.cellWidth = cellWidth;
-        resizeStartSize.cellHeight = cellHeight;
-
-        document.body.style.cursor = handle.style.cursor;
+        startResize(handle, e.clientX, e.clientY);
     });
+
+    // Touch events
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        startResize(handle, touch.clientX, touch.clientY);
+    }, { passive: false });
 });
 
-document.addEventListener('mousemove', (e) => {
+// Helper function to handle resize movement (works for both mouse and touch)
+function handleResizeMove(clientX, clientY) {
     if (!isResizing) return;
 
-    const deltaX = e.clientX - resizeStartPos.x;
-    const deltaY = e.clientY - resizeStartPos.y;
+    const deltaX = clientX - resizeStartPos.x;
+    const deltaY = clientY - resizeStartPos.y;
 
     let cellDelta = 0;
 
@@ -1309,14 +1323,15 @@ document.addEventListener('mousemove', (e) => {
 
             applyGridResizeFromEdge(resizeDirection, cellDelta);
 
-            resizeStartPos = { x: e.clientX, y: e.clientY };
+            resizeStartPos = { x: clientX, y: clientY };
             resizeStartSize.width = gridWidth;
             resizeStartSize.height = gridHeight;
         }
     }
-});
+}
 
-document.addEventListener('mouseup', () => {
+// Helper function to end resize (works for both mouse and touch)
+function endResize() {
     if (isResizing) {
         isResizing = false;
         resizeDirection = null;
@@ -1324,6 +1339,32 @@ document.addEventListener('mouseup', () => {
         resizeStartPos = null;
         document.body.style.cursor = '';
     }
+}
+
+// Mouse events
+document.addEventListener('mousemove', (e) => {
+    handleResizeMove(e.clientX, e.clientY);
+});
+
+document.addEventListener('mouseup', () => {
+    endResize();
+});
+
+// Touch events
+document.addEventListener('touchmove', (e) => {
+    if (isResizing) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleResizeMove(touch.clientX, touch.clientY);
+    }
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+    endResize();
+});
+
+document.addEventListener('touchcancel', () => {
+    endResize();
 });
 
 // Keyboard shortcuts
