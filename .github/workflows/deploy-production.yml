@@ -1,6 +1,6 @@
-name: Deploy to Staging
+name: Deploy to Production
 
-# Deploy to Cloudflare Pages staging environment on every push to main
+# Deploy to Cloudflare Pages production on every push to main
 on:
   push:
     branches: [main]
@@ -40,7 +40,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: motif-staging
+          projectName: motif
           directory: dist
           # Optional: Add a commit message as deployment info
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
