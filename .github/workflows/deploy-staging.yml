@@ -1,9 +1,9 @@
-name: Deploy Preview (PR to Main)
+name: Deploy Preview (Staging)
 
-# Deploy preview to Cloudflare Pages for pull requests to main
+# Deploy preview to Cloudflare Pages on every push to staging branch
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches: [staging]
 
 jobs:
   deploy:
@@ -13,7 +13,6 @@ jobs:
     permissions:
       contents: read
       deployments: write
-      pull-requests: write
 
     steps:
       # Step 1: Check out the code
@@ -35,8 +34,8 @@ jobs:
       - name: Build for production
         run: npm run build
 
-      # Step 5: Deploy preview to Cloudflare Pages
-      - name: Deploy preview to Cloudflare Pages
+      # Step 5: Deploy to Cloudflare Pages (staging branch deployment)
+      - name: Deploy staging to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -44,3 +43,4 @@ jobs:
           projectName: motif
           directory: dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: staging

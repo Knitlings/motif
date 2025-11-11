@@ -26,9 +26,9 @@ This document describes the branch strategy and release workflow for Motif.
 
 1. Create feature branch from `staging`
 2. Develop and test locally
-3. Push feature branch
-4. Create PR from feature branch → `staging` to get preview deployment
-5. Test preview deployment, then merge to `staging`
+3. Merge feature branch to `staging` (direct merge, no PR required)
+4. Push to `staging` → triggers preview deployment
+5. Test preview deployment at `staging.motif-32s.pages.dev`
 6. When ready to release: Create PR from `staging` → `main`
 7. Review PR (tests run automatically via GitHub Actions)
 8. Merge to `main` → production deployment
