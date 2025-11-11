@@ -1,0 +1,721 @@
+/* ============================================
+   SIDE PANELS
+   ============================================ */
+
+.side-panel {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    height: calc(100vh - 64px);
+    background: var(--color-bg-secondary);
+    border-right: var(--border-width) solid var(--color-border-primary);
+    display: flex;
+    flex-direction: row;
+    overflow-y: auto;
+    width: var(--panel-width);
+    min-width: var(--panel-width);
+    transition: width var(--transition-slow), min-width var(--transition-slow);
+    z-index: 100;
+}
+
+.side-panel.right-panel {
+    left: auto;
+    right: 0;
+    border-right: none;
+    border-left: var(--border-width) solid var(--color-border-primary);
+}
+
+.side-panel.collapsed {
+    /* OPTION 2 VARIANT: Hide collapsed panels completely */
+    /* To restore collapsed panel visibility, comment out display: none and uncomment the width rules below */
+    display: none;
+    /* width: var(--panel-width-collapsed);
+    min-width: var(--panel-width-collapsed); */
+}
+
+.panel-content {
+    flex: 1;
+    padding: var(--space-6);
+    overflow-y: auto;
+    opacity: 1;
+    transition: opacity var(--transition-slow);
+}
+
+.side-panel.collapsed .panel-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.panel-content h3 {
+    margin-top: 0;
+    margin-bottom: var(--space-4);
+}
+
+.panel-content h3:first-of-type {
+    margin-top: 0;
+}
+
+/* Section wrappers - add spacing between sections */
+.panel-content > div {
+    padding-top: var(--space-6);
+}
+
+.panel-content > div:first-of-type {
+    padding-top: 0;
+}
+
+/* ============================================
+   CANVAS AREA
+   ============================================ */
+
+.canvas-container {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    padding: var(--space-12) var(--space-8) var(--space-10) var(--space-8);
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.canvas-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-5);
+    min-width: 300px;
+}
+
+.canvas-heading {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.canvas-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.canvas-resize-container {
+    position: relative;
+    display: inline-block;
+    transition: outline 300ms ease;
+}
+
+canvas {
+    display: block;
+    border: var(--border-width-thick) solid var(--color-border-dark);
+    border-radius: var(--border-radius-sm);
+    cursor: crosshair;
+}
+
+/* Resize Handles */
+.resize-handle {
+    position: absolute;
+    background: transparent;
+    z-index: 10;
+}
+
+.resize-handle:hover {
+    background: var(--color-primary-light);
+}
+
+.resize-handle-top,
+.resize-handle-bottom {
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.resize-handle-top {
+    top: -4px;
+}
+
+.resize-handle-bottom {
+    bottom: -4px;
+}
+
+.resize-handle-left,
+.resize-handle-right {
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+}
+
+.resize-handle-left {
+    left: -4px;
+}
+
+.resize-handle-right {
+    right: -4px;
+}
+
+#previewCanvas {
+    cursor: default;
+}
+
+/* Canvas Instructions Overlay */
+.canvas-instructions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(2px);
+    border: var(--border-width-thick) solid var(--color-border-dark);
+    border-radius: var(--border-radius-sm);
+    pointer-events: none;
+    transition: opacity 400ms ease-out;
+}
+
+.canvas-instructions.fade-out {
+    opacity: 0;
+}
+
+.canvas-instructions-text {
+    text-align: center;
+    line-height: var(--line-height-relaxed);
+    padding: var(--space-5);
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
+.input-group {
+    margin-bottom: var(--space-4);
+}
+
+.input-group label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+/* Text & Number Inputs */
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family-base);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-focus);
+}
+
+/* Range Slider */
+input[type="range"] {
+    width: 100%;
+    height: var(--space-2);
+    cursor: pointer;
+}
+
+/* Color Picker */
+.color-input-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+    align-items: stretch;
+}
+
+.color-picker-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+}
+
+input[type="color"] {
+    width: 100%;
+    padding: 0;
+    min-height: calc(var(--font-size-base) * var(--line-height-normal) + var(--space-3) * 2);
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    overflow: hidden;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: var(--border-radius-md);
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: var(--border-radius-md);
+}
+
+input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: var(--border-radius-md);
+}
+
+.color-picker-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.color-input-row input[type="text"] {
+    flex: 1;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    min-height: calc(var(--font-size-base) * var(--line-height-normal) + var(--space-3) * 2);
+    box-sizing: border-box;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+button {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-family-base);
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Icon Buttons */
+.icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: var(--font-size-base);
+    line-height: 1;
+    color: var(--color-text-tertiary);
+    background: transparent;
+    border: none;
+}
+
+.icon-btn:hover:not(:disabled) {
+    color: var(--color-text-secondary);
+}
+
+.icon-btn-danger {
+    color: var(--color-text-tertiary);
+}
+
+.icon-btn-danger:hover:not(:disabled) {
+    color: var(--color-danger);
+}
+
+/* Primary Button */
+.btn-primary {
+    color: white;
+    background: var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+}
+
+/* Danger Button */
+.btn-danger {
+    color: white;
+    background: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: var(--color-danger-hover);
+}
+
+/* Text Link */
+.text-link {
+    display: inline;
+    margin-left: var(--space-2);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: text-decoration var(--transition-base);
+}
+
+.text-link:hover {
+    text-decoration: underline;
+}
+
+/* Text Link styled as Label */
+.text-link-label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-primary);
+    margin-top: var(--space-2);
+    text-decoration: none;
+    transition: text-decoration var(--transition-base);
+}
+
+.text-link-label:hover {
+    text-decoration: underline;
+}
+
+/* Text link in header-actions context */
+.header-actions .text-link-label {
+    margin-top: 0;
+}
+
+/* ============================================
+   DROPDOWN MENU
+   ============================================ */
+
+.dropdown-container {
+    position: relative;
+    display: inline-block;
+    margin-left: var(--space-3);
+}
+
+.dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-primary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.dropdown-btn:hover {
+    color: var(--color-primary-hover);
+}
+
+.dropdown-arrow {
+    font-size: var(--font-size-xs);
+    transition: transform var(--transition-base);
+}
+
+.dropdown-container.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    min-width: 160px;
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.dropdown-container.open .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition-base);
+    border-bottom: var(--border-width) solid var(--color-border-primary);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: var(--color-bg-secondary);
+    text-decoration: none;
+}
+
+/* ============================================
+   PATTERN COLOR BUTTONS
+   ============================================ */
+
+#patternColorButtons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.pattern-btn {
+    position: relative;
+    padding: var(--space-3);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    border: var(--border-width-thick) solid transparent;
+    border-radius: var(--border-radius-md);
+    cursor: move;
+    user-select: none;
+    transition: all var(--transition-base);
+}
+
+.pattern-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.pattern-btn.active {
+    border-color: white;
+    box-shadow: 0 0 0 3px var(--color-primary), var(--shadow-lg);
+    transform: translateY(-1px);
+}
+
+.pattern-btn.unused {
+    cursor: pointer;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+    text-shadow: none;
+    color: #666 !important;
+}
+
+.pattern-btn.unused:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    color: #444 !important;
+}
+
+.pattern-delete-btn {
+    position: absolute;
+    top: calc(-1 * var(--space-2));
+    right: calc(-1 * var(--space-2));
+    width: var(--space-5);
+    height: var(--space-5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    color: white;
+    background: var(--color-danger);
+    border-radius: var(--border-radius-full);
+    border: var(--border-width-thick) solid var(--color-bg-secondary);
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+}
+
+.pattern-btn:hover .pattern-delete-btn {
+    display: flex;
+}
+
+.pattern-delete-btn:hover {
+    background: var(--color-danger-hover);
+    transform: scale(1.1);
+}
+
+#mergeHint {
+    margin: 0;
+}
+
+/* ============================================
+   QUICK PALETTE
+   ============================================ */
+
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+}
+
+.palette-color {
+    aspect-ratio: 1;
+    border: var(--border-width-thick) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition-base), transform var(--transition-base);
+}
+
+.palette-color:hover {
+    border-color: var(--color-border-dark);
+    transform: scale(1.05);
+}
+
+/* ============================================
+   MODAL DIALOG
+   ============================================ */
+
+#mergeDialog {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+#mergeDialog > div {
+    max-width: 400px;
+    padding: var(--space-8);
+    background: var(--color-bg-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+#mergeDialogTitle {
+    margin-bottom: var(--space-5);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+#mergeDialogText {
+    margin-bottom: var(--space-8);
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+}
+
+#mergeDialog .dialog-buttons {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+}
+
+#mergeCancelBtn {
+    padding: var(--space-3) var(--space-5);
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+    border: var(--border-width) solid var(--color-border-primary);
+}
+
+#mergeCancelBtn:hover {
+    background: var(--color-bg-secondary);
+}
+
+#mergeConfirmBtn {
+    padding: var(--space-3) var(--space-5);
+}
+
+/* ============================================
+   LOADING OVERLAY
+   ============================================ */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--color-bg-primary);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+    margin-top: var(--space-4);
+    color: var(--color-bg-primary);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   RATIO PRESET BUTTONS
+   ============================================ */
+
+.ratio-preset-group {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.ratio-preset-btn {
+    flex: 1;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.ratio-preset-btn:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-secondary);
+}
+
+.ratio-preset-btn.active {
+    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}

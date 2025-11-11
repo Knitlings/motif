@@ -1,0 +1,45 @@
+{
+  "name": "motif",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "docs:links": "find . -name '*.md' -not -path './node_modules/*' -exec markdown-link-check --quiet --config .markdown-link-check.json {} \\;"
+  },
+  "keywords": [
+    "pattern",
+    "editor",
+    "grid",
+    "design",
+    "art",
+    "canvas",
+    "svg",
+    "export"
+  ],
+  "author": "Itroun",
+  "license": "MIT",
+  "description": "A web-based grid pattern editor for creating and previewing tiled visual patterns",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Itroun/motif.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Itroun/motif/issues"
+  },
+  "homepage": "https://github.com/Itroun/motif#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "happy-dom": "^20.0.10",
+    "markdown-link-check": "^3.14.1",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.8"
+  }
+}

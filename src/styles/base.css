@@ -1,0 +1,288 @@
+/* ============================================
+   RESET & BASE STYLES
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    height: 100vh;
+    overflow: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Skip to content link for keyboard users */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--color-primary);
+    color: white;
+    padding: var(--space-2) var(--space-4);
+    text-decoration: none;
+    border-radius: 0 0 var(--border-radius-md) 0;
+    z-index: 10000;
+    font-weight: var(--font-weight-semibold);
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Focus indicators for all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Ensure focus is visible on clickable elements */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[role="button"]:focus,
+[role="menuitem"]:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    button:focus,
+    a:focus,
+    input:focus {
+        outline-width: 3px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+h1 {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+h2 {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+h3 {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: var(--line-height-tight);
+}
+
+/* Hint/Helper Text */
+.hint {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-tertiary);
+}
+
+/* ============================================
+   CONTENT PAGES (About, Help, etc.)
+   ============================================ */
+
+.content-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    line-height: 1.6;
+}
+
+.content-page h1 {
+    font-family: var(--font-heading);
+    margin-bottom: 1rem;
+}
+
+.content-page h2 {
+    font-family: var(--font-heading);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.content-page h2:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.content-page h3 {
+    font-family: var(--font-heading);
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.content-page p {
+    margin-bottom: 1rem;
+}
+
+.content-page ul {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.content-page ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.content-page li {
+    margin-bottom: 0.5rem;
+}
+
+.content-page a {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.content-page a:hover {
+    text-decoration: underline;
+}
+
+.content-page code {
+    background: var(--color-surface);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+    font-family: 'Courier New', monospace;
+}
+
+.content-page kbd {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 0.1rem 0.4rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+}
+
+.content-page table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.content-page table thead tr {
+    border-bottom: 2px solid var(--color-border);
+}
+
+.content-page table th {
+    text-align: left;
+    padding: 0.5rem;
+}
+
+.content-page table td {
+    padding: 0.5rem;
+}
+
+.content-page .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.content-page .toc {
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: 4px;
+    margin: 2rem 0;
+}
+
+.content-page .toc h2 {
+    margin: 0 0 1rem 0;
+    padding: 0;
+    border: none;
+    font-size: 1.2rem;
+}
+
+.content-page .toc ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.content-page .toc li {
+    margin-bottom: 0.3rem;
+}
+
+.content-page .inline-icon {
+    display: inline-block;
+    vertical-align: middle;
+    height: 1.2em;
+    width: auto;
+    margin: 0 0.2em;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 2px;
+    background: var(--color-surface);
+}
+
