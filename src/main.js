@@ -1499,6 +1499,18 @@ if (navbarSettingsToggle) {
     navbarSettingsToggle.addEventListener('click', toggleSettingsPanel);
 }
 
+// Panel close buttons (for mobile)
+const colorPanelClose = document.getElementById('colorPanelClose');
+const settingsPanelClose = document.getElementById('settingsPanelClose');
+
+if (colorPanelClose) {
+    colorPanelClose.addEventListener('click', toggleColorPanel);
+}
+
+if (settingsPanelClose) {
+    settingsPanelClose.addEventListener('click', toggleSettingsPanel);
+}
+
 // ============================================
 // GLOBAL ERROR HANDLING
 // ============================================

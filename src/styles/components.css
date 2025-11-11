@@ -39,11 +39,38 @@
     overflow-y: auto;
     opacity: 1;
     transition: opacity var(--transition-slow);
+    position: relative;
 }
 
 .side-panel.collapsed .panel-content {
     opacity: 0;
     pointer-events: none;
+}
+
+/* Close button for panels (mobile) */
+.panel-close-btn {
+    display: none; /* Hidden by default, shown on mobile via media query */
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-2xl);
+    line-height: 1;
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    z-index: 10;
+    transition: all var(--transition-base);
+}
+
+.panel-close-btn:hover {
+    background: var(--color-bg-tertiary);
+    transform: scale(1.05);
 }
 
 .panel-content h3 {
