@@ -20,9 +20,29 @@ export const CanvasManager = {
     // Calculate cell size based on grid dimensions and available width
     calculateCellSize(gridWidth, gridHeight, aspectRatio, maxWidth) {
         // Calculate available height based on viewport
-        const headerHeight = 64; // Navbar height from CSS
-        const paddingVertical = 320; // Increased padding for smaller default canvas
-        const availableHeight = window.innerHeight - headerHeight - paddingVertical;
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const isMobile = window.innerWidth <= 1024 || (isLandscape && window.innerHeight <= 500);
+        const headerHeight = isMobile ? 56 : 64; // Navbar height from CSS (smaller on mobile)
+
+        // Reduce vertical padding significantly in landscape to use available height
+        let paddingVertical;
+        if (isMobile && isLandscape) {
+            paddingVertical = 60; // Very minimal padding in mobile landscape - height is precious
+        } else if (isMobile) {
+            paddingVertical = 160; // Normal mobile portrait padding
+        } else {
+            paddingVertical = 320; // Desktop padding
+        }
+
+        // Use a stable viewport height in mobile landscape to avoid jumping when browser bar appears/disappears
+        let viewportHeight = window.innerHeight;
+        if (isMobile && isLandscape) {
+            // Use the smaller of current height or screen.height to assume browser bar is always visible
+            // This prevents the canvas from growing when the browser bar hides
+            viewportHeight = Math.min(window.innerHeight, window.screen.height - 100);
+        }
+
+        const availableHeight = viewportHeight - headerHeight - paddingVertical;
 
         // Calculate maximum cell size constrained by width
         const cellWidthByWidth = maxWidth / gridWidth;
@@ -45,8 +65,10 @@ export const CanvasManager = {
         }
 
         // Apply maximum canvas size constraint first
-        const maxCellWidth = CONFIG.MAX_CANVAS_SIZE / gridWidth;
-        const maxCellHeight = CONFIG.MAX_CANVAS_SIZE / gridHeight;
+        // In mobile landscape, allow larger canvases to use available space
+        const maxCanvasSize = (isMobile && isLandscape) ? 1200 : CONFIG.MAX_CANVAS_SIZE;
+        const maxCellWidth = maxCanvasSize / gridWidth;
+        const maxCellHeight = maxCanvasSize / gridHeight;
 
         if (cellWidth > maxCellWidth || cellHeight > maxCellHeight) {
             // Constrain by whichever dimension would exceed the max
@@ -78,10 +100,28 @@ export const CanvasManager = {
 
     // Update canvas sizes and redraw
     update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor) {
-        // Calculate viewport constraints
-        const collapsedPanelWidth = 40;
-        const paddingHorizontal = 480;
-        const gap = 96; // var(--space-12) from CSS
+        // Calculate viewport constraints - adjust for mobile vs desktop
+        // Consider it mobile if width <= 1024px OR if in landscape with height <= 500px (catches phones in landscape)
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const isMobile = window.innerWidth <= 1024 || (isLandscape && window.innerHeight <= 500);
+        const isSmallMobile = window.innerWidth <= 480;
+
+        // On mobile, panels are overlays (not side-by-side), so ignore panel width
+        const collapsedPanelWidth = isMobile ? 0 : 40;
+
+        // Adjust padding based on screen size and orientation
+        let paddingHorizontal;
+        if (isSmallMobile && !isLandscape) {
+            paddingHorizontal = 32; // 16px on each side (var(--space-3) * 2) - portrait only
+        } else if (isMobile) {
+            // In landscape, use minimal padding to maximize canvas space (like mini-desktop)
+            paddingHorizontal = isLandscape ? 32 : 64;
+        } else {
+            paddingHorizontal = 480; // Desktop padding
+        }
+
+        // Gap between canvases - smaller in landscape to encourage side-by-side layout
+        const gap = (isMobile && isLandscape) ? 32 : (isMobile ? 64 : 96);
         const availableWidth = window.innerWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
 
         // First, try to calculate cell sizes assuming side-by-side layout
