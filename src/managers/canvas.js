@@ -34,7 +34,15 @@ export const CanvasManager = {
             paddingVertical = 320; // Desktop padding
         }
 
-        const availableHeight = window.innerHeight - headerHeight - paddingVertical;
+        // Use a stable viewport height in mobile landscape to avoid jumping when browser bar appears/disappears
+        let viewportHeight = window.innerHeight;
+        if (isMobile && isLandscape) {
+            // Use the smaller of current height or screen.height to assume browser bar is always visible
+            // This prevents the canvas from growing when the browser bar hides
+            viewportHeight = Math.min(window.innerHeight, window.screen.height - 100);
+        }
+
+        const availableHeight = viewportHeight - headerHeight - paddingVertical;
 
         // Calculate maximum cell size constrained by width
         const cellWidthByWidth = maxWidth / gridWidth;
