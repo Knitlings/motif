@@ -1,0 +1,16 @@
+/**
+ * Motif - Main Stylesheet
+ * Centralized imports for all CSS modules
+ */
+
+/* CSS Variables and Design System */
+@import './variables.css';
+
+/* Base styles - reset, typography, accessibility */
+@import './base.css';
+
+/* Layout - main grid, panels, canvas areas */
+@import './layout.css';
+
+/* Components - buttons, inputs, dialogs, etc */
+@import './components.css';
