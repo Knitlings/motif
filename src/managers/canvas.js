@@ -8,6 +8,7 @@ export const CanvasManager = {
     previewCanvas: null,
     editCtx: null,
     previewCtx: null,
+    cachedViewportHeight: null, // Cache initial viewport height for mobile landscape
 
     // Initialize canvas references
     init(editCanvasId, previewCanvasId) {
@@ -15,6 +16,26 @@ export const CanvasManager = {
         this.previewCanvas = document.getElementById(previewCanvasId);
         this.editCtx = this.editCanvas.getContext('2d');
         this.previewCtx = this.previewCanvas.getContext('2d');
+
+        // Cache initial viewport height for mobile landscape stability
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const isMobile = window.innerWidth <= 1024 || (isLandscape && window.innerHeight <= 500);
+        if (isMobile && isLandscape) {
+            this.cachedViewportHeight = window.innerHeight;
+        }
+
+        // Update cache if orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                const newIsLandscape = window.innerWidth > window.innerHeight;
+                const newIsMobile = window.innerWidth <= 1024 || (newIsLandscape && window.innerHeight <= 500);
+                if (newIsMobile && newIsLandscape) {
+                    this.cachedViewportHeight = window.innerHeight;
+                } else {
+                    this.cachedViewportHeight = null;
+                }
+            }, 100); // Small delay to let orientation settle
+        });
     },
 
     // Calculate cell size based on grid dimensions and available width
@@ -34,12 +55,12 @@ export const CanvasManager = {
             paddingVertical = 320; // Desktop padding
         }
 
-        // Use a stable viewport height in mobile landscape to avoid jumping when browser bar appears/disappears
+        // Use cached viewport height in mobile landscape to prevent jumping when browser bar appears/disappears
         let viewportHeight = window.innerHeight;
-        if (isMobile && isLandscape) {
-            // Use the smaller of current height or screen.height to assume browser bar is always visible
-            // This prevents the canvas from growing when the browser bar hides
-            viewportHeight = Math.min(window.innerHeight, window.screen.height - 100);
+        if (isMobile && isLandscape && this.cachedViewportHeight) {
+            // Use the cached height from initial load instead of current height
+            // This keeps canvas size stable when browser bar slides in/out
+            viewportHeight = this.cachedViewportHeight;
         }
 
         const availableHeight = viewportHeight - headerHeight - paddingVertical;
