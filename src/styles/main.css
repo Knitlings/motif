@@ -14,3 +14,6 @@
 
 /* Components - buttons, inputs, dialogs, etc */
 @import './components.css';
+
+/* Responsive styles - mobile and tablet adjustments */
+@import './responsive.css';

@@ -34,6 +34,8 @@ src/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
+**Branch strategy:** This project uses a two-branch workflow with `staging` for development and `main` for production. Create feature branches from `staging` and submit PRs to `staging` for integration. See [RELEASING.md](RELEASING.md) for details.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.

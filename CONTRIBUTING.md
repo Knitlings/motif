@@ -168,3 +168,14 @@ All user-facing operations should:
 4. Log errors to console for debugging
 5. Provide graceful fallbacks
 
+## Release Process
+
+For information about branching strategy, pull requests, and releases, see [RELEASING.md](RELEASING.md).
+
+**Quick reference:**
+- Create feature branches from `staging`
+- PRs to `staging` for feature integration and testing
+- PRs from `staging` to `main` for production releases
+- Tag releases with semantic versioning after merging to `main`
+- Use hotfix branches from `main` only for urgent production fixes
+
