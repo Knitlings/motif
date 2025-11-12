@@ -670,20 +670,87 @@ function initializePalette() {
         const btn = document.createElement('div');
         btn.className = 'palette-color';
         btn.style.backgroundColor = color;
-        btn.onclick = (e) => {
-            if (e.shiftKey) {
-                backgroundColor = color;
-                document.getElementById('backgroundColor').value = color;
-                document.getElementById('backgroundText').value = color;
-            } else {
-                patternColors[activePatternIndex] = color;
-                updateActiveColorUI();
-                createPatternColorButtons();
-            }
+
+        // Long-press detection variables
+        let pressTimer = null;
+        let isLongPress = false;
+
+        // Function to set background color
+        const setBackgroundColor = () => {
+            backgroundColor = color;
+            document.getElementById('backgroundColor').value = color;
+            document.getElementById('backgroundText').value = color;
             updateCanvas();
             updateColorIndicators();
             saveToLocalStorage();
         };
+
+        // Function to set active color
+        const setActiveColor = () => {
+            patternColors[activePatternIndex] = color;
+            updateActiveColorUI();
+            createPatternColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToLocalStorage();
+        };
+
+        // Handle click (desktop shift+click or regular click)
+        btn.onclick = (e) => {
+            // Ignore if this was a long press (already handled)
+            if (isLongPress) {
+                isLongPress = false;
+                return;
+            }
+
+            if (e.shiftKey) {
+                setBackgroundColor();
+            } else {
+                setActiveColor();
+            }
+        };
+
+        // Handle touch start (for long press detection)
+        btn.addEventListener('touchstart', (e) => {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                setBackgroundColor();
+                // Provide haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            }, 500); // 500ms for long press
+        }, { passive: true });
+
+        // Handle touch end (cancel long press timer)
+        btn.addEventListener('touchend', (e) => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+            // If it was a long press, prevent the click event
+            if (isLongPress) {
+                e.preventDefault();
+                // Handle the regular tap for active color
+                setTimeout(() => {
+                    isLongPress = false;
+                }, 100);
+            } else {
+                // Short tap - set active color
+                setActiveColor();
+            }
+        });
+
+        // Handle touch cancel (user moved finger away)
+        btn.addEventListener('touchcancel', () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+            isLongPress = false;
+        });
+
         paletteGrid.appendChild(btn);
     });
 }

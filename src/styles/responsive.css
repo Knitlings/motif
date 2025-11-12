@@ -162,6 +162,17 @@
         padding: var(--space-4);
         font-size: var(--font-size-lg);
     }
+
+    /* === UI HINTS === */
+    /* Hide desktop-only hints (shift+click) on mobile */
+    .hint.desktop-only {
+        display: none;
+    }
+
+    /* Show mobile-only hints (long press) on mobile */
+    .hint.mobile-only {
+        display: block;
+    }
 }
 
 /* Landscape orientation on mobile/tablet - hide headings to save vertical space */
