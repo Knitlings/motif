@@ -18,6 +18,8 @@ import {
     validateFileSize,
     validateFileType
 } from './utils/validation.js';
+import deleteSvg from './assets/delete.svg';
+import editSvg from './assets/edit.svg';
 import {
     showError,
     handleStorageError,
@@ -237,7 +239,7 @@ function createPatternColorButtons() {
             if (index > 0) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'pattern-delete-btn';
-                deleteBtn.innerHTML = '<img src="delete.svg" alt="Delete" class="delete-icon">';
+                deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
                     showDeleteColorDialog(index);
@@ -699,7 +701,7 @@ function renderPalette() {
         if (isEditable) {
             const editBtn = document.createElement('span');
             editBtn.className = 'palette-edit-btn';
-            editBtn.innerHTML = '<img src="edit.svg" alt="Edit" class="edit-icon">';
+            editBtn.innerHTML = `<img src="${editSvg}" alt="Edit" class="edit-icon">`;
             editBtn.onclick = (e) => {
                 e.stopPropagation();
                 editPaletteColor(index);
@@ -711,7 +713,7 @@ function renderPalette() {
         if (isEditable && colors.length > CONFIG.MIN_PALETTE_COLORS) {
             const deleteBtn = document.createElement('span');
             deleteBtn.className = 'palette-delete-btn';
-            deleteBtn.innerHTML = '<img src="delete.svg" alt="Delete" class="delete-icon">';
+            deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
             deleteBtn.onclick = (e) => {
                 e.stopPropagation();
                 removePaletteColor(index);
