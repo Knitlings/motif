@@ -57,7 +57,7 @@
     }
 
     /* Make touch targets larger */
-    .navbar-svg-toggle,
+    .navbar-color-swatch-toggle,
     .navbar-panel-toggle {
         width: 44px;
         height: 44px;
@@ -206,7 +206,7 @@
     /* Keep links visible - discoverability is more important than perfect spacing */
 
     /* Reduce navbar button sizes slightly */
-    .navbar-svg-toggle,
+    .navbar-color-swatch-toggle,
     .navbar-panel-toggle {
         width: 40px;
         height: 40px;

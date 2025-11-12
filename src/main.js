@@ -145,11 +145,13 @@ function scheduleCanvasUpdate() {
 // ============================================
 
 function updateNavbarSvgs() {
-    const colorSvg = document.getElementById('navbarColorSvg');
+    const activeSwatch = document.getElementById('navbarActiveColorSwatch');
+    const bgSwatch = document.getElementById('navbarBgColorSwatch');
 
-    if (colorSvg) {
+    if (activeSwatch && bgSwatch) {
         const activeColor = patternColors[activePatternIndex];
-        colorSvg.src = createMSvg(activeColor, backgroundColor);
+        activeSwatch.style.backgroundColor = activeColor;
+        bgSwatch.style.backgroundColor = backgroundColor;
     }
 }
 
@@ -174,55 +176,6 @@ function updateNavbarColorPreview() {
         previewContainer.classList.remove('visible');
         previewContainer.innerHTML = '';
     }
-}
-
-function createMSvg(patternColor, bgColor) {
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="350" height="350" viewBox="0 0 350 350" xmlns="http://www.w3.org/2000/svg">
-  <rect width="350" height="350" fill="${bgColor}"/>
-  <rect x="0" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="300" width="50" height="50" fill="${patternColor}"/>
-</svg>`;
-
-    return 'data:image/svg+xml;base64,' + btoa(svg);
 }
 
 function updateColorIndicators() {

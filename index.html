@@ -61,6 +61,7 @@
                     <h3>Quick Palette</h3>
                     <div class="input-group">
                         <div class="palette-grid" id="paletteGrid" role="group" aria-label="Quick color palette"></div>
+                        <p class="hint">Shift+click to set background colour</p>
                     </div>
                 </div>
             </div>
@@ -69,8 +70,11 @@
         <!-- Header Navigation Bar -->
         <header class="header-navbar" role="banner">
             <div class="navbar-left">
-                <button class="navbar-svg-toggle" id="navbarColorToggle" aria-label="Toggle color panel" aria-controls="colorPanel">
-                    <img src="" class="navbar-color-preview-svg" id="navbarColorSvg" alt="Color preview">
+                <button class="navbar-color-swatch-toggle" id="navbarColorToggle" aria-label="Toggle color panel" aria-controls="colorPanel" title="Click to edit colors">
+                    <div class="color-swatch-container">
+                        <div class="color-swatch active-swatch" id="navbarActiveColorSwatch"></div>
+                        <div class="color-swatch bg-swatch" id="navbarBgColorSwatch"></div>
+                    </div>
                 </button>
                 <div class="navbar-branding">
                     <span class="navbar-title">Motif</span>
@@ -132,12 +136,12 @@
                         <button class="icon-btn icon-btn-danger" id="clearBtn" aria-label="Clear canvas (Delete)"><span aria-hidden="true">✕</span></button>
                         <div class="dropdown-container">
                             <button class="dropdown-btn" id="saveBtn" aria-haspopup="true" aria-expanded="false">
-                                Save
+                                Download pattern
                                 <span class="dropdown-arrow" aria-hidden="true">▾</span>
                             </button>
                             <div class="dropdown-menu" id="saveMenu" role="menu">
-                                <a href="#" id="exportPngBtn" class="dropdown-item" role="menuitem">Save as PNG</a>
-                                <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Save as SVG</a>
+                                <a href="#" id="exportPngBtn" class="dropdown-item" role="menuitem">Download as PNG</a>
+                                <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Download as SVG</a>
                             </div>
                         </div>
                     </div>
