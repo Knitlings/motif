@@ -27,7 +27,7 @@ export const CONFIG = {
     MAX_PATTERN_COLORS: 20,
     DEFAULT_PATTERN_COLOR: '#8d2e3e',
     DEFAULT_BACKGROUND_COLOR: '#fdf9f8',
-    DEFAULT_ADD_COLOR: '#FF6B6B',
+    DEFAULT_ADD_COLOR: '#5a3d5e',
 
     // UI
     GRID_STROKE_COLOR: '#ddd',
@@ -44,52 +44,57 @@ export const CONFIG = {
         motif: {
             name: 'Motif',
             colors: [
-                '#8d2e3e', // primary
-                '#6f2331', // primary-hover
-                '#c44f4f', // danger
-                '#2b0f2e', // text-primary
-                '#5a3d5e', // text-secondary
-                '#8f7891', // text-tertiary
-                '#fdf9f8', // bg-primary
-                '#f7f0ee', // bg-secondary
-                '#f0e7e4', // bg-tertiary
-                '#e8dbd8', // border-primary
-                '#d9c9c5', // border-secondary
-                '#a83d3d'  // danger-hover
+                '#000000', // black
+                '#ffffff', // white
+                '#8d2e3e', // deep crimson
+                '#6f2331', // darker crimson
+                '#c44f4f', // coral red
+                '#2b0f2e', // very dark purple
+                '#5a3d5e', // muted purple
+                '#8f7891', // light purple-gray
+                '#fdf9f8', // very light cream
+                '#f7f0ee', // light cream
+                '#d9c9c5', // darker beige
+                '#a83d3d'  // dark red
             ]
         },
         warm: {
             name: 'Warm',
             colors: [
-                '#8d2e3e', // deep crimson
-                '#c44f4f', // coral red
-                '#FF6B6B', // bright coral
-                '#F7DC6F', // warm yellow
-                '#E67E22', // orange
-                '#D35400', // dark orange
-                '#E74C3C', // red
-                '#EC7063', // salmon
-                '#F8B500', // golden yellow
-                '#DC7633', // burnt orange
-                '#CB4335', // brick red
-                '#F39C12'  // amber
+                '#ffad33', // light orange
+                '#ff931f', // orange
+                '#ff7e33', // medium orange
+                '#fa5e1f', // deep orange
+                '#ec3f13', // orange-red
+                '#b81702', // red
+                '#a50104', // deep red
+                '#8e0103'  // dark red
             ]
         },
         cool: {
             name: 'Cool',
             colors: [
-                '#4ECDC4', // turquoise
-                '#45B7D1', // sky blue
-                '#98D8C8', // mint
-                '#BB8FCE', // lavender
-                '#5DADE2', // light blue
-                '#48C9B0', // sea green
-                '#85C1E2', // powder blue
-                '#7FB3D5', // steel blue
-                '#A569BD', // purple
-                '#5499C7', // ocean blue
-                '#76D7C4', // aqua
-                '#AF7AC5'  // violet
+                '#b7094c', // magenta
+                '#a01a58', // raspberry
+                '#892b64', // purple-pink
+                '#723c70', // purple
+                '#5c4d7d', // deep purple
+                '#455e89', // blue-purple
+                '#2e6f95', // blue
+                '#1780a1'  // teal blue
+            ]
+        },
+        autumn: {
+            name: 'Autumn',
+            colors: [
+                '#862906', // burnt sienna
+                '#a04005', // rust
+                '#b84f00', // burnt orange
+                '#c46219', // terracotta
+                '#ed862b', // golden orange
+                '#875702', // olive brown
+                '#5a380b', // dark brown
+                '#411308'  // espresso
             ]
         }
     },

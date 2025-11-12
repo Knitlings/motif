@@ -237,7 +237,7 @@ function createPatternColorButtons() {
             if (index > 0) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'pattern-delete-btn';
-                deleteBtn.textContent = '×';
+                deleteBtn.innerHTML = '<img src="/delete.svg" alt="Delete" class="delete-icon">';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
                     showDeleteColorDialog(index);
@@ -839,8 +839,8 @@ function addPaletteColor() {
     if (!isCurrentPaletteEditable()) return;
     if (customPalette.length >= CONFIG.MAX_PALETTE_COLORS) return;
 
-    // Add a new color (default to a nice blue)
-    customPalette.push('#45B7D1');
+    // Add a new color (default to black)
+    customPalette.push('#000000');
     renderPalette();
     saveToLocalStorage();
 }
@@ -945,6 +945,31 @@ document.getElementById('invertBtn').onclick = (e) => {
     saveToHistory();
     updateCanvas();
     updateColorIndicators();
+};
+
+document.getElementById('loadPaletteBtn').onclick = (e) => {
+    e.preventDefault();
+
+    // Get current palette colors
+    const paletteColors = getCurrentPaletteColors();
+
+    // Save current state to history before making changes
+    saveToHistory();
+
+    // Replace pattern colors with palette colors
+    patternColors = [...paletteColors];
+
+    // Set active color to first color
+    activePatternIndex = 0;
+
+    // Update UI
+    createPatternColorButtons();
+    updateActiveColorUI();
+    updateCanvas();
+    updateColorIndicators();
+    saveToLocalStorage();
+
+    announceToScreenReader(`Loaded ${paletteColors.length} colors from palette to pattern colors`);
 };
 
 document.getElementById('exportSvgBtn').onclick = (e) => {

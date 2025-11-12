@@ -558,11 +558,11 @@ button:disabled {
 
 .pattern-delete-btn {
     position: absolute;
-    top: calc(-1 * var(--space-2));
-    right: calc(-1 * var(--space-2));
-    width: var(--space-5);
-    height: var(--space-5);
-    display: none;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    display: flex; /* Always flex, use opacity for visibility */
     align-items: center;
     justify-content: center;
     font-size: var(--font-size-sm);
@@ -571,19 +571,30 @@ button:disabled {
     color: white;
     background: var(--color-danger);
     border-radius: var(--border-radius-full);
-    border: var(--border-width-thick) solid var(--color-bg-secondary);
+    border: 2px solid var(--color-bg-secondary);
     cursor: pointer;
     box-shadow: var(--shadow-md);
-    transition: all var(--transition-base);
+    opacity: 0; /* Start invisible */
+    pointer-events: none; /* Disable interaction when invisible */
+    transition: opacity 180ms ease, background-color 150ms ease, transform 150ms ease;
+    z-index: 2;
+}
+
+.pattern-delete-btn .delete-icon {
+    width: 10px;
+    height: 10px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    pointer-events: none;
 }
 
 .pattern-btn:hover .pattern-delete-btn {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction when visible */
 }
 
 .pattern-delete-btn:hover {
     background: var(--color-danger-hover);
-    transform: scale(1.1);
+    transform: scale(1.05); /* Subtle scale, not aggressive */
 }
 
 #mergeHint {
@@ -666,13 +677,13 @@ button:disabled {
     color: var(--color-text-secondary);
 }
 
-/* Edit and delete buttons for custom palette colors - match pattern button style */
+/* Edit and delete buttons for custom palette colors - subtle, symmetric design */
 .palette-delete-btn,
 .palette-edit-btn {
     position: absolute;
-    width: var(--space-5);
-    height: var(--space-5);
-    display: none; /* Hidden by default */
+    width: 22px;
+    height: 22px;
+    display: flex; /* Always flex, use opacity for visibility */
     align-items: center;
     justify-content: center;
     font-size: var(--font-size-sm);
@@ -681,48 +692,51 @@ button:disabled {
     color: white;
     background: var(--color-danger);
     border-radius: var(--border-radius-full);
-    border: var(--border-width-thick) solid var(--color-bg-secondary);
+    border: 2px solid var(--color-bg-secondary);
     cursor: pointer;
     box-shadow: var(--shadow-md);
-    transition: all var(--transition-base);
+    opacity: 0; /* Start invisible */
+    pointer-events: none; /* Disable interaction when invisible */
+    transition: opacity 180ms ease, background-color 150ms ease, transform 150ms ease;
     z-index: 2;
 }
 
 .palette-delete-btn {
-    top: calc(-1 * var(--space-2));
-    right: calc(-1 * var(--space-2));
+    top: -6px;
+    right: -6px;
 }
 
 .palette-delete-btn .delete-icon {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     filter: brightness(0) invert(1); /* Make SVG white */
     pointer-events: none;
 }
 
 .palette-edit-btn {
-    top: calc(-1 * var(--space-2));
-    left: calc(-1 * var(--space-2));
+    top: -6px;
+    left: -6px;
 }
 
 .palette-edit-btn .edit-icon {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     filter: brightness(0) invert(1); /* Make SVG white */
     transform: scaleX(-1); /* Flip horizontally */
     pointer-events: none;
 }
 
-/* Show buttons on hover */
+/* Show buttons on hover with smooth fade */
 .palette-color:hover .palette-delete-btn,
 .palette-color:hover .palette-edit-btn {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction when visible */
 }
 
 .palette-delete-btn:hover,
 .palette-edit-btn:hover {
     background: var(--color-danger-hover);
-    transform: scale(1.1);
+    transform: scale(1.05); /* Subtle scale, not aggressive */
 }
 
 /* ============================================
@@ -857,4 +871,55 @@ button:disabled {
     background: var(--color-primary);
     border-color: var(--color-primary);
     font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   TOUCH DEVICE ADJUSTMENTS
+   ============================================ */
+
+/* For devices without hover capability (touch devices), always show edit/delete buttons */
+@media (hover: none) {
+    /* Always show palette edit/delete buttons on touch devices */
+    .palette-delete-btn,
+    .palette-edit-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Make buttons slightly larger for better touch targets */
+    .palette-delete-btn,
+    .palette-edit-btn {
+        width: 26px;
+        height: 26px;
+        top: -8px;
+    }
+
+    .palette-delete-btn {
+        right: -8px;
+    }
+
+    .palette-edit-btn {
+        left: -8px;
+    }
+
+    .palette-delete-btn .delete-icon,
+    .palette-edit-btn .edit-icon {
+        width: 11px;
+        height: 11px;
+    }
+
+    /* Also apply to pattern delete buttons */
+    .pattern-delete-btn {
+        opacity: 1;
+        pointer-events: auto;
+        width: 26px;
+        height: 26px;
+        top: -8px;
+        right: -8px;
+    }
+
+    .pattern-delete-btn .delete-icon {
+        width: 11px;
+        height: 11px;
+    }
 }
