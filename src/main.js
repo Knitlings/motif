@@ -46,6 +46,10 @@ let initialCellState = null; // Tracks the cell state when stroke began
 let canvasUpdateScheduled = false; // Flag for requestAnimationFrame
 let lastPaintedCell = { row: -1, col: -1 }; // Track last painted cell to avoid redundant updates
 
+// Palette state
+let activePaletteId = CONFIG.DEFAULT_ACTIVE_PALETTE; // 'motif', 'warm', 'cool', or 'custom'
+let customPalette = null; // Array of color strings when custom palette exists
+
 // ============================================
 // STATE HELPERS
 // ============================================
@@ -61,8 +65,23 @@ function getState() {
         backgroundColor,
         previewRepeatX,
         previewRepeatY,
-        hasInteracted
+        hasInteracted,
+        activePaletteId,
+        customPalette
     };
+}
+
+// Get the current palette colors
+function getCurrentPaletteColors() {
+    if (activePaletteId === 'custom' && customPalette) {
+        return customPalette;
+    }
+    return CONFIG.BUILT_IN_PALETTES[activePaletteId]?.colors || CONFIG.BUILT_IN_PALETTES.motif.colors;
+}
+
+// Check if current palette is editable
+function isCurrentPaletteEditable() {
+    return activePaletteId === 'custom';
 }
 
 // Announce status to screen readers
@@ -661,15 +680,44 @@ function setupCanvasEvents() {
 }
 
 // ============================================
-// PALETTE INITIALIZATION
+// PALETTE MANAGEMENT
 // ============================================
 
-function initializePalette() {
+function renderPalette() {
     const paletteGrid = document.getElementById('paletteGrid');
-    CONFIG.PALETTE.forEach(color => {
+    paletteGrid.innerHTML = '';
+
+    const colors = getCurrentPaletteColors();
+    const isEditable = isCurrentPaletteEditable();
+
+    colors.forEach((color, index) => {
         const btn = document.createElement('div');
         btn.className = 'palette-color';
         btn.style.backgroundColor = color;
+
+        // Add edit button for custom palettes
+        if (isEditable) {
+            const editBtn = document.createElement('span');
+            editBtn.className = 'palette-edit-btn';
+            editBtn.innerHTML = '<img src="/edit.svg" alt="Edit" class="edit-icon">';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                editPaletteColor(index);
+            };
+            btn.appendChild(editBtn);
+        }
+
+        // Add delete button for custom palettes (if more than MIN colors)
+        if (isEditable && colors.length > CONFIG.MIN_PALETTE_COLORS) {
+            const deleteBtn = document.createElement('span');
+            deleteBtn.className = 'palette-delete-btn';
+            deleteBtn.innerHTML = '<img src="/delete.svg" alt="Delete" class="delete-icon">';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removePaletteColor(index);
+            };
+            btn.appendChild(deleteBtn);
+        }
 
         // Long-press detection variables
         let pressTimer = null;
@@ -703,6 +751,7 @@ function initializePalette() {
                 return;
             }
 
+            // Always set color on click (editing is via pen icon)
             if (e.shiftKey) {
                 setBackgroundColor();
             } else {
@@ -753,6 +802,72 @@ function initializePalette() {
 
         paletteGrid.appendChild(btn);
     });
+
+    // Add "add color" button for custom palettes (if not at max)
+    if (isEditable && colors.length < CONFIG.MAX_PALETTE_COLORS) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'palette-color palette-add-btn';
+        addBtn.textContent = '+';
+        addBtn.onclick = () => addPaletteColor();
+        paletteGrid.appendChild(addBtn);
+    }
+}
+
+function switchPalette(paletteId) {
+    activePaletteId = paletteId;
+    updatePaletteUI();
+    renderPalette();
+    saveToLocalStorage();
+}
+
+function editPaletteColor(index) {
+    if (!isCurrentPaletteEditable()) return;
+
+    // Create a temporary color input
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = customPalette[index];
+    input.onchange = () => {
+        customPalette[index] = input.value;
+        renderPalette();
+        saveToLocalStorage();
+    };
+    input.click();
+}
+
+function addPaletteColor() {
+    if (!isCurrentPaletteEditable()) return;
+    if (customPalette.length >= CONFIG.MAX_PALETTE_COLORS) return;
+
+    // Add a new color (default to a nice blue)
+    customPalette.push('#45B7D1');
+    renderPalette();
+    saveToLocalStorage();
+}
+
+function removePaletteColor(index) {
+    if (!isCurrentPaletteEditable()) return;
+    if (customPalette.length <= CONFIG.MIN_PALETTE_COLORS) return;
+
+    customPalette.splice(index, 1);
+    renderPalette();
+    saveToLocalStorage();
+}
+
+function updatePaletteUI() {
+    const paletteName = document.getElementById('paletteName');
+
+    // Update displayed palette name
+    const paletteDisplayName = activePaletteId === 'custom' ? 'Custom' :
+        CONFIG.BUILT_IN_PALETTES[activePaletteId]?.name || 'Motif';
+    if (paletteName) {
+        paletteName.textContent = paletteDisplayName;
+    }
+
+    // If custom was selected but doesn't exist, create it with single black color
+    if (activePaletteId === 'custom' && !customPalette) {
+        customPalette = ['#000000'];
+    }
 }
 
 // ============================================
@@ -806,6 +921,15 @@ document.getElementById('clearBtn').onclick = () => {
         }
     );
 };
+
+// Palette controls - dropdown menu items
+document.querySelectorAll('.palette-option').forEach(option => {
+    option.addEventListener('click', (e) => {
+        e.preventDefault();
+        const paletteId = e.target.dataset.palette;
+        switchPalette(paletteId);
+    });
+});
 
 document.getElementById('invertBtn').onclick = (e) => {
     e.preventDefault();
@@ -910,6 +1034,14 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                         previewRepeatY = importedData.previewRepeatY;
                     }
 
+                    // Import palette settings
+                    if (importedData.activePaletteId) {
+                        activePaletteId = importedData.activePaletteId;
+                    }
+                    if (importedData.customPalette) {
+                        customPalette = importedData.customPalette;
+                    }
+
                     if (activePatternIndex >= patternColors.length) {
                         activePatternIndex = 0;
                     }
@@ -933,6 +1065,8 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 
                     createPatternColorButtons();
                     updateActiveColorUI();
+                    updatePaletteUI();
+                    renderPalette();
 
                     saveToHistory();
                     updateCanvas();
@@ -1046,6 +1180,8 @@ if (savedState) {
     activePatternIndex = savedState.activePatternIndex || 0;
     grid = savedState.grid || [];
     hasInteracted = savedState.hasInteracted || false;
+    activePaletteId = savedState.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
+    customPalette = savedState.customPalette || null;
 
     if (activePatternIndex >= patternColors.length) {
         activePatternIndex = 0;
@@ -1095,7 +1231,8 @@ CanvasManager.init('editCanvas', 'previewCanvas');
 setupCanvasEvents();
 
 // Initialize UI
-initializePalette();
+renderPalette();
+updatePaletteUI();
 createPatternColorButtons();
 updateActiveColorUI();
 initGrid();

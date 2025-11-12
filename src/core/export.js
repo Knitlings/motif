@@ -85,7 +85,9 @@ export function exportJson(state) {
         patternColors,
         backgroundColor,
         previewRepeatX,
-        previewRepeatY
+        previewRepeatY,
+        activePaletteId,
+        customPalette
     } = state;
 
     const patternData = {
@@ -104,6 +106,10 @@ export function exportJson(state) {
         preview: {
             repeatX: previewRepeatX,
             repeatY: previewRepeatY
+        },
+        palette: {
+            active: activePaletteId,
+            custom: customPalette
         }
     };
 
@@ -174,6 +180,12 @@ export function importJson(file, onSuccess, onError) {
                     CONFIG.MAX_PREVIEW_REPEAT,
                     CONFIG.DEFAULT_PREVIEW_REPEAT
                 );
+            }
+
+            // Import palette settings if available
+            if (patternData.palette) {
+                importedData.activePaletteId = patternData.palette.active || CONFIG.DEFAULT_ACTIVE_PALETTE;
+                importedData.customPalette = patternData.palette.custom || null;
             }
 
             onSuccess(importedData);

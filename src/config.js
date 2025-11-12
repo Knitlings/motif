@@ -35,9 +35,65 @@ export const CONFIG = {
     CANVAS_BORDER_COLOR: '#666',
     INSTRUCTIONS_FADE_TIME: 400,
 
-    // Default palette
-    PALETTE: [
-        '#000000', '#FFFFFF', '#FF6B6B', '#4ECDC4',
-        '#45B7D1', '#F7DC6F', '#98D8C8', '#BB8FCE'
-    ]
+    // Quick Palette configuration
+    MIN_PALETTE_COLORS: 1,
+    MAX_PALETTE_COLORS: 16,
+
+    // Built-in palettes
+    BUILT_IN_PALETTES: {
+        motif: {
+            name: 'Motif',
+            colors: [
+                '#8d2e3e', // primary
+                '#6f2331', // primary-hover
+                '#c44f4f', // danger
+                '#2b0f2e', // text-primary
+                '#5a3d5e', // text-secondary
+                '#8f7891', // text-tertiary
+                '#fdf9f8', // bg-primary
+                '#f7f0ee', // bg-secondary
+                '#f0e7e4', // bg-tertiary
+                '#e8dbd8', // border-primary
+                '#d9c9c5', // border-secondary
+                '#a83d3d'  // danger-hover
+            ]
+        },
+        warm: {
+            name: 'Warm',
+            colors: [
+                '#8d2e3e', // deep crimson
+                '#c44f4f', // coral red
+                '#FF6B6B', // bright coral
+                '#F7DC6F', // warm yellow
+                '#E67E22', // orange
+                '#D35400', // dark orange
+                '#E74C3C', // red
+                '#EC7063', // salmon
+                '#F8B500', // golden yellow
+                '#DC7633', // burnt orange
+                '#CB4335', // brick red
+                '#F39C12'  // amber
+            ]
+        },
+        cool: {
+            name: 'Cool',
+            colors: [
+                '#4ECDC4', // turquoise
+                '#45B7D1', // sky blue
+                '#98D8C8', // mint
+                '#BB8FCE', // lavender
+                '#5DADE2', // light blue
+                '#48C9B0', // sea green
+                '#85C1E2', // powder blue
+                '#7FB3D5', // steel blue
+                '#A569BD', // purple
+                '#5499C7', // ocean blue
+                '#76D7C4', // aqua
+                '#AF7AC5'  // violet
+            ]
+        }
+    },
+
+    // Default active palette
+    DEFAULT_ACTIVE_PALETTE: 'motif'
 };

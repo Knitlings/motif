@@ -594,13 +594,51 @@ button:disabled {
    QUICK PALETTE
    ============================================ */
 
+/* Palette header with selector and controls */
+.palette-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.palette-header h3 {
+    margin: 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25em; /* Small space between "Palette:" and name */
+    color: var(--color-text-secondary); /* Match other h3 headings */
+}
+
+.palette-header h3 #paletteName {
+    font-weight: inherit;
+    color: inherit; /* Inherit from h3 */
+}
+
+.palette-dropdown {
+    flex-shrink: 0;
+}
+
+.palette-dropdown .dropdown-btn {
+    min-width: auto;
+    padding-left: 0px;
+    font-size: var(--font-size-base);
+}
+
+.palette-dropdown .dropdown-arrow {
+    font-size: var(--font-size-lg);
+}
+
 .palette-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-2);
+    margin-bottom: var(--space-3);
 }
 
 .palette-color {
+    position: relative;
     aspect-ratio: 1;
     border: var(--border-width-thick) solid var(--color-border-primary);
     border-radius: var(--border-radius-md);
@@ -611,6 +649,80 @@ button:disabled {
 .palette-color:hover {
     border-color: var(--color-border-dark);
     transform: scale(1.05);
+}
+
+.palette-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-tertiary);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.palette-add-btn:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+/* Edit and delete buttons for custom palette colors - match pattern button style */
+.palette-delete-btn,
+.palette-edit-btn {
+    position: absolute;
+    width: var(--space-5);
+    height: var(--space-5);
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    color: white;
+    background: var(--color-danger);
+    border-radius: var(--border-radius-full);
+    border: var(--border-width-thick) solid var(--color-bg-secondary);
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+    z-index: 2;
+}
+
+.palette-delete-btn {
+    top: calc(-1 * var(--space-2));
+    right: calc(-1 * var(--space-2));
+}
+
+.palette-delete-btn .delete-icon {
+    width: 9px;
+    height: 9px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    pointer-events: none;
+}
+
+.palette-edit-btn {
+    top: calc(-1 * var(--space-2));
+    left: calc(-1 * var(--space-2));
+}
+
+.palette-edit-btn .edit-icon {
+    width: 9px;
+    height: 9px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    transform: scaleX(-1); /* Flip horizontally */
+    pointer-events: none;
+}
+
+/* Show buttons on hover */
+.palette-color:hover .palette-delete-btn,
+.palette-color:hover .palette-edit-btn {
+    display: flex;
+}
+
+.palette-delete-btn:hover,
+.palette-edit-btn:hover {
+    background: var(--color-danger-hover);
+    transform: scale(1.1);
 }
 
 /* ============================================

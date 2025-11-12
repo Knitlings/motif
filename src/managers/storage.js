@@ -17,7 +17,9 @@ export const StorageManager = {
                 aspectRatio: state.aspectRatio,
                 previewRepeatX: state.previewRepeatX,
                 previewRepeatY: state.previewRepeatY,
-                hasInteracted: state.hasInteracted
+                hasInteracted: state.hasInteracted,
+                activePaletteId: state.activePaletteId,
+                customPalette: state.customPalette
             };
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(dataToSave));
         } catch (e) {

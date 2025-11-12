@@ -58,7 +58,20 @@
 
                 <!-- Quick Palette -->
                 <div>
-                    <h3>Quick Palette</h3>
+                    <div class="palette-header">
+                        <h3>Palette: <span id="paletteName">Motif</span></h3>
+                        <div class="dropdown-container palette-dropdown">
+                            <button class="dropdown-btn" id="paletteDropdownBtn" aria-haspopup="true" aria-expanded="false" aria-label="Select palette">
+                                <span class="dropdown-arrow" aria-hidden="true">▾</span>
+                            </button>
+                            <div class="dropdown-menu" id="paletteMenu" role="menu">
+                                <a href="#" class="dropdown-item palette-option" data-palette="motif" role="menuitem">Motif</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="warm" role="menuitem">Warm</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="cool" role="menuitem">Cool</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="custom" role="menuitem">Custom</a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="input-group">
                         <div class="palette-grid" id="paletteGrid" role="group" aria-label="Quick color palette"></div>
                         <p class="hint desktop-only">Shift+click to set background colour</p>
