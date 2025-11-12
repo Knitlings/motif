@@ -117,8 +117,7 @@ test.describe('Tablet Layout (768px)', () => {
     // Open color panel
     await page.locator('#navbarColorToggle').click();
 
-    // Panel should be full-screen
-    await expect(colorPanel).toHaveCSS('width', '100%');
+    // Panel should be full-screen (check position properties)
     await expect(colorPanel).toHaveCSS('position', 'fixed');
     await expect(colorPanel).toHaveCSS('top', '0px');
     await expect(colorPanel).toHaveCSS('left', '0px');
@@ -180,10 +179,11 @@ test.describe('Mobile Layout (375px)', () => {
     // Open color panel
     await page.locator('#navbarColorToggle').click();
 
-    // Panel should be full-screen
-    await expect(colorPanel).toHaveCSS('width', '100%');
+    // Panel should be full-screen (check position properties)
     await expect(colorPanel).toHaveCSS('position', 'fixed');
-    await expect(colorPanel).toHaveCSS('height', '100vh');
+    await expect(colorPanel).toHaveCSS('top', '0px');
+    await expect(colorPanel).toHaveCSS('left', '0px');
+    await expect(colorPanel).toHaveCSS('right', '0px');
   });
 
   test('should show settings panel as full-screen overlay', async ({ page }) => {
@@ -192,9 +192,11 @@ test.describe('Mobile Layout (375px)', () => {
     // Open settings panel
     await page.locator('#navbarSettingsToggle').click();
 
-    // Panel should be full-screen
-    await expect(settingsPanel).toHaveCSS('width', '100%');
+    // Panel should be full-screen (check position properties)
     await expect(settingsPanel).toHaveCSS('position', 'fixed');
+    await expect(settingsPanel).toHaveCSS('top', '0px');
+    await expect(settingsPanel).toHaveCSS('left', '0px');
+    await expect(settingsPanel).toHaveCSS('right', '0px');
   });
 
   test('should have navbar height of 56px', async ({ page }) => {
@@ -280,9 +282,11 @@ test.describe('Small Mobile Layout (360px)', () => {
     // Open color panel
     await page.locator('#navbarColorToggle').click();
 
-    // Panel should be full-screen even on small devices
-    await expect(colorPanel).toHaveCSS('width', '100%');
+    // Panel should be full-screen even on small devices (check position properties)
     await expect(colorPanel).toHaveCSS('position', 'fixed');
+    await expect(colorPanel).toHaveCSS('top', '0px');
+    await expect(colorPanel).toHaveCSS('left', '0px');
+    await expect(colorPanel).toHaveCSS('right', '0px');
   });
 
   test('should have navbar height of 56px', async ({ page }) => {

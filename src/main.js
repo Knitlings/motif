@@ -490,11 +490,29 @@ function initGrid() {
     if (!grid || grid.length === 0) {
         grid = createEmptyGrid(gridWidth, gridHeight);
     }
-    HistoryManager.init({
-        grid: grid,
-        colors: patternColors,
-        backgroundColor: backgroundColor
-    });
+
+    // If we have a saved grid with painted cells, initialize history
+    // with both empty state and current state so undo works after reload
+    if (hasInteracted && grid.some(row => row.some(cell => cell !== null))) {
+        const emptyGrid = createEmptyGrid(gridWidth, gridHeight);
+        HistoryManager.init({
+            grid: emptyGrid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+        // Add the current loaded state as second history entry
+        HistoryManager.save({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    } else {
+        HistoryManager.init({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    }
     updateCanvas();
 }
 

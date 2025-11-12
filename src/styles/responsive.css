@@ -12,8 +12,9 @@
         top: 0;
         left: 0;
         right: 0;
-        width: 100%;
-        min-width: 100%;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100%;
         height: 100vh;
         z-index: 300;
         border: none;
@@ -73,6 +74,10 @@
     /* Hide color preview in navbar center on mobile */
     .navbar-center {
         display: none;
+    }
+
+    #navbarColorPreview {
+        display: none !important;
     }
 
     /* Adjust dropdown positioning */
