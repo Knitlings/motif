@@ -33,6 +33,9 @@ src/
 ├── main.js              # Application orchestrator and event handling
 ├── config.js            # Configuration constants and limits
 ├── utils.js             # Utility functions (math, DOM helpers)
+├── assets/              # Static assets (SVGs, images) imported in JS
+│   ├── delete.svg       # Delete icon
+│   └── edit.svg         # Edit icon
 ├── managers/            # Singleton managers for stateful resources
 │   ├── canvas.js        # Canvas rendering and cell size calculations
 │   ├── history.js       # Undo/redo state management
@@ -40,6 +43,13 @@ src/
 ├── core/                # Pure business logic
 │   ├── grid.js          # Grid operations (resize, bounds, manipulation)
 │   └── export.js        # Export/import functionality (SVG, PNG, JSON)
+├── styles/              # Modular CSS files
+│   ├── main.css         # Main stylesheet (imports all modules)
+│   ├── variables.css    # Design tokens
+│   ├── base.css         # Resets and base styles
+│   ├── layout.css       # Layout and panels
+│   ├── components.css   # UI components
+│   └── responsive.css   # Mobile and tablet styles
 └── utils/               # Specialized utilities
     ├── validation.js    # Input validation functions
     └── errorHandler.js  # Centralized error handling
@@ -120,6 +130,24 @@ The project uses Vite for development and production builds:
 - **Output**: `dist/` directory with optimized assets
 
 Configuration is in `vite.config.js`.
+
+### Working with Static Assets (Images, SVGs, Fonts)
+
+**For assets referenced in HTML or CSS:**
+- Place them in the project root alongside `index.html`
+- Reference with relative paths (e.g., `<img src="icon.svg">`)
+- Vite will process and copy them to `dist/` automatically
+
+**For assets used in JavaScript:**
+- Place them in `src/assets/`
+- Import as ES modules: `import iconSvg from './assets/icon.svg';`
+- Use the imported value: `<img src="${iconSvg}">`
+- Vite will inline small assets as data URLs or emit them with hashed filenames
+
+**Why this matters:**
+- Assets only referenced in dynamic JavaScript strings (e.g., `innerHTML = '<img src="icon.svg">'`) won't be detected by Vite's build process
+- Always import assets as modules so Vite can process them correctly
+- This ensures assets work in both development and production builds
 
 ### Adding Dependencies
 
