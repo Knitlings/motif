@@ -5,7 +5,16 @@ Thank you for your interest in contributing! This guide will help you understand
 ## Getting Started
 
 ### Prerequisites
+
+**Development environment:**
 - Node.js 16+ and npm
+
+**Browser requirements:**
+- Canvas API support
+- localStorage availability
+- FileReader API support
+
+Modern browsers (Chrome, Firefox, Safari, Edge) all support these features. The application includes feature detection with user-friendly error messages for unsupported browsers (see `src/utils/featureDetection.js`).
 
 ### Setup
 ```bash

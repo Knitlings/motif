@@ -2,6 +2,8 @@
 
 **Design repeating patterns on a flexible grid with live preview.**
 
+**[Try it live at motif.works](https://motif.works)**
+
 ![Motif Pattern Editor](screenshot.png)
 
 ## Features
