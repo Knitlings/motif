@@ -29,6 +29,7 @@ import {
     setupGlobalErrorHandler,
     ErrorType
 } from './utils/errorHandler.js';
+import { checkBrowserCompatibility } from './utils/featureDetection.js';
 import { createPaletteManager } from './ui/palette.js';
 import { setupPanelToggles, setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
@@ -76,6 +77,9 @@ let lastPaintedCell = { row: -1, col: -1 }; // Track last painted cell to avoid 
 // Palette state
 let activePaletteId = CONFIG.DEFAULT_ACTIVE_PALETTE; // 'motif', 'warm', 'cool', or 'custom'
 let customPalette = null; // Array of color strings when custom palette exists
+
+// Browser capabilities (set during initialization)
+let browserCapabilities = null;
 
 // ============================================
 // STATE HELPERS
@@ -155,6 +159,11 @@ function hideLoading() {
 }
 
 function saveToLocalStorage() {
+    // Skip saving if localStorage is not available
+    if (!browserCapabilities.localStorage) {
+        return;
+    }
+
     try {
         StorageManager.save(getState());
     } catch (error) {
@@ -985,8 +994,17 @@ function applyPreviewRepeatY(value) {
 // INITIALIZATION
 // ============================================
 
-// Try to load saved state from localStorage
-const savedState = StorageManager.load();
+// Check browser compatibility first
+browserCapabilities = checkBrowserCompatibility();
+
+// If canvas is not supported, the app cannot run - error overlay will be shown
+// and we should stop initialization
+if (!browserCapabilities.canvas) {
+    throw new Error('Canvas API not supported - application cannot initialize');
+}
+
+// Try to load saved state from localStorage (will be null if localStorage unavailable)
+const savedState = browserCapabilities.localStorage ? StorageManager.load() : null;
 
 // Get input elements
 const gridWidth2Input = document.getElementById('gridWidth2');
