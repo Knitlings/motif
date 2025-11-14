@@ -190,10 +190,12 @@ export const Utils = {
      * @returns {string} Aspect ratio string in "width:height" format
      */
     aspectRatioToDisplay(aspectRatio, maxDenominator = 100) {
-        // If aspectRatio is height/width, then width/height is the inverse
+        // Convert internal representation (height/width) to display representation (width/height)
+        // Example: if cells are 0.75x as tall as wide (height/width = 0.75),
+        // then they are 1.33x as wide as tall (width/height = 1.33)
         const widthHeightRatio = 1 / aspectRatio;
 
-        // Handle exact integers
+        // Handle exact integers (e.g., 2.0 → "2:1")
         if (Math.abs(widthHeightRatio - Math.round(widthHeightRatio)) < 0.0001) {
             return `${Math.round(widthHeightRatio)}:1`;
         }
@@ -202,18 +204,22 @@ export const Utils = {
         let bestDenominator = 1;
         let minError = Math.abs(widthHeightRatio - 1);
 
-        // Search for the simplest fraction within tolerance
+        // Use continued fractions algorithm to find simplest rational approximation
+        // Iterates through denominators from 1 to maxDenominator to find the fraction
+        // that best approximates the target ratio while remaining simple
         for (let denominator = 1; denominator <= maxDenominator; denominator++) {
+            // For each denominator, find the best numerator by rounding
             const numerator = Math.round(widthHeightRatio * denominator);
             const error = Math.abs(widthHeightRatio - numerator / denominator);
 
-            // If this is closer, or equally close but simpler, use it
+            // Prefer fractions that are either more accurate or simpler
+            // This ensures we get "4:3" instead of "400:300"
             if (error < minError || (error === minError && denominator < bestDenominator)) {
                 bestNumerator = numerator;
                 bestDenominator = denominator;
                 minError = error;
 
-                // If we found an exact match, stop searching
+                // Early exit if we found an exact match (within floating point tolerance)
                 if (error < 0.0001) break;
             }
         }
@@ -270,11 +276,13 @@ export const Utils = {
      * @returns {number|null} Aspect ratio as height/width or null if invalid
      */
     displayToAspectRatio(str) {
+        // Parse the user input (e.g., "4:3") into a width/height decimal (e.g., 1.33)
         const widthHeightRatio = this.fractionToDecimal(str);
         if (widthHeightRatio === null || widthHeightRatio === 0) {
             return null;
         }
-        // Convert width:height to height/width
+        // Convert display format (width/height) to internal format (height/width)
+        // Example: "4:3" means width/height = 4/3 = 1.33, so height/width = 1/1.33 = 0.75
         return 1 / widthHeightRatio;
     }
 };

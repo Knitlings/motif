@@ -99,19 +99,23 @@ export function createEmptyGrid(width, height) {
 export function resizeGrid(params) {
     const { grid, gridWidth, gridHeight, newWidth, newHeight } = params;
 
-    // Check if resize would crop content
+    // Prevent resize if it would crop painted content
+    // Find the bounding box of all non-empty cells
     const bounds = getContentBounds(grid, gridWidth, gridHeight);
     if (bounds) {
+        // If the new dimensions are smaller than the content bounds, reject the resize
         if (newWidth < bounds.width || newHeight < bounds.height) {
             showResizeBlocked();
             return false;
         }
     }
 
-    // Create new grid filled with background
+    // Create new grid filled with background (all cells = 0)
     const newGrid = createEmptyGrid(newWidth, newHeight);
 
-    // Calculate shift needed: how much the center moves
+    // Calculate how much to shift content to keep it centered
+    // When resizing, we want the pattern to stay centered relative to the grid
+    // Example: 5x5 grid (center at 2,2) → 7x7 grid (center at 3,3) = shift by (1,1)
     const oldGridCenterX = Math.floor(gridWidth / 2);
     const oldGridCenterY = Math.floor(gridHeight / 2);
     const newGridCenterX = Math.floor(newWidth / 2);
@@ -120,13 +124,15 @@ export function resizeGrid(params) {
     const shiftX = newGridCenterX - oldGridCenterX;
     const shiftY = newGridCenterY - oldGridCenterY;
 
-    // Copy each cell, shifting by the same amount the center shifted
+    // Copy all cells from old grid to new grid, applying the centering shift
     for (let row = 0; row < gridHeight; row++) {
         for (let col = 0; col < gridWidth; col++) {
             const newCol = col + shiftX;
             const newRow = row + shiftY;
 
-            // Only copy if the position is within the new grid bounds
+            // Only copy if the shifted position is within the new grid bounds
+            // Cells that shift outside the bounds are discarded (though this shouldn't
+            // happen since we already checked content bounds above)
             if (newRow >= 0 && newRow < newHeight && newCol >= 0 && newCol < newWidth) {
                 newGrid[newRow][newCol] = grid[row][col];
             }
@@ -156,20 +162,26 @@ export function resizeGridFromEdge(params) {
     let newWidth = gridWidth;
     let newHeight = gridHeight;
 
-    // Calculate new dimensions based on direction
+    // Calculate new dimensions based on which edge is being dragged
+    // delta can be positive (growing) or negative (shrinking)
     if (direction === 'right' || direction === 'left') {
         newWidth = gridWidth + delta;
     } else if (direction === 'bottom' || direction === 'top') {
         newHeight = gridHeight + delta;
     }
 
-    // Clamp to valid range
+    // Enforce grid size limits
     newWidth = Utils.clamp(newWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
     newHeight = Utils.clamp(newHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
 
-    // Check if resize would crop content based on which edge we're resizing
+    // Prevent shrinking if it would crop painted content
+    // Only check when delta < 0 (shrinking) to avoid unnecessary checks when growing
     const bounds = getContentBounds(grid, gridWidth, gridHeight);
-    if (bounds && delta < 0) { // Only check when shrinking
+    if (bounds && delta < 0) {
+        // Check each edge based on the direction to see if content would be cropped
+        // For right edge: ensure new width includes rightmost painted cell (maxCol + 1)
+        // For left edge: ensure we don't remove columns that contain painted cells (minCol)
+        // Similar logic for top and bottom edges
         if (direction === 'right' && newWidth < bounds.maxCol + 1) {
             showResizeBlocked(direction);
             return null;
@@ -185,15 +197,18 @@ export function resizeGridFromEdge(params) {
         }
     }
 
-    // If no change, return null
+    // If no actual change in dimensions (e.g., already at max/min), return null
     if (newWidth === gridWidth && newHeight === gridHeight) {
         return null;
     }
 
-    // Create new grid filled with background
+    // Create new grid filled with background (all cells = 0)
     const newGrid = createEmptyGrid(newWidth, newHeight);
 
-    // Copy old grid data based on which edge is being dragged
+    // Copy cells from old grid to new grid
+    // The copy strategy depends on which edge is being dragged:
+    // - right/bottom: content stays anchored to top-left, new cells added on right/bottom
+    // - left/top: content shifts right/down, new cells added on left/top
     for (let row = 0; row < Math.min(gridHeight, newHeight); row++) {
         for (let col = 0; col < Math.min(gridWidth, newWidth); col++) {
             let sourceRow = row;
@@ -201,16 +216,18 @@ export function resizeGridFromEdge(params) {
             let targetRow = row;
             let targetCol = col;
 
-            // Adjust offsets based on which edge we're dragging
+            // Adjust copy offsets based on which edge is being dragged
             if (direction === 'top') {
-                // Adding to top: shift existing content down
+                // When adding/removing from top, shift existing content down/up
+                // Example: 5x5 → 7x5 from top means shift content down by 2 rows
                 targetRow = row + (newHeight - gridHeight);
                 if (targetRow >= 0 && targetRow < newHeight) {
                     newGrid[targetRow][targetCol] = grid[sourceRow][sourceCol];
                 }
                 continue;
             } else if (direction === 'left') {
-                // Adding to left: shift existing content right
+                // When adding/removing from left, shift existing content right/left
+                // Example: 5x5 → 5x7 from left means shift content right by 2 columns
                 targetCol = col + (newWidth - gridWidth);
                 if (targetCol >= 0 && targetCol < newWidth) {
                     newGrid[targetRow][targetCol] = grid[sourceRow][sourceCol];
@@ -218,7 +235,8 @@ export function resizeGridFromEdge(params) {
                 continue;
             }
 
-            // For right and bottom, just copy directly
+            // For right and bottom edges, content stays anchored to origin
+            // Just copy directly without offset
             newGrid[targetRow][targetCol] = grid[sourceRow][sourceCol];
         }
     }

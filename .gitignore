@@ -23,6 +23,7 @@ scratch.*
 !src/styles/README.md
 !CONTRIBUTING.md
 !RELEASING.md
+!.github/DEPENDABOT.md
 
 # Test files (unless you want to commit them)
 test-*.json
