@@ -29,6 +29,10 @@ import {
     setupGlobalErrorHandler,
     ErrorType
 } from './utils/errorHandler.js';
+import { createPaletteManager } from './ui/palette.js';
+import { setupPanelToggles, setupDropdowns } from './ui/panels.js';
+import { setupKeyboardShortcuts } from './ui/keyboard.js';
+import { setupCanvasInteractions } from './ui/interactions.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -664,247 +668,12 @@ function paintCell(row, col, isShiftKey, useInitialState = false) {
 // ============================================
 // CANVAS INTERACTION
 // ============================================
-
-function hideCanvasInstructions() {
-    if (!hasInteracted) {
-        hasInteracted = true;
-        const instructions = document.getElementById('canvasInstructions');
-        instructions.classList.add('fade-out');
-        setTimeout(() => {
-            instructions.style.display = 'none';
-        }, CONFIG.INSTRUCTIONS_FADE_TIME);
-    }
-}
-
-function setupCanvasEvents() {
-    CanvasManager.editCanvas.addEventListener('mousedown', (e) => {
-        hideCanvasInstructions();
-        isDrawing = true;
-        const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-
-        if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
-            initialCellState = grid[row][col];
-        }
-
-        paintCell(row, col, e.shiftKey, true);
-    });
-
-    CanvasManager.editCanvas.addEventListener('mousemove', (e) => {
-        if (isDrawing) {
-            const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-            paintCell(row, col, e.shiftKey, false);
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseup', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseleave', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-}
+// Moved to src/ui/interactions.js - see canvasInteractions initialization below
 
 // ============================================
 // PALETTE MANAGEMENT
 // ============================================
-
-function renderPalette() {
-    const paletteGrid = document.getElementById('paletteGrid');
-    paletteGrid.innerHTML = '';
-
-    const colors = getCurrentPaletteColors();
-    const isEditable = isCurrentPaletteEditable();
-
-    colors.forEach((color, index) => {
-        const btn = document.createElement('div');
-        btn.className = 'palette-color';
-        btn.style.backgroundColor = color;
-
-        // Add edit button for custom palettes
-        if (isEditable) {
-            const editBtn = document.createElement('span');
-            editBtn.className = 'palette-edit-btn';
-            editBtn.innerHTML = `<img src="${editSvg}" alt="Edit" class="edit-icon">`;
-            editBtn.onclick = (e) => {
-                e.stopPropagation();
-                editPaletteColor(index);
-            };
-            btn.appendChild(editBtn);
-        }
-
-        // Add delete button for custom palettes (if more than MIN colors)
-        if (isEditable && colors.length > CONFIG.MIN_PALETTE_COLORS) {
-            const deleteBtn = document.createElement('span');
-            deleteBtn.className = 'palette-delete-btn';
-            deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                removePaletteColor(index);
-            };
-            btn.appendChild(deleteBtn);
-        }
-
-        // Long-press detection variables
-        let pressTimer = null;
-        let isLongPress = false;
-
-        // Function to set background color
-        const setBackgroundColor = () => {
-            backgroundColor = color;
-            document.getElementById('backgroundColor').value = color;
-            document.getElementById('backgroundText').value = color;
-            updateCanvas();
-            updateColorIndicators();
-            saveToLocalStorage();
-        };
-
-        // Function to set active color
-        const setActiveColor = () => {
-            patternColors[activePatternIndex] = color;
-            updateActiveColorUI();
-            createPatternColorButtons();
-            updateCanvas();
-            updateColorIndicators();
-            saveToLocalStorage();
-        };
-
-        // Handle click (desktop shift+click or regular click)
-        btn.onclick = (e) => {
-            // Ignore if this was a long press (already handled)
-            if (isLongPress) {
-                isLongPress = false;
-                return;
-            }
-
-            // Always set color on click (editing is via pen icon)
-            if (e.shiftKey) {
-                setBackgroundColor();
-            } else {
-                setActiveColor();
-            }
-        };
-
-        // Handle touch start (for long press detection)
-        btn.addEventListener('touchstart', (e) => {
-            isLongPress = false;
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                setBackgroundColor();
-                // Provide haptic feedback if available
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
-                }
-            }, 500); // 500ms for long press
-        }, { passive: true });
-
-        // Handle touch end (cancel long press timer)
-        btn.addEventListener('touchend', (e) => {
-            if (pressTimer) {
-                clearTimeout(pressTimer);
-                pressTimer = null;
-            }
-            // If it was a long press, prevent the click event
-            if (isLongPress) {
-                e.preventDefault();
-                // Handle the regular tap for active color
-                setTimeout(() => {
-                    isLongPress = false;
-                }, 100);
-            } else {
-                // Short tap - set active color
-                setActiveColor();
-            }
-        });
-
-        // Handle touch cancel (user moved finger away)
-        btn.addEventListener('touchcancel', () => {
-            if (pressTimer) {
-                clearTimeout(pressTimer);
-                pressTimer = null;
-            }
-            isLongPress = false;
-        });
-
-        paletteGrid.appendChild(btn);
-    });
-
-    // Add "add color" button for custom palettes (if not at max)
-    if (isEditable && colors.length < CONFIG.MAX_PALETTE_COLORS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'palette-color palette-add-btn';
-        addBtn.textContent = '+';
-        addBtn.onclick = () => addPaletteColor();
-        paletteGrid.appendChild(addBtn);
-    }
-}
-
-function switchPalette(paletteId) {
-    activePaletteId = paletteId;
-    updatePaletteUI();
-    renderPalette();
-    saveToLocalStorage();
-}
-
-function editPaletteColor(index) {
-    if (!isCurrentPaletteEditable()) return;
-
-    // Create a temporary color input
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = customPalette[index];
-    input.onchange = () => {
-        customPalette[index] = input.value;
-        renderPalette();
-        saveToLocalStorage();
-    };
-    input.click();
-}
-
-function addPaletteColor() {
-    if (!isCurrentPaletteEditable()) return;
-    if (customPalette.length >= CONFIG.MAX_PALETTE_COLORS) return;
-
-    // Add a new color (default to black)
-    customPalette.push('#000000');
-    renderPalette();
-    saveToLocalStorage();
-}
-
-function removePaletteColor(index) {
-    if (!isCurrentPaletteEditable()) return;
-    if (customPalette.length <= CONFIG.MIN_PALETTE_COLORS) return;
-
-    customPalette.splice(index, 1);
-    renderPalette();
-    saveToLocalStorage();
-}
-
-function updatePaletteUI() {
-    const paletteName = document.getElementById('paletteName');
-
-    // Update displayed palette name
-    const paletteDisplayName = activePaletteId === 'custom' ? 'Custom' :
-        CONFIG.BUILT_IN_PALETTES[activePaletteId]?.name || 'Motif';
-    if (paletteName) {
-        paletteName.textContent = paletteDisplayName;
-    }
-
-    // If custom was selected but doesn't exist, create it with single black color
-    if (activePaletteId === 'custom' && !customPalette) {
-        customPalette = ['#000000'];
-    }
-}
+// Moved to src/ui/palette.js - see paletteManager initialization below
 
 // ============================================
 // BUTTON EVENT HANDLERS
@@ -1288,8 +1057,70 @@ activePatternColorText.value = patternColors[activePatternIndex];
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
 
+// ============================================
+// INITIALIZE UI MODULES
+// ============================================
+
+// Initialize palette manager
+const paletteManager = createPaletteManager({
+    getCurrentPaletteColors,
+    isCurrentPaletteEditable,
+    getActivePaletteId: () => activePaletteId,
+    setActivePaletteId: (id) => { activePaletteId = id; },
+    getCustomPalette: () => customPalette,
+    setCustomPalette: (palette) => { customPalette = palette; },
+    getPatternColors: () => patternColors,
+    setPatternColors: (colors) => { patternColors = colors; },
+    getActivePatternIndex: () => activePatternIndex,
+    getBackgroundColor: () => backgroundColor,
+    setBackgroundColor: (color) => { backgroundColor = color; },
+    saveToLocalStorage,
+    updateCanvas,
+    updateColorIndicators,
+    createPatternColorButtons,
+    updateActiveColorUI
+});
+
+// Expose palette functions globally for button handlers
+const renderPalette = paletteManager.renderPalette;
+const switchPalette = paletteManager.switchPalette;
+const updatePaletteUI = paletteManager.updatePaletteUI;
+
+// Initialize panel toggles
+const panelToggles = setupPanelToggles(announceToScreenReader, updateColorIndicators);
+
+// Initialize dropdowns
+setupDropdowns();
+
+// Initialize keyboard shortcuts
+setupKeyboardShortcuts({
+    getPatternColors: () => patternColors,
+    getActivePatternIndex: () => activePatternIndex,
+    setActivePatternIndex: (index) => { activePatternIndex = index; },
+    updateActiveColorUI,
+    createPatternColorButtons
+});
+
+// Initialize canvas interactions
+const canvasInteractions = setupCanvasInteractions({
+    canvasManager: CanvasManager,
+    getHasInteracted: () => hasInteracted,
+    setHasInteracted: (value) => { hasInteracted = value; },
+    getIsDrawing: () => isDrawing,
+    setIsDrawing: (value) => { isDrawing = value; },
+    getInitialCellState: () => initialCellState,
+    setInitialCellState: (value) => { initialCellState = value; },
+    getLastPaintedCell: () => lastPaintedCell,
+    setLastPaintedCell: (value) => { lastPaintedCell = value; },
+    getGridWidth: () => gridWidth,
+    getGridHeight: () => gridHeight,
+    getGrid: () => grid,
+    paintCell,
+    saveToHistory
+});
+
 // Set up canvas event listeners
-setupCanvasEvents();
+canvasInteractions.setupCanvasEvents();
 
 // Initialize UI
 renderPalette();
@@ -1615,190 +1446,9 @@ document.addEventListener('touchcancel', () => {
     endResize();
 });
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-        return;
-    }
+// Keyboard shortcuts - Moved to src/ui/keyboard.js
 
-    const ctrlKey = Utils.isMac() ? e.metaKey : e.ctrlKey;
-
-    if (ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        const undoBtn = document.getElementById('undoBtn');
-        if (!undoBtn.disabled) {
-            undoBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    if (ctrlKey && e.key.toLowerCase() === 'y') {
-        const redoBtn = document.getElementById('redoBtn');
-        if (!redoBtn.disabled) {
-            redoBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-        const clearBtn = document.getElementById('clearBtn');
-        if (!clearBtn.disabled) {
-            clearBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    const digitCodes = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
-    const codeIndex = digitCodes.indexOf(e.code);
-
-    if (codeIndex !== -1) {
-        let patternIndex;
-
-        if (e.shiftKey) {
-            patternIndex = codeIndex + 10;
-        } else {
-            patternIndex = codeIndex;
-        }
-
-        if (patternIndex !== undefined && patternIndex < patternColors.length) {
-            activePatternIndex = patternIndex;
-            updateActiveColorUI();
-            createPatternColorButtons();
-            e.preventDefault();
-        }
-    }
-});
-
-// Panel toggle functionality
-function toggleColorPanel() {
-    const panel = document.getElementById('colorPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
-
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-
-    if (isCollapsed) {
-        updateColorIndicators();
-        announceToScreenReader('Color panel collapsed');
-    } else {
-        announceToScreenReader('Color panel expanded');
-    }
-}
-
-function toggleSettingsPanel() {
-    const panel = document.getElementById('settingsPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
-
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-    announceToScreenReader(isCollapsed ? 'Settings panel collapsed' : 'Settings panel expanded');
-}
-
-// Dropdown menu functionality
-const dropdownContainers = document.querySelectorAll('.dropdown-container, .navbar-dropdown-container');
-
-dropdownContainers.forEach(container => {
-    const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-    const menu = container.querySelector('.dropdown-menu, .navbar-dropdown-menu');
-
-    if (btn) {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = container.classList.contains('open');
-
-            // Close all other dropdowns
-            dropdownContainers.forEach(otherContainer => {
-                if (otherContainer !== container) {
-                    otherContainer.classList.remove('open');
-                    const otherBtn = otherContainer.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-                    if (otherBtn) {
-                        otherBtn.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            });
-
-            // Toggle current dropdown
-            container.classList.toggle('open');
-            btn.setAttribute('aria-expanded', !isOpen);
-        });
-
-        // Keyboard support for dropdowns
-        btn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                btn.click();
-            } else if (e.key === 'Escape') {
-                container.classList.remove('open');
-                btn.setAttribute('aria-expanded', 'false');
-                btn.focus();
-            }
-        });
-    }
-});
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    dropdownContainers.forEach(container => {
-        if (!container.contains(e.target)) {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        }
-    });
-});
-
-// Close dropdowns on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-});
-
-document.querySelectorAll('.dropdown-item').forEach(item => {
-    item.addEventListener('click', () => {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    });
-});
-
-// Navbar toggle buttons
-const navbarColorToggle = document.getElementById('navbarColorToggle');
-const navbarSettingsToggle = document.getElementById('navbarSettingsToggle');
-
-if (navbarColorToggle) {
-    navbarColorToggle.addEventListener('click', toggleColorPanel);
-}
-
-if (navbarSettingsToggle) {
-    navbarSettingsToggle.addEventListener('click', toggleSettingsPanel);
-}
-
-// Panel close buttons (for mobile)
-const colorPanelClose = document.getElementById('colorPanelClose');
-const settingsPanelClose = document.getElementById('settingsPanelClose');
-
-if (colorPanelClose) {
-    colorPanelClose.addEventListener('click', toggleColorPanel);
-}
-
-if (settingsPanelClose) {
-    settingsPanelClose.addEventListener('click', toggleSettingsPanel);
-}
+// Panel toggle functionality - Moved to src/ui/panels.js
 
 // ============================================
 // GLOBAL ERROR HANDLING
