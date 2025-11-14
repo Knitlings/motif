@@ -172,6 +172,43 @@ test.describe('UI Controls', () => {
     const newState = await panel.evaluate(el => el.classList.contains('collapsed'));
     expect(newState).toBe(!initialState);
   });
+
+  test('navbar toggle buttons should display icons', async ({ page }) => {
+    // Check settings toggle has visible icon (SVG image)
+    const settingsIcon = page.locator('#navbarSettingsToggle img');
+    await expect(settingsIcon).toBeVisible();
+
+    // Verify it's actually an image (not just alt text showing)
+    const hasValidSrc = await settingsIcon.evaluate(img => {
+      return img.src && img.src.length > 0 && !img.src.endsWith('undefined');
+    });
+    expect(hasValidSrc).toBe(true);
+
+    // Check color toggle has visible color swatches (divs, not images)
+    const colorSwatch = page.locator('#navbarColorToggle .color-swatch');
+    await expect(colorSwatch.first()).toBeVisible();
+  });
+
+  test('should not have CSP violations', async ({ page }) => {
+    const violations = [];
+
+    // Listen for console errors related to CSP
+    page.on('console', msg => {
+      if (msg.type() === 'error' && msg.text().includes('Content Security Policy')) {
+        // Ignore benign warning about frame-ancestors in meta tags
+        // (browsers only support frame-ancestors in HTTP headers, not meta tags)
+        if (!msg.text().includes('frame-ancestors')) {
+          violations.push(msg.text());
+        }
+      }
+    });
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Should have no CSP violations (excluding benign frame-ancestors warning)
+    expect(violations).toHaveLength(0);
+  });
 });
 
 test.describe('Export Functions', () => {
