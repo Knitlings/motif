@@ -6,9 +6,13 @@ import { Utils } from '../utils.js';
 // ============================================
 
 /**
- * Export grid as SVG
- * @param {Object} state - Application state containing grid, colors, dimensions
- * @returns {Blob} - SVG blob for download
+ * @typedef {import('../main.js').ApplicationState} ApplicationState
+ */
+
+/**
+ * Export grid as SVG with grid lines
+ * @param {ApplicationState} state - Application state containing grid, colors, dimensions
+ * @returns {Blob} SVG blob for download
  */
 export function exportSvg(state) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor } = state;
@@ -73,8 +77,8 @@ export function exportPng() {
 
 /**
  * Export pattern as JSON
- * @param {Object} state - Application state
- * @returns {Blob} - JSON blob for download
+ * @param {ApplicationState} state - Application state
+ * @returns {Blob} JSON blob for download
  */
 export function exportJson(state) {
     const {
@@ -85,7 +89,9 @@ export function exportJson(state) {
         patternColors,
         backgroundColor,
         previewRepeatX,
-        previewRepeatY
+        previewRepeatY,
+        activePaletteId,
+        customPalette
     } = state;
 
     const patternData = {
@@ -104,6 +110,10 @@ export function exportJson(state) {
         preview: {
             repeatX: previewRepeatX,
             repeatY: previewRepeatY
+        },
+        palette: {
+            active: activePaletteId,
+            custom: customPalette
         }
     };
 
@@ -174,6 +184,12 @@ export function importJson(file, onSuccess, onError) {
                     CONFIG.MAX_PREVIEW_REPEAT,
                     CONFIG.DEFAULT_PREVIEW_REPEAT
                 );
+            }
+
+            // Import palette settings if available
+            if (patternData.palette) {
+                importedData.activePaletteId = patternData.palette.active || CONFIG.DEFAULT_ACTIVE_PALETTE;
+                importedData.customPalette = patternData.palette.custom || null;
             }
 
             onSuccess(importedData);

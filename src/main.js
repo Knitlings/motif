@@ -18,6 +18,8 @@ import {
     validateFileSize,
     validateFileType
 } from './utils/validation.js';
+import deleteSvg from './assets/delete.svg';
+import editSvg from './assets/edit.svg';
 import {
     showError,
     handleStorageError,
@@ -27,6 +29,31 @@ import {
     setupGlobalErrorHandler,
     ErrorType
 } from './utils/errorHandler.js';
+import { createPaletteManager } from './ui/palette.js';
+import { setupPanelToggles, setupDropdowns } from './ui/panels.js';
+import { setupKeyboardShortcuts } from './ui/keyboard.js';
+import { setupCanvasInteractions } from './ui/interactions.js';
+
+// ============================================
+// TYPE DEFINITIONS
+// See CONTRIBUTING.md "Application State Structure" for conceptual overview
+// ============================================
+
+/**
+ * @typedef {Object} ApplicationState
+ * @property {number[][]} grid - 2D array of cell values (0=background, 1-20=color index+1)
+ * @property {number} gridWidth - Number of grid columns (2-100)
+ * @property {number} gridHeight - Number of grid rows (2-100)
+ * @property {number} aspectRatio - Cell aspect ratio as height/width
+ * @property {string[]} patternColors - Array of hex color strings (max 20)
+ * @property {number} activePatternIndex - Currently selected color index (0-19)
+ * @property {string} backgroundColor - Hex color for empty cells (cellValue=0)
+ * @property {number} previewRepeatX - Horizontal tile repeats in preview (1-10)
+ * @property {number} previewRepeatY - Vertical tile repeats in preview (1-10)
+ * @property {boolean} hasInteracted - Whether user has made any changes
+ * @property {string} activePaletteId - ID of active palette ('motif', 'warm', 'cool', 'autumn', 'custom')
+ * @property {string[]|null} customPalette - Custom palette colors array or null
+ */
 
 // ============================================
 // STATE
@@ -46,10 +73,18 @@ let initialCellState = null; // Tracks the cell state when stroke began
 let canvasUpdateScheduled = false; // Flag for requestAnimationFrame
 let lastPaintedCell = { row: -1, col: -1 }; // Track last painted cell to avoid redundant updates
 
+// Palette state
+let activePaletteId = CONFIG.DEFAULT_ACTIVE_PALETTE; // 'motif', 'warm', 'cool', or 'custom'
+let customPalette = null; // Array of color strings when custom palette exists
+
 // ============================================
 // STATE HELPERS
 // ============================================
 
+/**
+ * Get current application state
+ * @returns {ApplicationState} Current state object
+ */
 function getState() {
     return {
         grid,
@@ -61,11 +96,35 @@ function getState() {
         backgroundColor,
         previewRepeatX,
         previewRepeatY,
-        hasInteracted
+        hasInteracted,
+        activePaletteId,
+        customPalette
     };
 }
 
-// Announce status to screen readers
+/**
+ * Get the current palette colors
+ * @returns {string[]} Array of hex color strings
+ */
+function getCurrentPaletteColors() {
+    if (activePaletteId === 'custom' && customPalette) {
+        return customPalette;
+    }
+    return CONFIG.BUILT_IN_PALETTES[activePaletteId]?.colors || CONFIG.BUILT_IN_PALETTES.motif.colors;
+}
+
+/**
+ * Check if current palette is editable
+ * @returns {boolean} True if current palette is custom (editable)
+ */
+function isCurrentPaletteEditable() {
+    return activePaletteId === 'custom';
+}
+
+/**
+ * Announce status to screen readers
+ * @param {string} message - Message to announce
+ */
 function announceToScreenReader(message) {
     const statusEl = document.getElementById('statusAnnouncements');
     if (statusEl) {
@@ -145,11 +204,13 @@ function scheduleCanvasUpdate() {
 // ============================================
 
 function updateNavbarSvgs() {
-    const colorSvg = document.getElementById('navbarColorSvg');
+    const activeSwatch = document.getElementById('navbarActiveColorSwatch');
+    const bgSwatch = document.getElementById('navbarBgColorSwatch');
 
-    if (colorSvg) {
+    if (activeSwatch && bgSwatch) {
         const activeColor = patternColors[activePatternIndex];
-        colorSvg.src = createMSvg(activeColor, backgroundColor);
+        activeSwatch.style.backgroundColor = activeColor;
+        bgSwatch.style.backgroundColor = backgroundColor;
     }
 }
 
@@ -174,55 +235,6 @@ function updateNavbarColorPreview() {
         previewContainer.classList.remove('visible');
         previewContainer.innerHTML = '';
     }
-}
-
-function createMSvg(patternColor, bgColor) {
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="350" height="350" viewBox="0 0 350 350" xmlns="http://www.w3.org/2000/svg">
-  <rect width="350" height="350" fill="${bgColor}"/>
-  <rect x="0" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="300" width="50" height="50" fill="${patternColor}"/>
-</svg>`;
-
-    return 'data:image/svg+xml;base64,' + btoa(svg);
 }
 
 function updateColorIndicators() {
@@ -265,7 +277,7 @@ function createPatternColorButtons() {
             if (index > 0) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'pattern-delete-btn';
-                deleteBtn.textContent = '×';
+                deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
                     showDeleteColorDialog(index);
@@ -537,11 +549,29 @@ function initGrid() {
     if (!grid || grid.length === 0) {
         grid = createEmptyGrid(gridWidth, gridHeight);
     }
-    HistoryManager.init({
-        grid: grid,
-        colors: patternColors,
-        backgroundColor: backgroundColor
-    });
+
+    // If we have a saved grid with painted cells, initialize history
+    // with both empty state and current state so undo works after reload
+    if (hasInteracted && grid.some(row => row.some(cell => cell !== null))) {
+        const emptyGrid = createEmptyGrid(gridWidth, gridHeight);
+        HistoryManager.init({
+            grid: emptyGrid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+        // Add the current loaded state as second history entry
+        HistoryManager.save({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    } else {
+        HistoryManager.init({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    }
     updateCanvas();
 }
 
@@ -638,84 +668,12 @@ function paintCell(row, col, isShiftKey, useInitialState = false) {
 // ============================================
 // CANVAS INTERACTION
 // ============================================
-
-function hideCanvasInstructions() {
-    if (!hasInteracted) {
-        hasInteracted = true;
-        const instructions = document.getElementById('canvasInstructions');
-        instructions.classList.add('fade-out');
-        setTimeout(() => {
-            instructions.style.display = 'none';
-        }, CONFIG.INSTRUCTIONS_FADE_TIME);
-    }
-}
-
-function setupCanvasEvents() {
-    CanvasManager.editCanvas.addEventListener('mousedown', (e) => {
-        hideCanvasInstructions();
-        isDrawing = true;
-        const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-
-        if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
-            initialCellState = grid[row][col];
-        }
-
-        paintCell(row, col, e.shiftKey, true);
-    });
-
-    CanvasManager.editCanvas.addEventListener('mousemove', (e) => {
-        if (isDrawing) {
-            const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-            paintCell(row, col, e.shiftKey, false);
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseup', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseleave', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-}
+// Moved to src/ui/interactions.js - see canvasInteractions initialization below
 
 // ============================================
-// PALETTE INITIALIZATION
+// PALETTE MANAGEMENT
 // ============================================
-
-function initializePalette() {
-    const paletteGrid = document.getElementById('paletteGrid');
-    CONFIG.PALETTE.forEach(color => {
-        const btn = document.createElement('div');
-        btn.className = 'palette-color';
-        btn.style.backgroundColor = color;
-        btn.onclick = (e) => {
-            if (e.shiftKey) {
-                backgroundColor = color;
-                document.getElementById('backgroundColor').value = color;
-                document.getElementById('backgroundText').value = color;
-            } else {
-                patternColors[activePatternIndex] = color;
-                updateActiveColorUI();
-                createPatternColorButtons();
-            }
-            updateCanvas();
-            updateColorIndicators();
-            saveToLocalStorage();
-        };
-        paletteGrid.appendChild(btn);
-    });
-}
+// Moved to src/ui/palette.js - see paletteManager initialization below
 
 // ============================================
 // BUTTON EVENT HANDLERS
@@ -769,6 +727,15 @@ document.getElementById('clearBtn').onclick = () => {
     );
 };
 
+// Palette controls - dropdown menu items
+document.querySelectorAll('.palette-option').forEach(option => {
+    option.addEventListener('click', (e) => {
+        e.preventDefault();
+        const paletteId = e.target.dataset.palette;
+        switchPalette(paletteId);
+    });
+});
+
 document.getElementById('invertBtn').onclick = (e) => {
     e.preventDefault();
     const temp = patternColors[activePatternIndex];
@@ -783,6 +750,31 @@ document.getElementById('invertBtn').onclick = (e) => {
     saveToHistory();
     updateCanvas();
     updateColorIndicators();
+};
+
+document.getElementById('loadPaletteBtn').onclick = (e) => {
+    e.preventDefault();
+
+    // Get current palette colors
+    const paletteColors = getCurrentPaletteColors();
+
+    // Save current state to history before making changes
+    saveToHistory();
+
+    // Replace pattern colors with palette colors
+    patternColors = [...paletteColors];
+
+    // Set active color to first color
+    activePatternIndex = 0;
+
+    // Update UI
+    createPatternColorButtons();
+    updateActiveColorUI();
+    updateCanvas();
+    updateColorIndicators();
+    saveToLocalStorage();
+
+    announceToScreenReader(`Loaded ${paletteColors.length} colors from palette to pattern colors`);
 };
 
 document.getElementById('exportSvgBtn').onclick = (e) => {
@@ -872,6 +864,14 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                         previewRepeatY = importedData.previewRepeatY;
                     }
 
+                    // Import palette settings
+                    if (importedData.activePaletteId) {
+                        activePaletteId = importedData.activePaletteId;
+                    }
+                    if (importedData.customPalette) {
+                        customPalette = importedData.customPalette;
+                    }
+
                     if (activePatternIndex >= patternColors.length) {
                         activePatternIndex = 0;
                     }
@@ -895,6 +895,8 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 
                     createPatternColorButtons();
                     updateActiveColorUI();
+                    updatePaletteUI();
+                    renderPalette();
 
                     saveToHistory();
                     updateCanvas();
@@ -1008,6 +1010,8 @@ if (savedState) {
     activePatternIndex = savedState.activePatternIndex || 0;
     grid = savedState.grid || [];
     hasInteracted = savedState.hasInteracted || false;
+    activePaletteId = savedState.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
+    customPalette = savedState.customPalette || null;
 
     if (activePatternIndex >= patternColors.length) {
         activePatternIndex = 0;
@@ -1053,11 +1057,74 @@ activePatternColorText.value = patternColors[activePatternIndex];
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
 
+// ============================================
+// INITIALIZE UI MODULES
+// ============================================
+
+// Initialize palette manager
+const paletteManager = createPaletteManager({
+    getCurrentPaletteColors,
+    isCurrentPaletteEditable,
+    getActivePaletteId: () => activePaletteId,
+    setActivePaletteId: (id) => { activePaletteId = id; },
+    getCustomPalette: () => customPalette,
+    setCustomPalette: (palette) => { customPalette = palette; },
+    getPatternColors: () => patternColors,
+    setPatternColors: (colors) => { patternColors = colors; },
+    getActivePatternIndex: () => activePatternIndex,
+    getBackgroundColor: () => backgroundColor,
+    setBackgroundColor: (color) => { backgroundColor = color; },
+    saveToLocalStorage,
+    updateCanvas,
+    updateColorIndicators,
+    createPatternColorButtons,
+    updateActiveColorUI
+});
+
+// Expose palette functions globally for button handlers
+const renderPalette = paletteManager.renderPalette;
+const switchPalette = paletteManager.switchPalette;
+const updatePaletteUI = paletteManager.updatePaletteUI;
+
+// Initialize panel toggles
+const panelToggles = setupPanelToggles(announceToScreenReader, updateColorIndicators);
+
+// Initialize dropdowns
+setupDropdowns();
+
+// Initialize keyboard shortcuts
+setupKeyboardShortcuts({
+    getPatternColors: () => patternColors,
+    getActivePatternIndex: () => activePatternIndex,
+    setActivePatternIndex: (index) => { activePatternIndex = index; },
+    updateActiveColorUI,
+    createPatternColorButtons
+});
+
+// Initialize canvas interactions
+const canvasInteractions = setupCanvasInteractions({
+    canvasManager: CanvasManager,
+    getHasInteracted: () => hasInteracted,
+    setHasInteracted: (value) => { hasInteracted = value; },
+    getIsDrawing: () => isDrawing,
+    setIsDrawing: (value) => { isDrawing = value; },
+    getInitialCellState: () => initialCellState,
+    setInitialCellState: (value) => { initialCellState = value; },
+    getLastPaintedCell: () => lastPaintedCell,
+    setLastPaintedCell: (value) => { lastPaintedCell = value; },
+    getGridWidth: () => gridWidth,
+    getGridHeight: () => gridHeight,
+    getGrid: () => grid,
+    paintCell,
+    saveToHistory
+});
+
 // Set up canvas event listeners
-setupCanvasEvents();
+canvasInteractions.setupCanvasEvents();
 
 // Initialize UI
-initializePalette();
+renderPalette();
+updatePaletteUI();
 createPatternColorButtons();
 updateActiveColorUI();
 initGrid();
@@ -1257,31 +1324,51 @@ let resizeDirection = null;
 let resizeStartSize = null;
 let resizeStartPos = null;
 
+// Helper function to start resize (works for both mouse and touch)
+function startResize(handle, clientX, clientY) {
+    isResizing = true;
+    resizeDirection = handle.dataset.direction;
+    resizeStartSize = { width: gridWidth, height: gridHeight };
+    resizeStartPos = { x: clientX, y: clientY };
+
+    const canvas = document.getElementById('editCanvas');
+    const cellWidth = canvas.width / gridWidth;
+    const cellHeight = canvas.height / gridHeight;
+    resizeStartSize.cellWidth = cellWidth;
+    resizeStartSize.cellHeight = cellHeight;
+
+    document.body.style.cursor = handle.style.cursor;
+
+    // Add visual feedback class (especially useful for touch devices)
+    const container = document.querySelector('.canvas-resize-container');
+    if (container) {
+        container.classList.add('is-resizing');
+    }
+}
+
 resizeHandles.forEach(handle => {
+    // Mouse events
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-
-        isResizing = true;
-        resizeDirection = handle.dataset.direction;
-        resizeStartSize = { width: gridWidth, height: gridHeight };
-        resizeStartPos = { x: e.clientX, y: e.clientY };
-
-        const canvas = document.getElementById('editCanvas');
-        const cellWidth = canvas.width / gridWidth;
-        const cellHeight = canvas.height / gridHeight;
-        resizeStartSize.cellWidth = cellWidth;
-        resizeStartSize.cellHeight = cellHeight;
-
-        document.body.style.cursor = handle.style.cursor;
+        startResize(handle, e.clientX, e.clientY);
     });
+
+    // Touch events
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        startResize(handle, touch.clientX, touch.clientY);
+    }, { passive: false });
 });
 
-document.addEventListener('mousemove', (e) => {
+// Helper function to handle resize movement (works for both mouse and touch)
+function handleResizeMove(clientX, clientY) {
     if (!isResizing) return;
 
-    const deltaX = e.clientX - resizeStartPos.x;
-    const deltaY = e.clientY - resizeStartPos.y;
+    const deltaX = clientX - resizeStartPos.x;
+    const deltaY = clientY - resizeStartPos.y;
 
     let cellDelta = 0;
 
@@ -1309,195 +1396,59 @@ document.addEventListener('mousemove', (e) => {
 
             applyGridResizeFromEdge(resizeDirection, cellDelta);
 
-            resizeStartPos = { x: e.clientX, y: e.clientY };
+            resizeStartPos = { x: clientX, y: clientY };
             resizeStartSize.width = gridWidth;
             resizeStartSize.height = gridHeight;
         }
     }
-});
+}
 
-document.addEventListener('mouseup', () => {
+// Helper function to end resize (works for both mouse and touch)
+function endResize() {
     if (isResizing) {
         isResizing = false;
         resizeDirection = null;
         resizeStartSize = null;
         resizeStartPos = null;
         document.body.style.cursor = '';
-    }
-});
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-        return;
-    }
-
-    const ctrlKey = Utils.isMac() ? e.metaKey : e.ctrlKey;
-
-    if (ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        const undoBtn = document.getElementById('undoBtn');
-        if (!undoBtn.disabled) {
-            undoBtn.click();
-            e.preventDefault();
+        // Remove visual feedback class
+        const container = document.querySelector('.canvas-resize-container');
+        if (container) {
+            container.classList.remove('is-resizing');
         }
-        return;
-    }
-
-    if (ctrlKey && e.key.toLowerCase() === 'y') {
-        const redoBtn = document.getElementById('redoBtn');
-        if (!redoBtn.disabled) {
-            redoBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-        const clearBtn = document.getElementById('clearBtn');
-        if (!clearBtn.disabled) {
-            clearBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    const digitCodes = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
-    const codeIndex = digitCodes.indexOf(e.code);
-
-    if (codeIndex !== -1) {
-        let patternIndex;
-
-        if (e.shiftKey) {
-            patternIndex = codeIndex + 10;
-        } else {
-            patternIndex = codeIndex;
-        }
-
-        if (patternIndex !== undefined && patternIndex < patternColors.length) {
-            activePatternIndex = patternIndex;
-            updateActiveColorUI();
-            createPatternColorButtons();
-            e.preventDefault();
-        }
-    }
-});
-
-// Panel toggle functionality
-function toggleColorPanel() {
-    const panel = document.getElementById('colorPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
-
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-
-    if (isCollapsed) {
-        updateColorIndicators();
-        announceToScreenReader('Color panel collapsed');
-    } else {
-        announceToScreenReader('Color panel expanded');
     }
 }
 
-function toggleSettingsPanel() {
-    const panel = document.getElementById('settingsPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
+// Mouse events
+document.addEventListener('mousemove', (e) => {
+    handleResizeMove(e.clientX, e.clientY);
+});
 
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-    announceToScreenReader(isCollapsed ? 'Settings panel collapsed' : 'Settings panel expanded');
-}
+document.addEventListener('mouseup', () => {
+    endResize();
+});
 
-// Dropdown menu functionality
-const dropdownContainers = document.querySelectorAll('.dropdown-container, .navbar-dropdown-container');
-
-dropdownContainers.forEach(container => {
-    const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-    const menu = container.querySelector('.dropdown-menu, .navbar-dropdown-menu');
-
-    if (btn) {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = container.classList.contains('open');
-
-            // Close all other dropdowns
-            dropdownContainers.forEach(otherContainer => {
-                if (otherContainer !== container) {
-                    otherContainer.classList.remove('open');
-                    const otherBtn = otherContainer.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-                    if (otherBtn) {
-                        otherBtn.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            });
-
-            // Toggle current dropdown
-            container.classList.toggle('open');
-            btn.setAttribute('aria-expanded', !isOpen);
-        });
-
-        // Keyboard support for dropdowns
-        btn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                btn.click();
-            } else if (e.key === 'Escape') {
-                container.classList.remove('open');
-                btn.setAttribute('aria-expanded', 'false');
-                btn.focus();
-            }
-        });
+// Touch events
+document.addEventListener('touchmove', (e) => {
+    if (isResizing) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleResizeMove(touch.clientX, touch.clientY);
     }
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+    endResize();
 });
 
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    dropdownContainers.forEach(container => {
-        if (!container.contains(e.target)) {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        }
-    });
+document.addEventListener('touchcancel', () => {
+    endResize();
 });
 
-// Close dropdowns on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-});
+// Keyboard shortcuts - Moved to src/ui/keyboard.js
 
-document.querySelectorAll('.dropdown-item').forEach(item => {
-    item.addEventListener('click', () => {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    });
-});
-
-// Navbar toggle buttons
-const navbarColorToggle = document.getElementById('navbarColorToggle');
-const navbarSettingsToggle = document.getElementById('navbarSettingsToggle');
-
-if (navbarColorToggle) {
-    navbarColorToggle.addEventListener('click', toggleColorPanel);
-}
-
-if (navbarSettingsToggle) {
-    navbarSettingsToggle.addEventListener('click', toggleSettingsPanel);
-}
+// Panel toggle functionality - Moved to src/ui/panels.js
 
 // ============================================
 // GLOBAL ERROR HANDLING

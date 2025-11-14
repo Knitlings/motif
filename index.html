@@ -18,6 +18,7 @@
         <!-- Left Panel: Colors -->
         <aside class="side-panel left-panel collapsed" id="colorPanel" aria-label="Color controls" aria-expanded="false">
             <div class="panel-content">
+                <button class="panel-close-btn" id="colorPanelClose" aria-label="Close color panel">×</button>
                 <!-- Pattern Color Selector -->
                 <div>
                     <h3>Pattern Colours</h3>
@@ -57,9 +58,26 @@
 
                 <!-- Quick Palette -->
                 <div>
-                    <h3>Quick Palette</h3>
+                    <div class="palette-header">
+                        <h3>Palette: <span id="paletteName">Motif</span></h3>
+                        <div class="dropdown-container palette-dropdown">
+                            <button class="dropdown-btn" id="paletteDropdownBtn" aria-haspopup="true" aria-expanded="false" aria-label="Select palette">
+                                <span class="dropdown-arrow" aria-hidden="true">▾</span>
+                            </button>
+                            <div class="dropdown-menu" id="paletteMenu" role="menu">
+                                <a href="#" class="dropdown-item palette-option" data-palette="motif" role="menuitem">Motif</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="warm" role="menuitem">Warm</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="cool" role="menuitem">Cool</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="autumn" role="menuitem">Autumn</a>
+                                <a href="#" class="dropdown-item palette-option" data-palette="custom" role="menuitem">Custom</a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="input-group">
                         <div class="palette-grid" id="paletteGrid" role="group" aria-label="Quick color palette"></div>
+                        <a href="#" id="loadPaletteBtn" class="text-link-label" aria-label="Load palette to pattern colors">Load palette to pattern colours</a>
+                        <p class="hint desktop-only">Shift+click to set background colour</p>
+                        <p class="hint mobile-only">Long press to set background colour</p>
                     </div>
                 </div>
             </div>
@@ -68,8 +86,11 @@
         <!-- Header Navigation Bar -->
         <header class="header-navbar" role="banner">
             <div class="navbar-left">
-                <button class="navbar-svg-toggle" id="navbarColorToggle" aria-label="Toggle color panel" aria-controls="colorPanel">
-                    <img src="" class="navbar-color-preview-svg" id="navbarColorSvg" alt="Color preview">
+                <button class="navbar-color-swatch-toggle" id="navbarColorToggle" aria-label="Toggle color panel" aria-controls="colorPanel" title="Click to edit colors">
+                    <div class="color-swatch-container">
+                        <div class="color-swatch active-swatch" id="navbarActiveColorSwatch"></div>
+                        <div class="color-swatch bg-swatch" id="navbarBgColorSwatch"></div>
+                    </div>
                 </button>
                 <div class="navbar-branding">
                     <span class="navbar-title">Motif</span>
@@ -131,12 +152,12 @@
                         <button class="icon-btn icon-btn-danger" id="clearBtn" aria-label="Clear canvas (Delete)"><span aria-hidden="true">✕</span></button>
                         <div class="dropdown-container">
                             <button class="dropdown-btn" id="saveBtn" aria-haspopup="true" aria-expanded="false">
-                                Save
+                                Download pattern
                                 <span class="dropdown-arrow" aria-hidden="true">▾</span>
                             </button>
                             <div class="dropdown-menu" id="saveMenu" role="menu">
-                                <a href="#" id="exportPngBtn" class="dropdown-item" role="menuitem">Save as PNG</a>
-                                <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Save as SVG</a>
+                                <a href="#" id="exportPngBtn" class="dropdown-item" role="menuitem">Download as PNG</a>
+                                <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Download as SVG</a>
                             </div>
                         </div>
                     </div>
@@ -155,6 +176,7 @@
         <!-- Right Panel: Settings -->
         <aside class="side-panel right-panel collapsed" id="settingsPanel" aria-label="Settings controls" aria-expanded="false">
             <div class="panel-content">
+                <button class="panel-close-btn" id="settingsPanelClose" aria-label="Close settings panel">×</button>
                 <!-- Grid Dimensions -->
                 <div>
                     <h3>Grid Dimensions</h3>

@@ -89,7 +89,12 @@ export function createEmptyGrid(width, height) {
 /**
  * Resize grid while preserving pattern position relative to center
  * @param {Object} params - Parameters object
- * @returns {Object|false} - New grid data or false if blocked
+ * @param {number[][]} params.grid - Current grid array
+ * @param {number} params.gridWidth - Current grid width
+ * @param {number} params.gridHeight - Current grid height
+ * @param {number} params.newWidth - Target grid width
+ * @param {number} params.newHeight - Target grid height
+ * @returns {{grid: number[][], width: number, height: number}|false} New grid data or false if resize would crop content
  */
 export function resizeGrid(params) {
     const { grid, gridWidth, gridHeight, newWidth, newHeight } = params;
@@ -138,7 +143,12 @@ export function resizeGrid(params) {
 /**
  * Resize grid by adding/removing cells at a specific edge
  * @param {Object} params - Parameters object
- * @returns {Object|null} - New grid data or null if blocked/no change
+ * @param {number[][]} params.grid - Current grid array
+ * @param {number} params.gridWidth - Current grid width
+ * @param {number} params.gridHeight - Current grid height
+ * @param {string} params.direction - Edge to resize ('top', 'right', 'bottom', 'left')
+ * @param {number} params.delta - Amount to change size (positive or negative)
+ * @returns {{grid: number[][], width: number, height: number}|null} New grid data or null if blocked/no change
  */
 export function resizeGridFromEdge(params) {
     const { grid, gridWidth, gridHeight, direction, delta } = params;

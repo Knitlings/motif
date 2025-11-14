@@ -1,0 +1,257 @@
+/* ============================================
+   RESPONSIVE / MOBILE STYLES
+   Media queries for mobile and tablet devices
+   ============================================ */
+
+/* Tablet and below (768px and under) */
+@media (max-width: 768px) {
+    /* === SIDE PANELS === */
+    /* Make panels full-screen overlays on mobile */
+    .side-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100%;
+        height: 100vh;
+        z-index: 300;
+        border: none;
+    }
+
+    .side-panel.right-panel {
+        left: 0;
+        right: 0;
+        border: none;
+    }
+
+    .side-panel.collapsed {
+        display: none;
+    }
+
+    .panel-content {
+        padding: var(--space-8) var(--space-6);
+        padding-top: 80px; /* Space for close button */
+    }
+
+    /* Show close button on mobile */
+    .panel-close-btn {
+        display: flex;
+    }
+
+    /* === NAVBAR === */
+    /* Adjust navbar for mobile */
+    .header-navbar {
+        padding: 0 var(--space-4);
+        height: 56px;
+    }
+
+    .center-area {
+        padding-top: 56px;
+    }
+
+    /* Reduce gaps in navbar */
+    .navbar-left,
+    .navbar-right {
+        gap: var(--space-3);
+    }
+
+    /* Make touch targets larger */
+    .navbar-color-swatch-toggle,
+    .navbar-panel-toggle {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Adjust title size */
+    .navbar-title {
+        font-size: 28px;
+    }
+
+    /* Hide color preview in navbar center on mobile */
+    .navbar-center {
+        display: none;
+    }
+
+    #navbarColorPreview {
+        display: none !important;
+    }
+
+    /* Adjust dropdown positioning */
+    .navbar-dropdown-menu {
+        right: auto;
+        left: 0;
+    }
+
+    /* === CANVAS AREA === */
+    /* Reduce padding on mobile */
+    .canvas-container {
+        padding: var(--space-6) var(--space-4);
+        gap: var(--space-8);
+    }
+
+    /* Ensure canvases stack vertically and fit screen */
+    .canvas-section {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Keep canvas headings visible in portrait - they fit fine */
+
+    /* === RESIZE HANDLES === */
+    /* Make resize handles larger and easier to grab on touch devices */
+    .resize-handle-top,
+    .resize-handle-bottom {
+        height: 20px; /* Increased from 8px for touch */
+    }
+
+    .resize-handle-top {
+        top: -10px; /* Adjusted to keep centered */
+    }
+
+    .resize-handle-bottom {
+        bottom: -10px;
+    }
+
+    .resize-handle-left,
+    .resize-handle-right {
+        width: 20px; /* Increased from 8px for touch */
+    }
+
+    .resize-handle-left {
+        left: -10px;
+    }
+
+    .resize-handle-right {
+        right: -10px;
+    }
+
+    /* Show visual hint that handles are draggable on mobile */
+    .resize-handle:active {
+        background: var(--color-primary-light);
+    }
+
+    /* Visual feedback during resize on touch devices */
+    .canvas-resize-container.is-resizing {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+
+    .canvas-resize-container.is-resizing .resize-handle {
+        background: var(--color-primary-light);
+    }
+
+    /* === FORM ELEMENTS === */
+    /* Make form elements easier to interact with on touch */
+    input[type="text"],
+    input[type="number"],
+    input[type="color"] {
+        min-height: 44px;
+    }
+
+    button {
+        min-height: 44px;
+    }
+
+    /* === PATTERN COLOR BUTTONS === */
+    /* Make pattern buttons larger for touch */
+    .pattern-btn {
+        padding: var(--space-4);
+        font-size: var(--font-size-lg);
+    }
+
+    /* === UI HINTS === */
+    /* Hide desktop-only hints (shift+click) on mobile */
+    .hint.desktop-only {
+        display: none;
+    }
+
+    /* Show mobile-only hints (long press) on mobile */
+    .hint.mobile-only {
+        display: block;
+    }
+}
+
+/* Landscape orientation on mobile/tablet - hide headings to save vertical space */
+@media (max-width: 1024px) and (orientation: landscape) {
+    .canvas-heading {
+        display: none;
+    }
+}
+
+/* Mobile only (480px and under) */
+@media (max-width: 480px) {
+    /* Further reduce navbar spacing */
+    .header-navbar {
+        padding: 0 var(--space-3);
+    }
+
+    .navbar-left,
+    .navbar-right {
+        gap: var(--space-2);
+    }
+
+    /* Smaller title on very small screens */
+    .navbar-title {
+        font-size: 24px;
+    }
+
+    /* Stack navbar nav items if needed */
+    .navbar-nav {
+        gap: var(--space-3);
+    }
+
+    /* Reduce canvas padding further */
+    .canvas-container {
+        padding: var(--space-4) var(--space-3);
+        gap: var(--space-6);
+    }
+
+    /* Reduce panel content padding */
+    .panel-content {
+        padding: var(--space-6) var(--space-4);
+        padding-top: 72px;
+    }
+}
+
+/* Very small screens (370px and under) */
+@media (max-width: 370px) {
+    /* Keep links visible - discoverability is more important than perfect spacing */
+
+    /* Reduce navbar button sizes slightly */
+    .navbar-color-swatch-toggle,
+    .navbar-panel-toggle {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    /* Make title even smaller */
+    .navbar-title {
+        font-size: 20px;
+    }
+
+    /* Reduce gaps further */
+    .navbar-left,
+    .navbar-right {
+        gap: var(--space-1);
+    }
+
+    .navbar-nav {
+        gap: var(--space-2);
+    }
+
+    /* Smaller font for navbar links */
+    .navbar-link {
+        font-size: var(--font-size-xs);
+    }
+
+    /* Smaller dropdown button text */
+    .navbar-dropdown-btn {
+        font-size: var(--font-size-xs);
+    }
+}

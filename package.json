@@ -9,6 +9,7 @@
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
@@ -35,6 +36,10 @@
     "url": "https://github.com/Itroun/motif/issues"
   },
   "homepage": "https://github.com/Itroun/motif#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "happy-dom": "^20.0.10",
