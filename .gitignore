@@ -64,6 +64,9 @@ build/
 playwright-report/
 test-results/
 .playwright/
+coverage/
+.nyc_output/
+*.lcov
 
 # Backup files
 *.bak
