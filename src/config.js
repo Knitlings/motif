@@ -46,6 +46,9 @@ export const CONFIG = {
     CANVAS_BORDER_COLOR: '#666',
     INSTRUCTIONS_FADE_TIME: 400,
 
+    // History
+    MAX_HISTORY_STATES: 50,
+
     // Quick Palette configuration
     MIN_PALETTE_COLORS: 1,
     MAX_PALETTE_COLORS: 16,

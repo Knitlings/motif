@@ -1,4 +1,5 @@
 import { Utils } from '../utils.js';
+import { CONFIG } from '../config.js';
 
 // ============================================
 // HISTORY MANAGER
@@ -28,13 +29,24 @@ export const HistoryManager = {
     /**
      * Save a new state to history
      * Truncates any future history if not at the end
+     * Enforces MAX_HISTORY_STATES limit by removing oldest states
      * @param {ApplicationState} state - Application state to save
      */
     save(state) {
         // Remove any future history if we're not at the end
         this.history = this.history.slice(0, this.index + 1);
+
+        // Add new state
         this.history.push(Utils.deepClone(state));
-        this.index = this.history.length - 1;
+
+        // Enforce history size limit
+        if (this.history.length > CONFIG.MAX_HISTORY_STATES) {
+            const excess = this.history.length - CONFIG.MAX_HISTORY_STATES;
+            this.history = this.history.slice(excess);
+            this.index = this.history.length - 1;
+        } else {
+            this.index = this.history.length - 1;
+        }
     },
 
     /**
