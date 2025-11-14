@@ -6,9 +6,13 @@ import { Utils } from '../utils.js';
 // ============================================
 
 /**
- * Export grid as SVG
- * @param {Object} state - Application state containing grid, colors, dimensions
- * @returns {Blob} - SVG blob for download
+ * @typedef {import('../main.js').ApplicationState} ApplicationState
+ */
+
+/**
+ * Export grid as SVG with grid lines
+ * @param {ApplicationState} state - Application state containing grid, colors, dimensions
+ * @returns {Blob} SVG blob for download
  */
 export function exportSvg(state) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor } = state;
@@ -73,8 +77,8 @@ export function exportPng() {
 
 /**
  * Export pattern as JSON
- * @param {Object} state - Application state
- * @returns {Blob} - JSON blob for download
+ * @param {ApplicationState} state - Application state
+ * @returns {Blob} JSON blob for download
  */
 export function exportJson(state) {
     const {

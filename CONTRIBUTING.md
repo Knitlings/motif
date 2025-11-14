@@ -62,6 +62,27 @@ src/
 - Every state change triggers: `saveToHistory()` → `updateCanvas()` → `saveToLocalStorage()`
 - Grid is a 2D array where `0` = background, `1-n` = pattern color indices (see `MAX_PATTERN_COLORS` in `config.js`)
 
+**Application State Structure**
+The main application state consists of these key variables (all in `main.js`):
+```javascript
+grid                  // number[][] - 2D array of cell values
+gridWidth            // number - Grid columns (2-100)
+gridHeight           // number - Grid rows (2-100)
+backgroundColor      // string - Hex color for empty cells
+patternColors        // string[] - Array of hex colors (max 20)
+activeColorIndex     // number - Currently selected color (0-19)
+aspectRatio          // number - Height/width ratio (stored inverted)
+cellWidth            // number - Pixel width of cells
+cellHeight           // number - Pixel height of cells
+previewRepeatX       // number - Horizontal tile repeats (1-10)
+previewRepeatY       // number - Vertical tile repeats (1-10)
+```
+
+**Grid Cell Encoding**
+- `0` = Background (uses `backgroundColor`)
+- `1-20` = Pattern color index + 1 (e.g., `grid[y][x] = 5` uses `patternColors[4]`)
+- This offset allows `0` to have special meaning while keeping indices positive
+
 **Canvas System**
 - Two synchronized canvases: `editCanvas` (editing) and `previewCanvas` (tiled preview)
 - Cell sizes calculated dynamically based on viewport and aspect ratio

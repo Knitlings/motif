@@ -1,10 +1,21 @@
 // ============================================
 // STORAGE MANAGER
 // ============================================
+
+/**
+ * @typedef {import('../main.js').ApplicationState} ApplicationState
+ */
+
+/**
+ * Storage manager for persisting application state to localStorage
+ */
 export const StorageManager = {
     STORAGE_KEY: 'motif_pattern_state',
 
-    // Save current state to localStorage
+    /**
+     * Save current state to localStorage
+     * @param {ApplicationState} state - Application state to persist
+     */
     save(state) {
         try {
             const dataToSave = {
@@ -28,7 +39,10 @@ export const StorageManager = {
         }
     },
 
-    // Load state from localStorage
+    /**
+     * Load state from localStorage
+     * @returns {Partial<ApplicationState>|null} Saved state or null if none exists
+     */
     load() {
         try {
             const data = localStorage.getItem(this.STORAGE_KEY);
@@ -41,7 +55,9 @@ export const StorageManager = {
         return null;
     },
 
-    // Clear saved state
+    /**
+     * Clear saved state from localStorage
+     */
     clear() {
         try {
             localStorage.removeItem(this.STORAGE_KEY);

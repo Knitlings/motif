@@ -35,6 +35,10 @@
     "url": "https://github.com/Itroun/motif/issues"
   },
   "homepage": "https://github.com/Itroun/motif#readme",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "happy-dom": "^20.0.10",

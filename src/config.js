@@ -1,6 +1,17 @@
 // ============================================
 // CONFIGURATION
 // ============================================
+
+/**
+ * @typedef {Object} PaletteDefinition
+ * @property {string} name - Display name of the palette
+ * @property {string[]} colors - Array of hex color strings
+ */
+
+/**
+ * Application configuration constants
+ * @type {Object}
+ */
 export const CONFIG = {
     // Grid limits
     MIN_GRID_SIZE: 2,

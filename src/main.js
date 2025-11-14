@@ -31,6 +31,27 @@ import {
 } from './utils/errorHandler.js';
 
 // ============================================
+// TYPE DEFINITIONS
+// See CONTRIBUTING.md "Application State Structure" for conceptual overview
+// ============================================
+
+/**
+ * @typedef {Object} ApplicationState
+ * @property {number[][]} grid - 2D array of cell values (0=background, 1-20=color index+1)
+ * @property {number} gridWidth - Number of grid columns (2-100)
+ * @property {number} gridHeight - Number of grid rows (2-100)
+ * @property {number} aspectRatio - Cell aspect ratio as height/width
+ * @property {string[]} patternColors - Array of hex color strings (max 20)
+ * @property {number} activePatternIndex - Currently selected color index (0-19)
+ * @property {string} backgroundColor - Hex color for empty cells (cellValue=0)
+ * @property {number} previewRepeatX - Horizontal tile repeats in preview (1-10)
+ * @property {number} previewRepeatY - Vertical tile repeats in preview (1-10)
+ * @property {boolean} hasInteracted - Whether user has made any changes
+ * @property {string} activePaletteId - ID of active palette ('motif', 'warm', 'cool', 'autumn', 'custom')
+ * @property {string[]|null} customPalette - Custom palette colors array or null
+ */
+
+// ============================================
 // STATE
 // ============================================
 let gridWidth = CONFIG.DEFAULT_GRID_WIDTH;
@@ -56,6 +77,10 @@ let customPalette = null; // Array of color strings when custom palette exists
 // STATE HELPERS
 // ============================================
 
+/**
+ * Get current application state
+ * @returns {ApplicationState} Current state object
+ */
 function getState() {
     return {
         grid,
@@ -73,7 +98,10 @@ function getState() {
     };
 }
 
-// Get the current palette colors
+/**
+ * Get the current palette colors
+ * @returns {string[]} Array of hex color strings
+ */
 function getCurrentPaletteColors() {
     if (activePaletteId === 'custom' && customPalette) {
         return customPalette;
@@ -81,12 +109,18 @@ function getCurrentPaletteColors() {
     return CONFIG.BUILT_IN_PALETTES[activePaletteId]?.colors || CONFIG.BUILT_IN_PALETTES.motif.colors;
 }
 
-// Check if current palette is editable
+/**
+ * Check if current palette is editable
+ * @returns {boolean} True if current palette is custom (editable)
+ */
 function isCurrentPaletteEditable() {
     return activePaletteId === 'custom';
 }
 
-// Announce status to screen readers
+/**
+ * Announce status to screen readers
+ * @param {string} message - Message to announce
+ */
 function announceToScreenReader(message) {
     const statusEl = document.getElementById('statusAnnouncements');
     if (statusEl) {

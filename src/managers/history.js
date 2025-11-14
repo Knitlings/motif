@@ -3,17 +3,33 @@ import { Utils } from '../utils.js';
 // ============================================
 // HISTORY MANAGER
 // ============================================
+
+/**
+ * @typedef {import('../main.js').ApplicationState} ApplicationState
+ */
+
+/**
+ * History manager for undo/redo functionality
+ * Maintains a history of application states using deep cloning
+ */
 export const HistoryManager = {
     history: [],
     index: -1,
 
-    // Initialize with a state
+    /**
+     * Initialize history with an initial state
+     * @param {ApplicationState} state - Initial application state
+     */
     init(state) {
         this.history = [Utils.deepClone(state)];
         this.index = 0;
     },
 
-    // Save a new state
+    /**
+     * Save a new state to history
+     * Truncates any future history if not at the end
+     * @param {ApplicationState} state - Application state to save
+     */
     save(state) {
         // Remove any future history if we're not at the end
         this.history = this.history.slice(0, this.index + 1);
@@ -21,7 +37,10 @@ export const HistoryManager = {
         this.index = this.history.length - 1;
     },
 
-    // Undo - return previous state or null if can't undo
+    /**
+     * Undo to previous state
+     * @returns {ApplicationState|null} Previous state or null if can't undo
+     */
     undo() {
         if (this.canUndo()) {
             this.index--;
@@ -30,7 +49,10 @@ export const HistoryManager = {
         return null;
     },
 
-    // Redo - return next state or null if can't redo
+    /**
+     * Redo to next state
+     * @returns {ApplicationState|null} Next state or null if can't redo
+     */
     redo() {
         if (this.canRedo()) {
             this.index++;
@@ -39,17 +61,26 @@ export const HistoryManager = {
         return null;
     },
 
-    // Check if we can undo
+    /**
+     * Check if undo is available
+     * @returns {boolean} True if can undo
+     */
     canUndo() {
         return this.index > 0;
     },
 
-    // Check if we can redo
+    /**
+     * Check if redo is available
+     * @returns {boolean} True if can redo
+     */
     canRedo() {
         return this.index < this.history.length - 1;
     },
 
-    // Get current state
+    /**
+     * Get current state from history
+     * @returns {ApplicationState} Current application state
+     */
     current() {
         return Utils.deepClone(this.history[this.index]);
     }
