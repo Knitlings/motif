@@ -144,6 +144,11 @@ h3 {
     color: var(--color-text-tertiary);
 }
 
+/* Hide mobile-only hints on desktop by default */
+.hint.mobile-only {
+    display: none;
+}
+
 /* ============================================
    CONTENT PAGES (About, Help, etc.)
    ============================================ */

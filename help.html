@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none';">
     <title>Help - Motif</title>
     <meta name="description" content="Learn how to use Motif grid pattern editor">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ruda:wght@400..900&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&family=Palanquin:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
@@ -24,7 +23,7 @@
                 <li><a href="#colors">Colours</a></li>
                 <li><a href="#grid">Grid settings</a></li>
                 <li><a href="#undo">Undo and Redo</a></li>
-                <li><a href="#save">Save</a></li>
+                <li><a href="#download">Download</a></li>
                 <li><a href="#import">Import/Export</a></li>
                 <li><a href="#keyboard">Keyboard Shortcuts</a></li>
             </ul>
@@ -40,7 +39,7 @@
         <p>Click a painted cell again to toggle between the background colour and the active colour. Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour. Click the × below the grid to clear the entire grid to the background colour.</p> 
 
         <h3>Resize</h3>
-        <p>Drag the edges of the grid to change the size or use the <a href="#grid">grid settings</a>.</p>
+        <p>Drag the edges of the grid to change the grid dimensions, or use the <a href="#grid">grid settings</a> panel.</p>
 
         <h2 id="preview">Preview</h2>
 
@@ -65,12 +64,15 @@
         <h3>Background colour</h3>
         <p>This is the default colour for empty cells. Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
 
+        <h3>Quick palette</h3>
+        <p>Click any colour in the quick palette to set it as the active pattern colour. Hold <kbd>Shift</kbd> and click a colour in the quick palette to set it as the background colour.</p>
+
         <h2 id="grid">Grid settings</h2>
 
         <p>Click the grid button (top right) to open grid settings.</p>
 
         <h3>Grid dimensions</h3>
-        <p>Adjust how many columns and rows are displayed in your pattern grid.</p>
+        <p>Adjust how many columns and rows are displayed in your pattern grid. You can also change the grid size by dragging the edges of the grid. </p>
 
         <h3>Cell aspect ratio</h3>
         <p>Choose from preset ratios or set a custom ratio. This is useful if your craft requires non-square cells (like knitting, where stitches are wider than tall).</p>
@@ -80,15 +82,15 @@
         <p>The curved arrow buttons below the canvas let you undo and redo your changes. Motif remembers your entire editing history for the current session.</p>
 
 
-        <h2 id="save">Save</h2>
+        <h2 id="download">Download</h2>
 
-        <p>Click the "Save" dropdown below the grid to save your current pattern as an image.</p>
+        <p>Your work is automatically saved as you go. Click the "Download pattern" dropdown below the grid to export your current pattern as an image file.</p>
 
         <h3>PNG</h3>
-        <p>Save your pattern as a raster image.</p>
+        <p>Download your pattern as a raster image.</p>
 
         <h3>SVG</h3>
-        <p>Export as a vector graphic.</p>
+        <p>Download your pattern as a vector graphic.</p>
 
         <h2 id="import">Import/Export</h2>
 

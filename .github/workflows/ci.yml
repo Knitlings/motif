@@ -2,12 +2,12 @@ name: CI
 
 # When to run this workflow
 on:
-  # Run on every push to main branch
+  # Run on every push to main or staging branch
   push:
-    branches: [main]
-  # Run on every pull request targeting main
+    branches: [main, staging]
+  # Run on every pull request targeting main or staging
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 jobs:
   test:

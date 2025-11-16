@@ -2,7 +2,7 @@
 // MAIN APPLICATION
 // ============================================
 
-import { CONFIG } from './config.js';
+import { CONFIG, UI_CONSTANTS } from './config.js';
 import { Utils } from './utils.js';
 import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
@@ -18,6 +18,8 @@ import {
     validateFileSize,
     validateFileType
 } from './utils/validation.js';
+import deleteSvg from './assets/delete.svg';
+import editSvg from './assets/edit.svg';
 import {
     showError,
     handleStorageError,
@@ -27,6 +29,33 @@ import {
     setupGlobalErrorHandler,
     ErrorType
 } from './utils/errorHandler.js';
+import { checkBrowserCompatibility } from './utils/featureDetection.js';
+import { createPaletteManager } from './ui/palette.js';
+import { setupDropdowns } from './ui/panels.js';
+import { setupKeyboardShortcuts } from './ui/keyboard.js';
+import { setupCanvasInteractions } from './ui/interactions.js';
+import { applyDimensionInput } from './ui/handlers.js';
+
+// ============================================
+// TYPE DEFINITIONS
+// See CONTRIBUTING.md "Application State Structure" for conceptual overview
+// ============================================
+
+/**
+ * @typedef {Object} ApplicationState
+ * @property {number[][]} grid - 2D array of cell values (0=background, 1-20=color index+1)
+ * @property {number} gridWidth - Number of grid columns (2-100)
+ * @property {number} gridHeight - Number of grid rows (2-100)
+ * @property {number} aspectRatio - Cell aspect ratio as height/width
+ * @property {string[]} patternColors - Array of hex color strings (max 20)
+ * @property {number} activePatternIndex - Currently selected color index (0-19)
+ * @property {string} backgroundColor - Hex color for empty cells (cellValue=0)
+ * @property {number} previewRepeatX - Horizontal tile repeats in preview (1-10)
+ * @property {number} previewRepeatY - Vertical tile repeats in preview (1-10)
+ * @property {boolean} hasInteracted - Whether user has made any changes
+ * @property {string} activePaletteId - ID of active palette ('motif', 'warm', 'cool', 'autumn', 'custom')
+ * @property {string[]|null} customPalette - Custom palette colors array or null
+ */
 
 // ============================================
 // STATE
@@ -46,10 +75,21 @@ let initialCellState = null; // Tracks the cell state when stroke began
 let canvasUpdateScheduled = false; // Flag for requestAnimationFrame
 let lastPaintedCell = { row: -1, col: -1 }; // Track last painted cell to avoid redundant updates
 
+// Palette state
+let activePaletteId = CONFIG.DEFAULT_ACTIVE_PALETTE; // 'motif', 'warm', 'cool', or 'custom'
+let customPalette = null; // Array of color strings when custom palette exists
+
+// Browser capabilities (set during initialization)
+let browserCapabilities = null;
+
 // ============================================
 // STATE HELPERS
 // ============================================
 
+/**
+ * Get current application state
+ * @returns {ApplicationState} Current state object
+ */
 function getState() {
     return {
         grid,
@@ -61,11 +101,35 @@ function getState() {
         backgroundColor,
         previewRepeatX,
         previewRepeatY,
-        hasInteracted
+        hasInteracted,
+        activePaletteId,
+        customPalette
     };
 }
 
-// Announce status to screen readers
+/**
+ * Get the current palette colors
+ * @returns {string[]} Array of hex color strings
+ */
+function getCurrentPaletteColors() {
+    if (activePaletteId === 'custom' && customPalette) {
+        return customPalette;
+    }
+    return CONFIG.BUILT_IN_PALETTES[activePaletteId]?.colors || CONFIG.BUILT_IN_PALETTES.motif.colors;
+}
+
+/**
+ * Check if current palette is editable
+ * @returns {boolean} True if current palette is custom (editable)
+ */
+function isCurrentPaletteEditable() {
+    return activePaletteId === 'custom';
+}
+
+/**
+ * Announce status to screen readers
+ * @param {string} message - Message to announce
+ */
 function announceToScreenReader(message) {
     const statusEl = document.getElementById('statusAnnouncements');
     if (statusEl) {
@@ -96,6 +160,11 @@ function hideLoading() {
 }
 
 function saveToLocalStorage() {
+    // Skip saving if localStorage is not available
+    if (!browserCapabilities.localStorage) {
+        return;
+    }
+
     try {
         StorageManager.save(getState());
     } catch (error) {
@@ -145,11 +214,13 @@ function scheduleCanvasUpdate() {
 // ============================================
 
 function updateNavbarSvgs() {
-    const colorSvg = document.getElementById('navbarColorSvg');
+    const activeSwatch = document.getElementById('navbarActiveColorSwatch');
+    const bgSwatch = document.getElementById('navbarBgColorSwatch');
 
-    if (colorSvg) {
+    if (activeSwatch && bgSwatch) {
         const activeColor = patternColors[activePatternIndex];
-        colorSvg.src = createMSvg(activeColor, backgroundColor);
+        activeSwatch.style.backgroundColor = activeColor;
+        bgSwatch.style.backgroundColor = backgroundColor;
     }
 }
 
@@ -176,215 +247,11 @@ function updateNavbarColorPreview() {
     }
 }
 
-function createMSvg(patternColor, bgColor) {
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="350" height="350" viewBox="0 0 350 350" xmlns="http://www.w3.org/2000/svg">
-  <rect width="350" height="350" fill="${bgColor}"/>
-  <rect x="0" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="0" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="50" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="100" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="150" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="200" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="250" width="50" height="50" fill="${patternColor}"/>
-  <rect x="0" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="50" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="100" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="150" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="200" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="250" y="300" width="50" height="50" fill="${patternColor}"/>
-  <rect x="300" y="300" width="50" height="50" fill="${patternColor}"/>
-</svg>`;
-
-    return 'data:image/svg+xml;base64,' + btoa(svg);
-}
-
 function updateColorIndicators() {
     updateNavbarSvgs();
     updateNavbarColorPreview();
 }
 
-function createPatternColorButtons() {
-    const container = document.getElementById('patternColorButtons');
-    container.innerHTML = '';
-
-    const colorCount = patternColors.length;
-    const shouldShowAddButton = colorCount < CONFIG.MAX_PATTERN_COLORS;
-    const showCount = shouldShowAddButton ? colorCount + 1 : colorCount;
-
-    const mergeHint = document.getElementById('mergeHint');
-    if (mergeHint) {
-        mergeHint.style.display = colorCount >= 2 ? 'block' : 'none';
-    }
-
-    container.style.gridTemplateColumns = `repeat(2, 1fr)`;
-
-    for (let index = 0; index < showCount; index++) {
-        const btn = document.createElement('div');
-        btn.className = 'pattern-btn';
-        const isAddButton = shouldShowAddButton && index === colorCount;
-        const color = isAddButton ? null : patternColors[index];
-
-        if (isAddButton) {
-            btn.classList.add('unused');
-            btn.style.backgroundColor = '#e0e0e0';
-            btn.style.color = '#999';
-            btn.textContent = '+';
-            btn.draggable = false;
-        } else {
-            btn.style.backgroundColor = color;
-            btn.textContent = (index + 1);
-            btn.draggable = true;
-
-            if (index > 0) {
-                const deleteBtn = document.createElement('span');
-                deleteBtn.className = 'pattern-delete-btn';
-                deleteBtn.textContent = '×';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    showDeleteColorDialog(index);
-                };
-                btn.appendChild(deleteBtn);
-            }
-        }
-
-        btn.setAttribute('data-index', index);
-
-        if (index === activePatternIndex && !isAddButton) {
-            btn.classList.add('active');
-        }
-
-        let dragStarted = false;
-
-        btn.addEventListener('mousedown', () => {
-            dragStarted = false;
-        });
-
-        if (!isAddButton) {
-            btn.addEventListener('dragstart', (e) => {
-                dragStarted = true;
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', index.toString());
-
-                const dragImage = document.createElement('div');
-                dragImage.style.backgroundColor = color;
-                dragImage.style.color = 'white';
-                dragImage.style.textShadow = '0 1px 2px rgba(0,0,0,0.3)';
-                dragImage.style.fontWeight = 'bold';
-                dragImage.style.fontSize = '0.6rem';
-                dragImage.style.width = '30px';
-                dragImage.style.height = '30px';
-                dragImage.style.display = 'flex';
-                dragImage.style.alignItems = 'center';
-                dragImage.style.justifyContent = 'center';
-                dragImage.style.position = 'absolute';
-                dragImage.style.top = '-1000px';
-                dragImage.textContent = (index + 1);
-                document.body.appendChild(dragImage);
-                e.dataTransfer.setDragImage(dragImage, 15, 15);
-                setTimeout(() => {
-                    document.body.removeChild(dragImage);
-                }, 0);
-
-                setTimeout(() => {
-                    btn.style.opacity = '0.5';
-                }, 0);
-            });
-
-            btn.addEventListener('dragend', (e) => {
-                btn.style.opacity = '1';
-                const allButtons = container.querySelectorAll('.pattern-btn');
-                allButtons.forEach((b, i) => {
-                    const btnColor = patternColors[i];
-                    if (btnColor) {
-                        b.style.backgroundColor = btnColor;
-                    }
-                });
-            });
-        }
-
-        btn.addEventListener('dragover', (e) => {
-            if (!isAddButton) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                if (!isNaN(draggedIndex) && draggedIndex !== index) {
-                    btn.style.backgroundColor = patternColors[draggedIndex];
-                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                }
-            }
-        });
-
-        btn.addEventListener('dragleave', (e) => {
-            if (!isAddButton) {
-                btn.style.backgroundColor = color;
-                btn.style.boxShadow = '';
-            }
-        });
-
-        btn.addEventListener('drop', (e) => {
-            if (!isAddButton) {
-                e.preventDefault();
-                e.stopPropagation();
-                btn.style.backgroundColor = color;
-                btn.style.boxShadow = '';
-
-                const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                const targetIndex = index;
-
-                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
-                    mergePatternColors(draggedIndex, targetIndex);
-                }
-            }
-        });
-
-        btn.addEventListener('click', (e) => {
-            if (!dragStarted) {
-                if (isAddButton) {
-                    patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
-                    activePatternIndex = patternColors.length - 1;
-                    createPatternColorButtons();
-                    updateActiveColorUI();
-                    updateCanvas();
-                    saveToLocalStorage();
-                } else {
-                    activePatternIndex = index;
-                    updateActiveColorUI();
-                    createPatternColorButtons();
-                    saveToLocalStorage();
-                }
-            }
-        });
-
-        container.appendChild(btn);
-    }
-}
 
 function showConfirmDialog(title, message, confirmText, onConfirm) {
     const dialog = document.getElementById('mergeDialog');
@@ -461,7 +328,7 @@ function deletePatternColor(colorIndex) {
 
     saveToHistory();
     updateActiveColorUI();
-    createPatternColorButtons();
+    createNavbarColorButtons();
     updateCanvas();
 }
 
@@ -509,23 +376,12 @@ function mergePatternColors(sourceIndex, targetIndex) {
 
         saveToHistory();
         updateActiveColorUI();
-        createPatternColorButtons();
+            createNavbarColorButtons();
         updateCanvas();
     });
 }
 
 function updateActiveColorUI() {
-    const activeColor = patternColors[activePatternIndex];
-    if (activeColor) {
-        document.getElementById('activePatternColor').value = activeColor;
-        document.getElementById('activePatternText').value = activeColor;
-    }
-
-    const label = document.querySelector('.color-picker-label');
-    if (label) {
-        label.textContent = activePatternIndex + 1;
-    }
-
     updateColorIndicators();
 }
 
@@ -537,11 +393,29 @@ function initGrid() {
     if (!grid || grid.length === 0) {
         grid = createEmptyGrid(gridWidth, gridHeight);
     }
-    HistoryManager.init({
-        grid: grid,
-        colors: patternColors,
-        backgroundColor: backgroundColor
-    });
+
+    // If we have a saved grid with painted cells, initialize history
+    // with both empty state and current state so undo works after reload
+    if (hasInteracted && grid.some(row => row.some(cell => cell !== null))) {
+        const emptyGrid = createEmptyGrid(gridWidth, gridHeight);
+        HistoryManager.init({
+            grid: emptyGrid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+        // Add the current loaded state as second history entry
+        HistoryManager.save({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    } else {
+        HistoryManager.init({
+            grid: grid,
+            colors: patternColors,
+            backgroundColor: backgroundColor
+        });
+    }
     updateCanvas();
 }
 
@@ -583,13 +457,14 @@ function applyGridResizeFromEdge(direction, delta) {
     gridWidth = result.width;
     gridHeight = result.height;
 
-    document.getElementById('widthDisplay2').textContent = gridWidth;
-    document.getElementById('heightDisplay2').textContent = gridHeight;
-    document.getElementById('gridWidth2').value = gridWidth;
-    document.getElementById('gridHeight2').value = gridHeight;
+    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
     saveToHistory();
     updateCanvas();
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function paintCell(row, col, isShiftKey, useInitialState = false) {
@@ -638,84 +513,12 @@ function paintCell(row, col, isShiftKey, useInitialState = false) {
 // ============================================
 // CANVAS INTERACTION
 // ============================================
-
-function hideCanvasInstructions() {
-    if (!hasInteracted) {
-        hasInteracted = true;
-        const instructions = document.getElementById('canvasInstructions');
-        instructions.classList.add('fade-out');
-        setTimeout(() => {
-            instructions.style.display = 'none';
-        }, CONFIG.INSTRUCTIONS_FADE_TIME);
-    }
-}
-
-function setupCanvasEvents() {
-    CanvasManager.editCanvas.addEventListener('mousedown', (e) => {
-        hideCanvasInstructions();
-        isDrawing = true;
-        const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-
-        if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
-            initialCellState = grid[row][col];
-        }
-
-        paintCell(row, col, e.shiftKey, true);
-    });
-
-    CanvasManager.editCanvas.addEventListener('mousemove', (e) => {
-        if (isDrawing) {
-            const { row, col } = CanvasManager.getCellFromMouse(e, gridWidth, gridHeight);
-            paintCell(row, col, e.shiftKey, false);
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseup', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-
-    CanvasManager.editCanvas.addEventListener('mouseleave', () => {
-        if (isDrawing) {
-            isDrawing = false;
-            initialCellState = null;
-            lastPaintedCell = { row: -1, col: -1 };
-            saveToHistory();
-        }
-    });
-}
+// Moved to src/ui/interactions.js - see canvasInteractions initialization below
 
 // ============================================
-// PALETTE INITIALIZATION
+// PALETTE MANAGEMENT
 // ============================================
-
-function initializePalette() {
-    const paletteGrid = document.getElementById('paletteGrid');
-    CONFIG.PALETTE.forEach(color => {
-        const btn = document.createElement('div');
-        btn.className = 'palette-color';
-        btn.style.backgroundColor = color;
-        btn.onclick = (e) => {
-            if (e.shiftKey) {
-                backgroundColor = color;
-                document.getElementById('backgroundColor').value = color;
-                document.getElementById('backgroundText').value = color;
-            } else {
-                patternColors[activePatternIndex] = color;
-                updateActiveColorUI();
-                createPatternColorButtons();
-            }
-            updateCanvas();
-            updateColorIndicators();
-            saveToLocalStorage();
-        };
-        paletteGrid.appendChild(btn);
-    });
-}
+// Moved to src/ui/palette.js - see paletteManager initialization below
 
 // ============================================
 // BUTTON EVENT HANDLERS
@@ -729,9 +532,7 @@ document.getElementById('undoBtn').onclick = () => {
         backgroundColor = state.backgroundColor;
 
         updateActiveColorUI();
-        createPatternColorButtons();
-        document.getElementById('backgroundColor').value = backgroundColor;
-        document.getElementById('backgroundText').value = backgroundColor;
+            createNavbarColorButtons();
         updateCanvas();
         announceToScreenReader('Undo successful');
     }
@@ -745,9 +546,7 @@ document.getElementById('redoBtn').onclick = () => {
         backgroundColor = state.backgroundColor;
 
         updateActiveColorUI();
-        createPatternColorButtons();
-        document.getElementById('backgroundColor').value = backgroundColor;
-        document.getElementById('backgroundText').value = backgroundColor;
+            createNavbarColorButtons();
         updateCanvas();
         announceToScreenReader('Redo successful');
     }
@@ -769,21 +568,15 @@ document.getElementById('clearBtn').onclick = () => {
     );
 };
 
-document.getElementById('invertBtn').onclick = (e) => {
-    e.preventDefault();
-    const temp = patternColors[activePatternIndex];
-    patternColors[activePatternIndex] = backgroundColor;
-    backgroundColor = temp;
+// Palette controls - dropdown menu items
+document.querySelectorAll('.palette-option').forEach(option => {
+    option.addEventListener('click', (e) => {
+        e.preventDefault();
+        const paletteId = e.target.dataset.palette;
+        switchPalette(paletteId);
+    });
+});
 
-    updateActiveColorUI();
-    createPatternColorButtons();
-    document.getElementById('backgroundColor').value = backgroundColor;
-    document.getElementById('backgroundText').value = backgroundColor;
-
-    saveToHistory();
-    updateCanvas();
-    updateColorIndicators();
-};
 
 document.getElementById('exportSvgBtn').onclick = (e) => {
     e.preventDefault();
@@ -872,29 +665,34 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                         previewRepeatY = importedData.previewRepeatY;
                     }
 
+                    // Import palette settings
+                    if (importedData.activePaletteId) {
+                        activePaletteId = importedData.activePaletteId;
+                    }
+                    if (importedData.customPalette) {
+                        customPalette = importedData.customPalette;
+                    }
+
                     if (activePatternIndex >= patternColors.length) {
                         activePatternIndex = 0;
                     }
 
                     // Update all UI elements
-                    document.getElementById('gridWidth2').value = gridWidth;
-                    document.getElementById('gridHeight2').value = gridHeight;
-                    document.getElementById('widthDisplay2').textContent = gridWidth;
-                    document.getElementById('heightDisplay2').textContent = gridHeight;
+                    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+                    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+                    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+                    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
-                    aspectRatioSlider.value = aspectRatio;
-                    document.getElementById('ratioDisplay2').textContent = Utils.aspectRatioToDisplay(aspectRatio);
+                    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+                    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
-                    previewRepeatXInput.value = previewRepeatX;
-                    previewRepeatYInput.value = previewRepeatY;
-                    document.getElementById('repeatXDisplay').textContent = previewRepeatX;
-                    document.getElementById('repeatYDisplay').textContent = previewRepeatY;
-
-                    document.getElementById('backgroundColor').value = backgroundColor;
-                    document.getElementById('backgroundText').value = backgroundColor;
-
-                    createPatternColorButtons();
+                                    createNavbarColorButtons();
                     updateActiveColorUI();
+                    updatePaletteUI();
+                    renderPalette();
+                    updateNavbarPaletteName();
 
                     saveToHistory();
                     updateCanvas();
@@ -908,7 +706,7 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                 showError(errorMessage, ErrorType.FILE_IO);
             }
         );
-    }, 50);
+    }, UI_CONSTANTS.UI_UPDATE_DELAY);
 
     e.target.value = '';
 };
@@ -918,85 +716,80 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 // ============================================
 
 function applyGridWidth(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const input = document.getElementById('gridWidth2');
-    const display = document.getElementById('widthDisplay2');
-
-    const success = applyGridResize(val, gridHeight);
-    if (success === false) {
-        input.value = gridWidth;
-        display.textContent = gridWidth;
-
-        input.style.transition = 'none';
-        input.style.borderColor = 'var(--color-danger)';
-        setTimeout(() => {
-            input.style.transition = 'border-color var(--transition-base)';
-            input.style.borderColor = '';
-        }, 300);
-    } else {
-        input.value = val;
-        display.textContent = val;
-    }
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_GRID_SIZE,
+        max: CONFIG.MAX_GRID_SIZE,
+        defaultValue: CONFIG.MIN_GRID_SIZE,
+        displayElementId: 'gridWidthDisplay',
+        applyFunction: (val) => applyGridResize(val, gridHeight),
+        getCurrentValue: () => gridWidth,
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyGridHeight(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const input = document.getElementById('gridHeight2');
-    const display = document.getElementById('heightDisplay2');
-
-    const success = applyGridResize(gridWidth, val);
-    if (success === false) {
-        input.value = gridHeight;
-        display.textContent = gridHeight;
-
-        input.style.transition = 'none';
-        input.style.borderColor = 'var(--color-danger)';
-        setTimeout(() => {
-            input.style.transition = 'border-color var(--transition-base)';
-            input.style.borderColor = '';
-        }, 300);
-    } else {
-        input.value = val;
-        display.textContent = val;
-    }
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_GRID_SIZE,
+        max: CONFIG.MAX_GRID_SIZE,
+        defaultValue: CONFIG.MIN_GRID_SIZE,
+        displayElementId: 'gridHeightDisplay',
+        applyFunction: (val) => applyGridResize(gridWidth, val),
+        getCurrentValue: () => gridHeight,
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyPreviewRepeatX(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    previewRepeatXInput.value = val;
-    document.getElementById('repeatXDisplay').textContent = val;
-    previewRepeatX = val;
-    updateCanvas();
-    saveToLocalStorage();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_PREVIEW_REPEAT,
+        max: CONFIG.MAX_PREVIEW_REPEAT,
+        defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
+        displayElementId: 'previewRepeatXDisplay',
+        applyFunction: (val) => {
+            previewRepeatX = val;
+            updateCanvas();
+            saveToLocalStorage();
+        },
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyPreviewRepeatY(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    previewRepeatYInput.value = val;
-    document.getElementById('repeatYDisplay').textContent = val;
-    previewRepeatY = val;
-    updateCanvas();
-    saveToLocalStorage();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_PREVIEW_REPEAT,
+        max: CONFIG.MAX_PREVIEW_REPEAT,
+        defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
+        displayElementId: 'previewRepeatYDisplay',
+        applyFunction: (val) => {
+            previewRepeatY = val;
+            updateCanvas();
+            saveToLocalStorage();
+        },
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 // ============================================
 // INITIALIZATION
 // ============================================
 
-// Try to load saved state from localStorage
-const savedState = StorageManager.load();
+// Check browser compatibility first
+browserCapabilities = checkBrowserCompatibility();
 
-// Get input elements
-const gridWidth2Input = document.getElementById('gridWidth2');
-const gridHeight2Input = document.getElementById('gridHeight2');
-const aspectRatioSlider = document.getElementById('aspectRatio2');
-const previewRepeatXInput = document.getElementById('previewRepeatX');
-const previewRepeatYInput = document.getElementById('previewRepeatY');
-const backgroundColorPicker = document.getElementById('backgroundColor');
-const backgroundColorText = document.getElementById('backgroundText');
-const activePatternColorPicker = document.getElementById('activePatternColor');
-const activePatternColorText = document.getElementById('activePatternText');
+// If canvas is not supported, the app cannot run - error overlay will be shown
+// and we should stop initialization
+if (!browserCapabilities.canvas) {
+    throw new Error('Canvas API not supported - application cannot initialize');
+}
 
+// Try to load saved state from localStorage (will be null if localStorage unavailable)
+const savedState = browserCapabilities.localStorage ? StorageManager.load() : null;
+
+// Initialize from saved state or defaults
 if (savedState) {
     gridWidth = Utils.clampInt(savedState.gridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_WIDTH);
     gridHeight = Utils.clampInt(savedState.gridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_HEIGHT);
@@ -1008,59 +801,110 @@ if (savedState) {
     activePatternIndex = savedState.activePatternIndex || 0;
     grid = savedState.grid || [];
     hasInteracted = savedState.hasInteracted || false;
+    activePaletteId = savedState.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
+    customPalette = savedState.customPalette || null;
 
     if (activePatternIndex >= patternColors.length) {
         activePatternIndex = 0;
     }
 } else {
-    const initialWidth = Utils.clampInt(gridWidth2Input.value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_WIDTH);
-    const initialHeight = Utils.clampInt(gridHeight2Input.value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_HEIGHT);
-    const initialAspectRatio = Utils.clampFloat(aspectRatioSlider.value, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO, CONFIG.DEFAULT_ASPECT_RATIO);
-    const initialPreviewRepeatX = Utils.clampInt(previewRepeatXInput.value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.DEFAULT_PREVIEW_REPEAT);
-    const initialPreviewRepeatY = Utils.clampInt(previewRepeatYInput.value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.DEFAULT_PREVIEW_REPEAT);
-    const initialBackgroundColor = backgroundColorPicker.value || CONFIG.DEFAULT_BACKGROUND_COLOR;
-    const initialActivePatternColor = activePatternColorPicker.value || CONFIG.DEFAULT_PATTERN_COLOR;
-
-    gridWidth = initialWidth;
-    gridHeight = initialHeight;
-    aspectRatio = initialAspectRatio;
-    previewRepeatX = initialPreviewRepeatX;
-    previewRepeatY = initialPreviewRepeatY;
-    backgroundColor = initialBackgroundColor;
-    patternColors[0] = initialActivePatternColor;
+    gridWidth = CONFIG.DEFAULT_GRID_WIDTH;
+    gridHeight = CONFIG.DEFAULT_GRID_HEIGHT;
+    aspectRatio = CONFIG.DEFAULT_ASPECT_RATIO;
+    previewRepeatX = CONFIG.DEFAULT_PREVIEW_REPEAT;
+    previewRepeatY = CONFIG.DEFAULT_PREVIEW_REPEAT;
+    backgroundColor = CONFIG.DEFAULT_BACKGROUND_COLOR;
+    patternColors[0] = CONFIG.DEFAULT_PATTERN_COLOR;
 }
 
-// Update all UI inputs to match loaded/initialized state
-gridWidth2Input.value = gridWidth;
-gridHeight2Input.value = gridHeight;
-document.getElementById('widthDisplay2').textContent = gridWidth;
-document.getElementById('heightDisplay2').textContent = gridHeight;
+// Update all UI display elements to match loaded/initialized state
 
-aspectRatioSlider.value = aspectRatio;
-document.getElementById('ratioDisplay2').textContent = aspectRatio.toFixed(2);
+const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
-previewRepeatXInput.value = previewRepeatX;
-previewRepeatYInput.value = previewRepeatY;
-document.getElementById('repeatXDisplay').textContent = previewRepeatX;
-document.getElementById('repeatYDisplay').textContent = previewRepeatY;
-
-backgroundColorPicker.value = backgroundColor;
-backgroundColorText.value = backgroundColor;
-
-activePatternColorPicker.value = patternColors[activePatternIndex];
-activePatternColorText.value = patternColors[activePatternIndex];
+const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
 
+// ============================================
+// INITIALIZE UI MODULES
+// ============================================
+
+// Initialize palette manager
+const paletteManager = createPaletteManager({
+    getCurrentPaletteColors,
+    isCurrentPaletteEditable,
+    getActivePaletteId: () => activePaletteId,
+    setActivePaletteId: (id) => { activePaletteId = id; },
+    getCustomPalette: () => customPalette,
+    setCustomPalette: (palette) => { customPalette = palette; },
+    getPatternColors: () => patternColors,
+    setPatternColors: (colors) => { patternColors = colors; },
+    getActivePatternIndex: () => activePatternIndex,
+    getBackgroundColor: () => backgroundColor,
+    setBackgroundColor: (color) => { backgroundColor = color; },
+    saveToLocalStorage,
+    updateCanvas,
+    updateColorIndicators,
+    updateActiveColorUI
+});
+
+// Expose palette functions globally for button handlers
+const renderPalette = paletteManager.renderPalette;
+const switchPalette = paletteManager.switchPalette;
+const updatePaletteUI = paletteManager.updatePaletteUI;
+
+// Initialize dropdowns
+setupDropdowns();
+
+// Initialize keyboard shortcuts
+setupKeyboardShortcuts({
+    getPatternColors: () => patternColors,
+    getActivePatternIndex: () => activePatternIndex,
+    setActivePatternIndex: (index) => { activePatternIndex = index; },
+    updateActiveColorUI,
+    createNavbarColorButtons
+});
+
+// Initialize canvas interactions
+const canvasInteractions = setupCanvasInteractions({
+    canvasManager: CanvasManager,
+    getHasInteracted: () => hasInteracted,
+    setHasInteracted: (value) => { hasInteracted = value; },
+    getIsDrawing: () => isDrawing,
+    setIsDrawing: (value) => { isDrawing = value; },
+    getInitialCellState: () => initialCellState,
+    setInitialCellState: (value) => { initialCellState = value; },
+    getLastPaintedCell: () => lastPaintedCell,
+    setLastPaintedCell: (value) => { lastPaintedCell = value; },
+    getGridWidth: () => gridWidth,
+    getGridHeight: () => gridHeight,
+    getGrid: () => grid,
+    paintCell,
+    saveToHistory
+});
+
 // Set up canvas event listeners
-setupCanvasEvents();
+canvasInteractions.setupCanvasEvents();
 
 // Initialize UI
-initializePalette();
-createPatternColorButtons();
+renderPalette();
+updatePaletteUI();
+createNavbarColorButtons();
 updateActiveColorUI();
 initGrid();
+
+// Initialize navbar components
+setupHamburgerMenu();
+setupNavbarPaletteDropdown();
+updateNavbarPaletteName();
+updateNavbarPalettePreview();
 
 // Initialize color toggle on page load
 updateColorIndicators();
@@ -1071,79 +915,21 @@ if (hasInteracted) {
     instructions.style.display = 'none';
 }
 
-// Color input controls using utility functions
-Utils.setupColorInput({
-    picker: 'activePatternColor',
-    text: 'activePatternText',
-    onChange: (color) => {
-        patternColors[activePatternIndex] = color;
-        createPatternColorButtons();
-        updateCanvas();
-        updateColorIndicators();
-        saveToLocalStorage();
-    }
-});
-
-Utils.setupColorInput({
-    picker: 'backgroundColor',
-    text: 'backgroundText',
-    onChange: (color) => {
-        backgroundColor = color;
-        updateCanvas();
-        updateColorIndicators();
-        saveToLocalStorage();
-    }
-});
-
-// Grid dimension controls
-Utils.setupNumberInput({
-    input: 'gridWidth2',
-    display: 'widthDisplay2',
-    min: CONFIG.MIN_GRID_SIZE,
-    max: CONFIG.MAX_GRID_SIZE,
-    defaultVal: CONFIG.DEFAULT_GRID_WIDTH,
-    onApply: applyGridWidth
-});
-
-Utils.setupNumberInput({
-    input: 'gridHeight2',
-    display: 'heightDisplay2',
-    min: CONFIG.MIN_GRID_SIZE,
-    max: CONFIG.MAX_GRID_SIZE,
-    defaultVal: CONFIG.DEFAULT_GRID_HEIGHT,
-    onApply: applyGridHeight
-});
-
-// Preview repeat controls
-Utils.setupNumberInput({
-    input: 'previewRepeatX',
-    display: 'repeatXDisplay',
-    min: CONFIG.MIN_PREVIEW_REPEAT,
-    max: CONFIG.MAX_PREVIEW_REPEAT,
-    defaultVal: CONFIG.DEFAULT_PREVIEW_REPEAT,
-    onApply: applyPreviewRepeatX
-});
-
-Utils.setupNumberInput({
-    input: 'previewRepeatY',
-    display: 'repeatYDisplay',
-    min: CONFIG.MIN_PREVIEW_REPEAT,
-    max: CONFIG.MAX_PREVIEW_REPEAT,
-    defaultVal: CONFIG.DEFAULT_PREVIEW_REPEAT,
-    onApply: applyPreviewRepeatY
-});
+// Grid dimension controls - now handled by contenteditable spans
+// (gridWidthDisplay and gridHeightDisplay elements)
 
 // Aspect Ratio controls
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
 const ratioPresetButtons = document.querySelectorAll('.ratio-preset-btn');
 const customRatioControls = document.getElementById('customRatioControls');
+const aspectRatioSlider = document.getElementById('aspectRatio2');
 
 const switchToCustomRatio = () => {
     ratioPresetButtons.forEach(b => b.classList.remove('active'));
     const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
     if (customBtn) {
         customBtn.classList.add('active');
-        customRatioControls.style.display = 'block';
+        if (customRatioControls) customRatioControls.style.display = 'block';
     }
 };
 
@@ -1154,100 +940,300 @@ ratioPresetButtons.forEach(btn => {
         ratioPresetButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        if (ratio === 'custom') {
-            customRatioControls.style.display = 'block';
-        } else {
-            customRatioControls.style.display = 'none';
+        if (ratio !== 'custom') {
             const ratioValue = parseFloat(ratio);
             aspectRatio = ratioValue;
-            aspectRatioSlider.value = ratioValue;
-            ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
+            if (aspectRatioSlider) aspectRatioSlider.value = ratioValue;
+            if (ratioDisplay2) ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
+            if (customRatioControls) customRatioControls.style.display = 'none';
+            updateCanvas();
+            saveToLocalStorage();
+        } else {
+            if (customRatioControls) customRatioControls.style.display = 'block';
+        }
+    });
+});
+
+if (aspectRatioSlider) {
+    aspectRatioSlider.oninput = (e) => {
+        switchToCustomRatio();
+        aspectRatio = parseFloat(e.target.value);
+        if (ratioDisplay2) ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
+        updateCanvas();
+        saveToLocalStorage();
+    };
+}
+
+if (ratioDisplay2) {
+    ratioDisplay2.addEventListener('focus', () => {
+        switchToCustomRatio();
+    });
+
+    ratioDisplay2.addEventListener('input', (e) => {
+        const inputText = e.target.textContent.trim();
+        const val = Utils.displayToAspectRatio(inputText);
+        if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
+            aspectRatio = val;
+            if (aspectRatioSlider) aspectRatioSlider.value = val;
             updateCanvas();
             saveToLocalStorage();
         }
     });
-});
 
-aspectRatioSlider.oninput = (e) => {
-    switchToCustomRatio();
-    aspectRatio = parseFloat(e.target.value);
-    ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-    updateCanvas();
-    saveToLocalStorage();
-};
+    ratioDisplay2.addEventListener('blur', (e) => {
+        const inputText = e.target.textContent.trim();
+        let val = Utils.displayToAspectRatio(inputText);
 
-ratioDisplay2.addEventListener('focus', () => {
-    switchToCustomRatio();
-});
+        if (val === null) {
+            val = CONFIG.DEFAULT_ASPECT_RATIO;
+        }
 
-ratioDisplay2.addEventListener('input', (e) => {
-    const inputText = e.target.textContent.trim();
-    const val = Utils.displayToAspectRatio(inputText);
-    if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
+        val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
+
         aspectRatio = val;
-        aspectRatioSlider.value = val;
+        e.target.textContent = Utils.aspectRatioToDisplay(val);
+        if (aspectRatioSlider) aspectRatioSlider.value = val;
         updateCanvas();
         saveToLocalStorage();
-    }
-});
+    });
 
-ratioDisplay2.addEventListener('blur', (e) => {
-    const inputText = e.target.textContent.trim();
-    let val = Utils.displayToAspectRatio(inputText);
-
-    if (val === null) {
-        val = CONFIG.DEFAULT_ASPECT_RATIO;
-    }
-
-    val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
-
-    aspectRatio = val;
-    e.target.textContent = Utils.aspectRatioToDisplay(val);
-    aspectRatioSlider.value = val;
-    updateCanvas();
-    saveToLocalStorage();
-});
-
-ratioDisplay2.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        e.target.blur();
-    }
-});
-
-// Initialize button state and display based on current aspect ratio
-(() => {
-    const currentRatio = aspectRatio;
-    let matchedPreset = false;
-
-    ratioPresetButtons.forEach(btn => {
-        const ratio = btn.getAttribute('data-ratio');
-        if (ratio !== 'custom') {
-            const ratioValue = parseFloat(ratio);
-            if (Math.abs(currentRatio - ratioValue) < 0.01) {
-                btn.classList.add('active');
-                customRatioControls.style.display = 'none';
-                matchedPreset = true;
-            } else {
-                btn.classList.remove('active');
-            }
+    ratioDisplay2.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
         }
     });
 
-    if (!matchedPreset) {
-        const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-        if (customBtn) {
-            customBtn.classList.add('active');
-            customRatioControls.style.display = 'block';
-        }
-    }
+    // Initialize button state and display based on current aspect ratio
+    (() => {
+        const currentRatio = aspectRatio;
+        let matchedPreset = false;
 
-    ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-})();
+        ratioPresetButtons.forEach(btn => {
+            const ratio = btn.getAttribute('data-ratio');
+            if (ratio !== 'custom') {
+                const ratioValue = parseFloat(ratio);
+                if (Math.abs(currentRatio - ratioValue) < 0.01) {
+                    btn.classList.add('active');
+                    if (customRatioControls) customRatioControls.style.display = 'none';
+                    matchedPreset = true;
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        });
+
+        if (!matchedPreset) {
+            const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
+            if (customBtn) {
+                customBtn.classList.add('active');
+                if (customRatioControls) customRatioControls.style.display = 'block';
+            }
+        }
+
+        ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
+    })();
+}
+
+// Inline Grid Dimension Controls
+const gridWidthDisplay = document.getElementById('gridWidthDisplay');
+const gridHeightDisplay = document.getElementById('gridHeightDisplay');
+const previewRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+const previewRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+
+// Helper function to setup contenteditable dimension displays
+function setupContenteditableDimension(element, applyFunc, min, max) {
+    if (!element) return;
+
+    element.addEventListener('input', (e) => {
+        const text = e.target.textContent.trim();
+        const val = parseInt(text, 10);
+        if (!isNaN(val) && val >= min && val <= max) {
+            // Valid value, update immediately
+            element.dataset.lastValid = text;
+        }
+    });
+
+    element.addEventListener('blur', (e) => {
+        const text = e.target.textContent.trim();
+        let val = parseInt(text, 10);
+
+        if (isNaN(val)) {
+            val = element.dataset.lastValid ? parseInt(element.dataset.lastValid, 10) : min;
+        }
+
+        val = Utils.clampInt(val, min, max, min);
+        e.target.textContent = val;
+        element.dataset.lastValid = val;
+        applyFunc(val);
+    });
+
+    element.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
+        // Prevent non-numeric input
+        if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+        }
+    });
+
+    // Initialize
+    element.dataset.lastValid = element.textContent.trim();
+}
+
+// Setup grid dimension displays
+setupContenteditableDimension(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupContenteditableDimension(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupContenteditableDimension(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+setupContenteditableDimension(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+
+// Grid chevron buttons
+const gridChevrons = document.querySelectorAll('.grid-chevron');
+gridChevrons.forEach(btn => {
+    let pressTimer = null;
+    let isLongPress = false;
+
+    btn.addEventListener('click', (e) => {
+        // Ignore if this was a long press (already handled)
+        if (isLongPress) {
+            isLongPress = false;
+            return;
+        }
+
+        const dimension = btn.getAttribute('data-dimension');
+        const direction = btn.getAttribute('data-direction');
+
+        // Grid arrows: add/remove from specific edge
+        // Normal click adds (+1), shift+click removes (-1)
+        const delta = e.shiftKey ? -1 : 1;
+
+        // Map data-direction to edge direction
+        let edgeDirection;
+        if (dimension === 'width') {
+            edgeDirection = direction === 'decrease' ? 'left' : 'right';
+        } else if (dimension === 'height') {
+            edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
+        }
+
+        applyGridResizeFromEdge(edgeDirection, delta);
+    });
+
+    // Touch long press for remove (same as shift+click)
+    btn.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            const dimension = btn.getAttribute('data-dimension');
+            const direction = btn.getAttribute('data-direction');
+
+            // Map data-direction to edge direction
+            let edgeDirection;
+            if (dimension === 'width') {
+                edgeDirection = direction === 'decrease' ? 'left' : 'right';
+            } else if (dimension === 'height') {
+                edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
+            }
+
+            applyGridResizeFromEdge(edgeDirection, -1); // Remove row/column
+
+            // Haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
+            }
+        }, UI_CONSTANTS.LONG_PRESS_DURATION);
+    }, { passive: true });
+
+    btn.addEventListener('touchend', (e) => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    });
+
+    btn.addEventListener('touchcancel', (e) => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+        isLongPress = false;
+    });
+});
+
+// Function to update chevron disabled states
+function updateChevronStates() {
+    gridChevrons.forEach(btn => {
+        const dimension = btn.getAttribute('data-dimension');
+        let shouldDisable = false;
+
+        // All arrows add in their direction, so disable when at max size
+        if (dimension === 'width') {
+            shouldDisable = gridWidth >= CONFIG.MAX_GRID_SIZE;
+        } else if (dimension === 'height') {
+            shouldDisable = gridHeight >= CONFIG.MAX_GRID_SIZE;
+        }
+
+        btn.disabled = shouldDisable;
+        btn.classList.toggle('disabled', shouldDisable);
+    });
+}
+
+// Helper functions to check if grid can shrink
+function canShrinkWidth() {
+    const result = resizeGrid({
+        grid,
+        gridWidth,
+        gridHeight,
+        newWidth: gridWidth - 1,
+        newHeight: gridHeight
+    });
+    return result !== false;
+}
+
+function canShrinkHeight() {
+    const result = resizeGrid({
+        grid,
+        gridWidth,
+        gridHeight,
+        newWidth: gridWidth,
+        newHeight: gridHeight - 1
+    });
+    return result !== false;
+}
+
+// Setup toggle for cell aspect ratio section
+const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
+const cellAspectRatioToggle = document.getElementById('cellAspectRatioToggle');
+if (cellAspectRatioToggle && cellAspectRatioSection) {
+    cellAspectRatioToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent hamburger menu from closing
+        const isExpanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
+        cellAspectRatioToggle.setAttribute('aria-expanded', !isExpanded);
+        cellAspectRatioSection.style.display = isExpanded ? 'none' : 'block';
+    });
+
+    // Prevent clicks inside the section from closing the hamburger menu
+    cellAspectRatioSection.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+// Initialize chevron states
+updateChevronStates();
 
 // Window resize handler
+// Debounced resize handler to recreate navbar buttons when viewport changes
+let resizeTimeout;
 window.addEventListener('resize', () => {
     updateCanvas();
+
+    // Debounce navbar button recreation
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        createNavbarColorButtons();
+    }, UI_CONSTANTS.DEBOUNCE_DELAY);
 });
 
 // Canvas edge resize handlers
@@ -1256,32 +1242,55 @@ let isResizing = false;
 let resizeDirection = null;
 let resizeStartSize = null;
 let resizeStartPos = null;
+let touchStartPos = null;
+let currentHandle = null;
+let resizeInitiated = false;
+
+// Helper function to start resize (works for both mouse and touch)
+function startResize(handle, clientX, clientY) {
+    isResizing = true;
+    resizeDirection = handle.dataset.direction;
+    resizeStartSize = { width: gridWidth, height: gridHeight };
+    resizeStartPos = { x: clientX, y: clientY };
+
+    const canvas = document.getElementById('editCanvas');
+    const cellWidth = canvas.width / gridWidth;
+    const cellHeight = canvas.height / gridHeight;
+    resizeStartSize.cellWidth = cellWidth;
+    resizeStartSize.cellHeight = cellHeight;
+
+    document.body.style.cursor = handle.style.cursor;
+
+    // Add visual feedback class (especially useful for touch devices)
+    const container = document.querySelector('.canvas-resize-container');
+    if (container) {
+        container.classList.add('is-resizing');
+    }
+}
 
 resizeHandles.forEach(handle => {
+    // Mouse events
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-
-        isResizing = true;
-        resizeDirection = handle.dataset.direction;
-        resizeStartSize = { width: gridWidth, height: gridHeight };
-        resizeStartPos = { x: e.clientX, y: e.clientY };
-
-        const canvas = document.getElementById('editCanvas');
-        const cellWidth = canvas.width / gridWidth;
-        const cellHeight = canvas.height / gridHeight;
-        resizeStartSize.cellWidth = cellWidth;
-        resizeStartSize.cellHeight = cellHeight;
-
-        document.body.style.cursor = handle.style.cursor;
+        startResize(handle, e.clientX, e.clientY);
     });
+
+    // Touch events - delay resize start until we detect intentional drag
+    handle.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+        currentHandle = handle;
+        resizeInitiated = false;
+    }, { passive: true });
 });
 
-document.addEventListener('mousemove', (e) => {
+// Helper function to handle resize movement (works for both mouse and touch)
+function handleResizeMove(clientX, clientY) {
     if (!isResizing) return;
 
-    const deltaX = e.clientX - resizeStartPos.x;
-    const deltaY = e.clientY - resizeStartPos.y;
+    const deltaX = clientX - resizeStartPos.x;
+    const deltaY = clientY - resizeStartPos.y;
 
     let cellDelta = 0;
 
@@ -1309,194 +1318,1235 @@ document.addEventListener('mousemove', (e) => {
 
             applyGridResizeFromEdge(resizeDirection, cellDelta);
 
-            resizeStartPos = { x: e.clientX, y: e.clientY };
+            resizeStartPos = { x: clientX, y: clientY };
             resizeStartSize.width = gridWidth;
             resizeStartSize.height = gridHeight;
         }
     }
-});
+}
 
-document.addEventListener('mouseup', () => {
+// Helper function to end resize (works for both mouse and touch)
+function endResize() {
     if (isResizing) {
         isResizing = false;
         resizeDirection = null;
         resizeStartSize = null;
         resizeStartPos = null;
         document.body.style.cursor = '';
-    }
-});
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-        return;
-    }
-
-    const ctrlKey = Utils.isMac() ? e.metaKey : e.ctrlKey;
-
-    if (ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        const undoBtn = document.getElementById('undoBtn');
-        if (!undoBtn.disabled) {
-            undoBtn.click();
-            e.preventDefault();
+        // Remove visual feedback class
+        const container = document.querySelector('.canvas-resize-container');
+        if (container) {
+            container.classList.remove('is-resizing');
         }
-        return;
-    }
-
-    if (ctrlKey && e.key.toLowerCase() === 'y') {
-        const redoBtn = document.getElementById('redoBtn');
-        if (!redoBtn.disabled) {
-            redoBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-        const clearBtn = document.getElementById('clearBtn');
-        if (!clearBtn.disabled) {
-            clearBtn.click();
-            e.preventDefault();
-        }
-        return;
-    }
-
-    const digitCodes = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
-    const codeIndex = digitCodes.indexOf(e.code);
-
-    if (codeIndex !== -1) {
-        let patternIndex;
-
-        if (e.shiftKey) {
-            patternIndex = codeIndex + 10;
-        } else {
-            patternIndex = codeIndex;
-        }
-
-        if (patternIndex !== undefined && patternIndex < patternColors.length) {
-            activePatternIndex = patternIndex;
-            updateActiveColorUI();
-            createPatternColorButtons();
-            e.preventDefault();
-        }
-    }
-});
-
-// Panel toggle functionality
-function toggleColorPanel() {
-    const panel = document.getElementById('colorPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
-
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-
-    if (isCollapsed) {
-        updateColorIndicators();
-        announceToScreenReader('Color panel collapsed');
-    } else {
-        announceToScreenReader('Color panel expanded');
     }
 }
 
-function toggleSettingsPanel() {
-    const panel = document.getElementById('settingsPanel');
-    const isCollapsed = panel.classList.toggle('collapsed');
+// Mouse events
+document.addEventListener('mousemove', (e) => {
+    handleResizeMove(e.clientX, e.clientY);
+});
 
-    // Update aria-expanded state
-    panel.setAttribute('aria-expanded', !isCollapsed);
-    announceToScreenReader(isCollapsed ? 'Settings panel collapsed' : 'Settings panel expanded');
-}
+document.addEventListener('mouseup', () => {
+    endResize();
+});
 
-// Dropdown menu functionality
-const dropdownContainers = document.querySelectorAll('.dropdown-container, .navbar-dropdown-container');
+// Touch events
+document.addEventListener('touchmove', (e) => {
+    if (isResizing) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        handleResizeMove(touch.clientX, touch.clientY);
+    } else if (touchStartPos && currentHandle && !resizeInitiated) {
+        // Check if user is intentionally dragging the handle (not just scrolling)
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+        const direction = currentHandle.dataset.direction;
 
-dropdownContainers.forEach(container => {
-    const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-    const menu = container.querySelector('.dropdown-menu, .navbar-dropdown-menu');
+        // Require threshold and directional intent
+        const threshold = UI_CONSTANTS.DRAG_THRESHOLD;
+        let shouldStartResize = false;
 
-    if (btn) {
-        btn.addEventListener('click', (e) => {
+        if ((direction === 'left' || direction === 'right') && deltaX > threshold) {
+            // For horizontal handles, horizontal movement should dominate
+            shouldStartResize = deltaX > deltaY * 1.5;
+        } else if ((direction === 'top' || direction === 'bottom') && deltaY > threshold) {
+            // For vertical handles, vertical movement should dominate
+            shouldStartResize = deltaY > deltaX * 1.5;
+        }
+
+        if (shouldStartResize) {
+            e.preventDefault();
+            resizeInitiated = true;
+            startResize(currentHandle, touchStartPos.x, touchStartPos.y);
+        }
+    }
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+    endResize();
+    touchStartPos = null;
+    currentHandle = null;
+    resizeInitiated = false;
+});
+
+document.addEventListener('touchcancel', () => {
+    endResize();
+    touchStartPos = null;
+    currentHandle = null;
+    resizeInitiated = false;
+});
+
+// Keyboard shortcuts - Moved to src/ui/keyboard.js
+
+// ============================================
+// NAVBAR UI COMPONENTS
+// ============================================
+
+// Track currently open color menu
+let currentColorMenu = null;
+
+/**
+ * Show menu for color button with Set Active, Edit, Delete options
+ */
+function showColorButtonMenu(buttonElement, colorIndex, color) {
+    // Close any existing menu
+    closeColorButtonMenu();
+
+    // Create menu
+    const menu = document.createElement('div');
+    menu.className = 'navbar-color-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Select option (if not already active)
+    if (colorIndex !== activePatternIndex) {
+        const selectBtn = document.createElement('button');
+        selectBtn.className = 'navbar-color-menu-item';
+        selectBtn.textContent = 'Select';
+        selectBtn.setAttribute('role', 'menuitem');
+        selectBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isOpen = container.classList.contains('open');
+            activePatternIndex = colorIndex;
+            updateActiveColorUI();
+            createNavbarColorButtons();
+            saveToLocalStorage();
+            closeColorButtonMenu();
+        });
+        menu.appendChild(selectBtn);
+    }
 
-            // Close all other dropdowns
-            dropdownContainers.forEach(otherContainer => {
-                if (otherContainer !== container) {
-                    otherContainer.classList.remove('open');
-                    const otherBtn = otherContainer.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-                    if (otherBtn) {
-                        otherBtn.setAttribute('aria-expanded', 'false');
+    // Edit option (text changes based on whether it's already active)
+    const editBtn = document.createElement('button');
+    editBtn.className = 'navbar-color-menu-item';
+    editBtn.textContent = colorIndex === activePatternIndex ? 'Edit' : 'Edit and select';
+    editBtn.setAttribute('role', 'menuitem');
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Set as active first (if not already)
+        if (colorIndex !== activePatternIndex) {
+            activePatternIndex = colorIndex;
+            updateActiveColorUI();
+            createNavbarColorButtons();
+            saveToLocalStorage();
+        }
+        // Then open color picker
+        openColorPicker(colorIndex, color);
+        closeColorButtonMenu();
+    });
+    menu.appendChild(editBtn);
+
+    // Delete option (only for colors beyond the first one)
+    if (colorIndex > 0) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('role', 'menuitem');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showDeleteColorDialog(colorIndex);
+            closeColorButtonMenu();
+        });
+        menu.appendChild(deleteBtn);
+    }
+
+    // Position menu below button
+    const rect = buttonElement.getBoundingClientRect();
+    menu.style.position = 'absolute';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeColorButtonMenu);
+    }, 0);
+}
+
+/**
+ * Close the color button menu
+ */
+function closeColorButtonMenu() {
+    if (currentColorMenu) {
+        document.removeEventListener('click', closeColorButtonMenu);
+        currentColorMenu.remove();
+        currentColorMenu = null;
+    }
+}
+
+/**
+ * Show overflow menu with hidden colors on mobile
+ */
+function showOverflowColorsMenu(buttonElement, startIndex) {
+    // Close any existing menu
+    closeColorButtonMenu();
+
+    // Create menu container
+    const menu = document.createElement('div');
+    menu.className = 'navbar-color-menu navbar-overflow-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Add color buttons for overflow colors
+    for (let i = startIndex; i < patternColors.length; i++) {
+        const color = patternColors[i];
+        const colorBtn = document.createElement('button');
+        colorBtn.className = 'navbar-overflow-color-btn';
+        colorBtn.style.backgroundColor = color;
+        colorBtn.setAttribute('role', 'menuitem');
+        colorBtn.setAttribute('aria-label', `Pattern color ${i + 1}: ${color}`);
+
+        if (i === activePatternIndex) {
+            colorBtn.style.border = '3px solid var(--color-primary)';
+        }
+
+        colorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Show the regular color menu for this color
+            closeColorButtonMenu();
+            showColorButtonMenu(colorBtn, i, color);
+        });
+
+        menu.appendChild(colorBtn);
+    }
+
+    // Position menu below button
+    const rect = buttonElement.getBoundingClientRect();
+    menu.style.position = 'absolute';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeColorButtonMenu);
+    }, 0);
+}
+
+/**
+ * Calculate how many color buttons can fit in the navbar
+ * Uses viewport-based estimates for reliability
+ */
+function calculateMaxVisibleColors() {
+    const viewportWidth = window.innerWidth;
+
+    // Conservative estimates based on viewport size
+    // These account for: navbar padding, branding (desktop), palette dropdown,
+    // background button, add button, and gaps
+    let maxVisible;
+
+    if (viewportWidth <= 370) {
+        // Very small mobile: ~320-370px viewport
+        maxVisible = 4;
+    } else if (viewportWidth <= 480) {
+        // Small mobile: ~375-480px viewport
+        maxVisible = 5;
+    } else if (viewportWidth <= 768) {
+        // Tablet portrait: ~600-768px viewport
+        maxVisible = 8;
+    } else if (viewportWidth <= 1024) {
+        // Tablet landscape / small desktop
+        maxVisible = 12;
+    } else {
+        // Desktop: 1024px+ (no overflow needed - max 20 colors can fit)
+        maxVisible = 20;
+    }
+
+    // Return the calculated max, but don't exceed actual color count
+    return Math.min(maxVisible, patternColors.length);
+}
+
+/**
+ * Create color buttons in navbar
+ * Includes pattern colors, add button, and background color button
+ */
+function createNavbarColorButtons() {
+    const container = document.getElementById('navbarColorButtons');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Calculate how many colors can fit dynamically
+    const maxVisibleColors = calculateMaxVisibleColors();
+    const needsOverflow = patternColors.length > maxVisibleColors;
+
+    // Create pattern color buttons
+    patternColors.forEach((color, index) => {
+        // Skip colors beyond max visible if overflow is needed
+        if (needsOverflow && index >= maxVisibleColors) {
+            return;
+        }
+        const btn = document.createElement('div');
+        btn.className = 'navbar-color-btn round';
+        btn.style.backgroundColor = color;
+        btn.setAttribute('data-index', index);
+        btn.setAttribute('draggable', 'true');
+        btn.setAttribute('aria-label', `Pattern color ${index + 1}`);
+
+        if (index === activePatternIndex) {
+            btn.classList.add('active');
+        }
+
+        // Click to show menu
+        let dragStarted = false;
+        let touchDragInProgress = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        btn.addEventListener('mousedown', () => {
+            dragStarted = false;
+        });
+
+        btn.addEventListener('click', (e) => {
+            if (!dragStarted && !touchDragInProgress) {
+                e.stopPropagation();
+                showColorButtonMenu(btn, index, color);
+            }
+        });
+
+        // Drag and drop for merging
+        btn.addEventListener('dragstart', (e) => {
+            dragStarted = true;
+
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index.toString());
+
+            // Add visual feedback to the dragged button
+            btn.classList.add('dragging');
+        });
+
+        btn.addEventListener('dragend', () => {
+            btn.classList.remove('dragging');
+        });
+
+        btn.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const draggedData = e.dataTransfer.getData('text/plain');
+
+            if (draggedData === 'background') {
+                // Dragging background to pattern color - show swap indicator
+                btn.style.boxShadow = '0 0 0 3px var(--color-primary)';
+            } else {
+                const draggedIndex = parseInt(draggedData);
+                if (!isNaN(draggedIndex) && draggedIndex !== index) {
+                    // Dragging pattern color to pattern color - show merge indicator
+                    btn.style.backgroundColor = patternColors[draggedIndex];
+                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                }
+            }
+        });
+
+        btn.addEventListener('dragleave', () => {
+            btn.style.backgroundColor = color;
+            btn.style.boxShadow = '';
+        });
+
+        btn.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.style.backgroundColor = color;
+            btn.style.boxShadow = '';
+
+            const draggedData = e.dataTransfer.getData('text/plain');
+
+            if (draggedData === 'background') {
+                // Swap pattern color with background
+                const temp = backgroundColor;
+                backgroundColor = patternColors[index];
+                patternColors[index] = temp;
+
+                saveToHistory();
+                createNavbarColorButtons();
+                updateCanvas();
+                updateColorIndicators();
+                saveToLocalStorage();
+                announceToScreenReader(`Swapped background color with pattern color ${index + 1}`);
+            } else {
+                // Merge pattern colors
+                const draggedIndex = parseInt(draggedData);
+                const targetIndex = index;
+
+                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
+                    mergePatternColors(draggedIndex, targetIndex);
+                }
+            }
+        });
+
+        // Touch drag support
+        let touchDraggedIndex = null;
+
+        btn.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchDragInProgress = false;
+        }, { passive: true });
+
+        btn.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const deltaX = Math.abs(touch.clientX - touchStartX);
+            const deltaY = Math.abs(touch.clientY - touchStartY);
+
+            // If moved more than 5px, start drag
+            if (deltaX > 5 || deltaY > 5) {
+                if (!touchDragInProgress) {
+                    touchDragInProgress = true;
+                    touchDraggedIndex = index;
+                    btn.style.opacity = '0.5';
+                }
+
+                // Find element under touch point
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
+                    const isBackground = elementUnder.classList.contains('square');
+                    if (isBackground) {
+                        // Dragging to background - show swap indicator
+                        elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
+                    } else {
+                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                        if (!isNaN(targetIndex)) {
+                            // Dragging to pattern color - show merge indicator
+                            elementUnder.style.backgroundColor = patternColors[index];
+                            elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                        }
                     }
+                } else {
+                    // Reset all buttons
+                    document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                        const btnIndex = parseInt(b.getAttribute('data-index'));
+                        if (!isNaN(btnIndex) && b !== btn) {
+                            b.style.backgroundColor = patternColors[btnIndex];
+                            b.style.boxShadow = '';
+                        }
+                        if (b.classList.contains('square')) {
+                            b.style.boxShadow = '';
+                        }
+                    });
+                }
+            }
+        }, { passive: true });
+
+        btn.addEventListener('touchend', (e) => {
+            if (touchDragInProgress) {
+                e.preventDefault(); // Prevent click event
+                btn.style.opacity = '1';
+
+                const touch = e.changedTouches[0];
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
+                    const isBackground = elementUnder.classList.contains('square');
+                    if (isBackground) {
+                        // Swap with background
+                        const temp = backgroundColor;
+                        backgroundColor = patternColors[index];
+                        patternColors[index] = temp;
+
+                        saveToHistory();
+                        createNavbarColorButtons();
+                        updateCanvas();
+                        updateColorIndicators();
+                        saveToLocalStorage();
+                        announceToScreenReader(`Swapped pattern color ${index + 1} with background color`);
+                    } else {
+                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                        if (!isNaN(targetIndex) && targetIndex !== index) {
+                            mergePatternColors(index, targetIndex);
+                        }
+                    }
+                }
+
+                // Reset all buttons
+                document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                    const btnIndex = parseInt(b.getAttribute('data-index'));
+                    if (!isNaN(btnIndex)) {
+                        b.style.backgroundColor = patternColors[btnIndex];
+                        b.style.boxShadow = '';
+                    }
+                });
+
+                // Reset flag after a short delay to prevent accidental menu opening
+                setTimeout(() => {
+                    touchDragInProgress = false;
+                }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
+            }
+        });
+
+        btn.addEventListener('touchcancel', () => {
+            btn.style.opacity = '1';
+            touchDragInProgress = false;
+            // Reset all buttons
+            document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                const btnIndex = parseInt(b.getAttribute('data-index'));
+                if (!isNaN(btnIndex)) {
+                    b.style.backgroundColor = patternColors[btnIndex];
+                    b.style.boxShadow = '';
+                }
+            });
+        });
+
+        container.appendChild(btn);
+    });
+
+    // Overflow button (...) for hidden colors on mobile
+    if (needsOverflow) {
+        const overflowBtn = document.createElement('div');
+        overflowBtn.className = 'navbar-color-btn round overflow-btn';
+        overflowBtn.textContent = '•••';
+        overflowBtn.setAttribute('aria-label', `${patternColors.length - maxVisibleColors} more colors`);
+        overflowBtn.style.fontSize = '14px';
+        overflowBtn.style.fontWeight = 'bold';
+        overflowBtn.style.display = 'flex';
+        overflowBtn.style.alignItems = 'center';
+        overflowBtn.style.justifyContent = 'center';
+        overflowBtn.style.background = 'var(--color-bg-secondary)';
+        overflowBtn.style.border = '2px solid var(--color-border-dark)';
+        overflowBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showOverflowColorsMenu(overflowBtn, maxVisibleColors);
+        });
+        container.appendChild(overflowBtn);
+    }
+
+    // Add button (+)
+    if (patternColors.length < CONFIG.MAX_PATTERN_COLORS) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'navbar-color-btn round add-btn';
+        addBtn.textContent = '+';
+        addBtn.setAttribute('aria-label', 'Add new pattern color');
+        addBtn.addEventListener('click', () => {
+            patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
+            activePatternIndex = patternColors.length - 1;
+            createNavbarColorButtons();
+            updateActiveColorUI();
+            updateCanvas();
+            saveToLocalStorage();
+        });
+        container.appendChild(addBtn);
+    }
+
+    // Background color button (square)
+    const bgBtn = document.createElement('div');
+    bgBtn.className = 'navbar-color-btn square';
+    bgBtn.style.backgroundColor = backgroundColor;
+    bgBtn.setAttribute('aria-label', 'Background color');
+    bgBtn.setAttribute('draggable', 'true');
+    bgBtn.setAttribute('data-type', 'background');
+
+    let bgDragStarted = false;
+
+    bgBtn.addEventListener('mousedown', () => {
+        bgDragStarted = false;
+    });
+
+    bgBtn.addEventListener('click', () => {
+        if (!bgDragStarted) {
+            openBackgroundColorPicker();
+        }
+    });
+
+    // Make background draggable
+    bgBtn.addEventListener('dragstart', (e) => {
+        bgDragStarted = true;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'background');
+        bgBtn.classList.add('dragging');
+    });
+
+    bgBtn.addEventListener('dragend', () => {
+        bgBtn.classList.remove('dragging');
+    });
+
+    // Accept pattern color drops to swap
+    bgBtn.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const draggedData = e.dataTransfer.getData('text/plain');
+        if (draggedData !== 'background') {
+            bgBtn.style.boxShadow = '0 0 0 3px var(--color-primary)';
+        }
+    });
+
+    bgBtn.addEventListener('dragleave', () => {
+        bgBtn.style.boxShadow = '';
+    });
+
+    bgBtn.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bgBtn.style.boxShadow = '';
+
+        const draggedData = e.dataTransfer.getData('text/plain');
+        if (draggedData !== 'background') {
+            // Swapping pattern color with background
+            const patternIndex = parseInt(draggedData);
+            if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < patternColors.length) {
+                const temp = backgroundColor;
+                backgroundColor = patternColors[patternIndex];
+                patternColors[patternIndex] = temp;
+
+                saveToHistory();
+                createNavbarColorButtons();
+                updateCanvas();
+                updateColorIndicators();
+                saveToLocalStorage();
+                announceToScreenReader(`Swapped pattern color ${patternIndex + 1} with background color`);
+            }
+        }
+    });
+
+    // Touch drag support for background button
+    let bgTouchDragInProgress = false;
+    let bgTouchStartX = 0;
+    let bgTouchStartY = 0;
+
+    bgBtn.addEventListener('touchstart', (e) => {
+        bgTouchStartX = e.touches[0].clientX;
+        bgTouchStartY = e.touches[0].clientY;
+        bgTouchDragInProgress = false;
+    }, { passive: true });
+
+    bgBtn.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - bgTouchStartX);
+        const deltaY = Math.abs(touch.clientY - bgTouchStartY);
+
+        if (deltaX > 5 || deltaY > 5) {
+            if (!bgTouchDragInProgress) {
+                bgTouchDragInProgress = true;
+                bgBtn.style.opacity = '0.5';
+            }
+
+            // Find element under touch point
+            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                elementUnder !== bgBtn && !elementUnder.classList.contains('add-btn') &&
+                !elementUnder.classList.contains('square')) {
+                // Highlight pattern color button for swap
+                elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
+            } else {
+                // Reset all pattern buttons
+                document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                    if (!b.classList.contains('square') && !b.classList.contains('add-btn')) {
+                        b.style.boxShadow = '';
+                    }
+                });
+            }
+        }
+    }, { passive: true });
+
+    bgBtn.addEventListener('touchend', (e) => {
+        if (bgTouchDragInProgress) {
+            e.preventDefault();
+            bgBtn.style.opacity = '1';
+
+            const touch = e.changedTouches[0];
+            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                !elementUnder.classList.contains('add-btn') && !elementUnder.classList.contains('square')) {
+                const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                if (!isNaN(targetIndex)) {
+                    // Swap background with pattern color
+                    const temp = backgroundColor;
+                    backgroundColor = patternColors[targetIndex];
+                    patternColors[targetIndex] = temp;
+
+                    saveToHistory();
+                    createNavbarColorButtons();
+                    updateCanvas();
+                    updateColorIndicators();
+                    saveToLocalStorage();
+                    announceToScreenReader(`Swapped background color with pattern color ${targetIndex + 1}`);
+                }
+            }
+
+            // Reset all buttons
+            document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                b.style.boxShadow = '';
+            });
+
+            bgTouchDragInProgress = false;
+        }
+    });
+
+    container.appendChild(bgBtn);
+}
+
+/**
+ * Open color picker for a specific pattern color
+ */
+function openColorPicker(colorIndex, currentColor) {
+    // Create a temporary color input
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = currentColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            patternColors[colorIndex] = newColor;
+            createNavbarColorButtons();
+                    updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        }
+        document.body.removeChild(input);
+    });
+
+    input.click();
+}
+
+/**
+ * Open color picker for background color
+ */
+function openBackgroundColorPicker() {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = backgroundColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            backgroundColor = newColor;
+            createNavbarColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        }
+        document.body.removeChild(input);
+    });
+
+    input.click();
+}
+
+/**
+ * Set up hamburger menu toggle
+ */
+function setupHamburgerMenu() {
+    const hamburgerBtn = document.getElementById('navbarHamburgerBtn');
+    const hamburgerMenu = document.getElementById('navbarHamburgerMenu');
+
+    if (!hamburgerBtn || !hamburgerMenu) return;
+
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = hamburgerMenu.classList.toggle('open');
+        hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    });
+
+    // Close menu when clicking menu items (but not expandable ones)
+    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item:not(.navbar-hamburger-expandable)');
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            hamburgerMenu.classList.remove('open');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!hamburgerMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+            hamburgerMenu.classList.remove('open');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+/**
+ * Set up navbar palette dropdown
+ */
+function setupNavbarPaletteDropdown() {
+    const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
+    const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
+    const paletteGrid = document.getElementById('navbarPaletteGrid');
+    const loadBtn = document.getElementById('navbarLoadPaletteBtn');
+    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
+
+    if (!dropdownBtn || !dropdownContainer) return;
+
+    // Toggle dropdown
+    dropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdownContainer.classList.toggle('open');
+        dropdownBtn.setAttribute('aria-expanded', isOpen);
+        if (isOpen) {
+            renderNavbarPalette();
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dropdownContainer.contains(e.target)) {
+            dropdownContainer.classList.remove('open');
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Load palette button
+    if (loadBtn) {
+        loadBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+            const currentPalette = builtInPalette ? builtInPalette.colors : customPalette;
+            if (currentPalette) {
+                patternColors = [...currentPalette];
+                if (activePatternIndex >= patternColors.length) {
+                    activePatternIndex = 0;
+                }
+                createNavbarColorButtons();
+                            updateActiveColorUI();
+                updateCanvas();
+                saveToHistory();
+                saveToLocalStorage();
+                announceToScreenReader(`Loaded ${activePaletteId} palette to pattern colors`);
+            }
+        });
+    }
+
+    // Palette selector options
+    paletteOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.preventDefault();
+            const paletteId = option.getAttribute('data-palette');
+            switchPalette(paletteId);
+            renderNavbarPalette();
+            updateNavbarPaletteName();
+            updateNavbarPalettePreview();
+
+            // Update active state
+            paletteOptions.forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+        });
+    });
+}
+
+/**
+ * Render palette grid in navbar dropdown
+ */
+function renderNavbarPalette() {
+    const paletteGrid = document.getElementById('navbarPaletteGrid');
+    if (!paletteGrid) return;
+
+    paletteGrid.innerHTML = '';
+    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
+    const isCustomPalette = !builtInPalette;
+
+    currentPalette.forEach((color, index) => {
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'navbar-palette-color';
+        colorDiv.style.backgroundColor = color;
+        colorDiv.setAttribute('aria-label', `Palette color ${index + 1}: ${color}`);
+
+        // Long press support for touch devices
+        let pressTimer = null;
+        let isLongPress = false;
+
+        const setBackgroundColorValue = () => {
+            backgroundColor = color;
+            createNavbarColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        };
+
+        // For custom palette, clicking shows menu. For built-in, clicking applies color
+        // Shift-click or long press sets background color
+        if (isCustomPalette) {
+            colorDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Ignore if this was a long press (already handled)
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                }
+
+                if (e.shiftKey) {
+                    // Shift-click sets background color
+                    setBackgroundColorValue();
+                } else {
+                    // Regular click shows menu
+                    showPaletteColorMenu(colorDiv, index, color);
                 }
             });
 
-            // Toggle current dropdown
-            container.classList.toggle('open');
-            btn.setAttribute('aria-expanded', !isOpen);
-        });
+            // Touch long press for background color
+            colorDiv.addEventListener('touchstart', (e) => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    setBackgroundColorValue();
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
+                    }
+                }, UI_CONSTANTS.LONG_PRESS_DURATION);
+            }, { passive: true });
 
-        // Keyboard support for dropdowns
-        btn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                btn.click();
-            } else if (e.key === 'Escape') {
-                container.classList.remove('open');
-                btn.setAttribute('aria-expanded', 'false');
-                btn.focus();
-            }
-        });
-    }
-});
+            colorDiv.addEventListener('touchend', (e) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                // If it was a long press, prevent the click event
+                if (isLongPress) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        isLongPress = false;
+                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
+                }
+            });
 
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    dropdownContainers.forEach(container => {
-        if (!container.contains(e.target)) {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
+            colorDiv.addEventListener('touchmove', () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                isLongPress = false;
+            }, { passive: true });
+        } else {
+            colorDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Ignore if this was a long press (already handled)
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                }
+
+                if (e.shiftKey) {
+                    // Shift-click sets background color
+                    setBackgroundColorValue();
+                } else {
+                    // Regular click sets active pattern color
+                    patternColors[activePatternIndex] = color;
+                    createNavbarColorButtons();
+                                    updateActiveColorUI();
+                    updateCanvas();
+                    saveToHistory();
+                    saveToLocalStorage();
+                }
+            });
+
+            // Touch long press for background color (built-in palettes)
+            colorDiv.addEventListener('touchstart', (e) => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    setBackgroundColorValue();
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
+                    }
+                }, UI_CONSTANTS.LONG_PRESS_DURATION);
+            }, { passive: true });
+
+            colorDiv.addEventListener('touchend', (e) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                // If it was a long press, prevent the click event
+                if (isLongPress) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        isLongPress = false;
+                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
+                }
+            });
+
+            colorDiv.addEventListener('touchmove', () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                isLongPress = false;
+            }, { passive: true });
         }
-    });
-});
 
-// Close dropdowns on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
+        paletteGrid.appendChild(colorDiv);
+    });
+
+    // Add "+" button for custom palette (if not at max)
+    if (isCustomPalette && currentPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'navbar-palette-color navbar-palette-add-btn';
+        addBtn.textContent = '+';
+        addBtn.setAttribute('aria-label', 'Add palette color');
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            addCustomPaletteColor();
         });
+        paletteGrid.appendChild(addBtn);
     }
-});
-
-document.querySelectorAll('.dropdown-item').forEach(item => {
-    item.addEventListener('click', () => {
-        dropdownContainers.forEach(container => {
-            container.classList.remove('open');
-            const btn = container.querySelector('.dropdown-btn, .navbar-dropdown-btn');
-            if (btn) {
-                btn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    });
-});
-
-// Navbar toggle buttons
-const navbarColorToggle = document.getElementById('navbarColorToggle');
-const navbarSettingsToggle = document.getElementById('navbarSettingsToggle');
-
-if (navbarColorToggle) {
-    navbarColorToggle.addEventListener('click', toggleColorPanel);
 }
 
-if (navbarSettingsToggle) {
-    navbarSettingsToggle.addEventListener('click', toggleSettingsPanel);
+/**
+ * Show menu for custom palette color with Select/Edit/Delete options
+ */
+function showPaletteColorMenu(colorElement, colorIndex, color) {
+    // Close any existing menu
+    closePaletteColorMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'navbar-palette-color-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Select option - apply this color to active pattern color
+    const selectBtn = document.createElement('button');
+    selectBtn.className = 'navbar-color-menu-item';
+    selectBtn.textContent = 'Select';
+    selectBtn.setAttribute('role', 'menuitem');
+    selectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        patternColors[activePatternIndex] = color;
+        createNavbarColorButtons();
+            updateActiveColorUI();
+        updateCanvas();
+        saveToHistory();
+        saveToLocalStorage();
+        closePaletteColorMenu();
+    });
+    menu.appendChild(selectBtn);
+
+    // Edit option
+    const editBtn = document.createElement('button');
+    editBtn.className = 'navbar-color-menu-item';
+    editBtn.textContent = 'Edit';
+    editBtn.setAttribute('role', 'menuitem');
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePaletteColorMenu();
+        // Close the palette dropdown
+        const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
+        const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
+        if (dropdownContainer) {
+            dropdownContainer.classList.remove('open');
+        }
+        if (dropdownBtn) {
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+        // Edit the color, passing a callback to reopen the dropdown
+        editCustomPaletteColor(colorIndex, color, () => {
+            // Reopen dropdown after color picker closes
+            if (dropdownContainer) {
+                dropdownContainer.classList.add('open');
+            }
+            if (dropdownBtn) {
+                dropdownBtn.setAttribute('aria-expanded', 'true');
+            }
+        });
+    });
+    menu.appendChild(editBtn);
+
+    // Delete option (only if not the last color)
+    if (customPalette && customPalette.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('role', 'menuitem');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteCustomPaletteColor(colorIndex);
+            closePaletteColorMenu();
+            // Keep the palette dropdown open after delete
+        });
+        menu.appendChild(deleteBtn);
+    }
+
+    // Position menu below color
+    const rect = colorElement.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentPaletteColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closePaletteColorMenu);
+    }, 0);
+}
+
+// Track currently open palette color menu
+let currentPaletteColorMenu = null;
+
+/**
+ * Close the palette color menu
+ */
+function closePaletteColorMenu() {
+    if (currentPaletteColorMenu) {
+        document.removeEventListener('click', closePaletteColorMenu);
+        currentPaletteColorMenu.remove();
+        currentPaletteColorMenu = null;
+    }
+}
+
+/**
+ * Add a new color to custom palette
+ */
+function addCustomPaletteColor() {
+    if (!customPalette) {
+        customPalette = ['#000000'];
+    } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+        customPalette.push('#000000');
+    }
+    renderNavbarPalette();
+    renderPalette();
+    updateNavbarPalettePreview();
+    saveToLocalStorage();
+}
+
+/**
+ * Edit a custom palette color
+ * @param {number} colorIndex - Index of the color to edit
+ * @param {string} currentColor - Current color value
+ * @param {Function} onComplete - Optional callback when color picker closes
+ */
+function editCustomPaletteColor(colorIndex, currentColor, onComplete) {
+    if (!customPalette) return;
+
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = currentColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    const cleanup = () => {
+        document.body.removeChild(input);
+        if (onComplete) {
+            onComplete();
+        }
+    };
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            customPalette[colorIndex] = newColor;
+            renderNavbarPalette();
+            renderPalette();
+            updateNavbarPalettePreview();
+            saveToLocalStorage();
+        }
+        cleanup();
+    });
+
+    // Handle cancel (when user closes picker without selecting)
+    input.addEventListener('cancel', () => {
+        cleanup();
+    });
+
+    input.click();
+}
+
+/**
+ * Delete a custom palette color
+ */
+function deleteCustomPaletteColor(colorIndex) {
+    if (!customPalette || customPalette.length <= 1) return;
+
+    customPalette.splice(colorIndex, 1);
+    renderNavbarPalette();
+    renderPalette();
+    updateNavbarPalettePreview();
+    saveToLocalStorage();
+}
+
+/**
+ * Update navbar palette name display and preview
+ */
+function updateNavbarPaletteName() {
+    const paletteNameEl = document.getElementById('navbarPaletteName');
+    if (paletteNameEl) {
+        const capitalizedName = activePaletteId.charAt(0).toUpperCase() + activePaletteId.slice(1);
+        paletteNameEl.textContent = capitalizedName;
+    }
+
+    // Update active state of palette options
+    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
+    paletteOptions.forEach(option => {
+        if (option.getAttribute('data-palette') === activePaletteId) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+
+    // Update 2x2 palette preview
+    updateNavbarPalettePreview();
+}
+
+/**
+ * Update the 2x2 palette preview in the navbar
+ */
+function updateNavbarPalettePreview() {
+    const previewContainer = document.getElementById('navbarPalettePreview');
+    if (!previewContainer) return;
+
+    previewContainer.innerHTML = '';
+
+    // Get current palette colors
+    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
+
+    // Show first 4 colors (or defaults if fewer)
+    const defaultColor = '#cccccc';
+    const previewColors = [
+        currentPalette[0] || defaultColor,
+        currentPalette[1] || defaultColor,
+        currentPalette[2] || defaultColor,
+        currentPalette[3] || defaultColor
+    ];
+
+    // Create 2x2 grid
+    previewColors.forEach(color => {
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'navbar-palette-preview-color';
+        colorDiv.style.backgroundColor = color;
+        previewContainer.appendChild(colorDiv);
+    });
 }
 
 // ============================================

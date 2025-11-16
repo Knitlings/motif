@@ -2,6 +2,8 @@
 
 **Design repeating patterns on a flexible grid with live preview.**
 
+**[Try it live at motif.works](https://motif.works)**
+
 ![Motif Pattern Editor](screenshot.png)
 
 ## Features
@@ -33,6 +35,8 @@ src/
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+**Branch strategy:** This project uses a two-branch workflow with `staging` for development and `main` for production. Create feature branches from `staging` and submit PRs to `staging` for integration. See [RELEASING.md](RELEASING.md) for details.
 
 ## License
 

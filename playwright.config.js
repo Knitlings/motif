@@ -22,6 +22,27 @@ export default defineConfig({
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
+    {
+      name: 'tablet',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 768, height: 1024 },
+      },
+    },
+    {
+      name: 'mobile',
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 375, height: 667 },
+      },
+    },
+    {
+      name: 'mobile-small',
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 360, height: 640 },
+      },
+    },
   ],
 
   webServer: {
