@@ -2,7 +2,7 @@
 // MAIN APPLICATION
 // ============================================
 
-import { CONFIG } from './config.js';
+import { CONFIG, UI_CONSTANTS } from './config.js';
 import { Utils } from './utils.js';
 import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
@@ -34,6 +34,7 @@ import { createPaletteManager } from './ui/palette.js';
 import { setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
+import { applyDimensionInput } from './ui/handlers.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -705,7 +706,7 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                 showError(errorMessage, ErrorType.FILE_IO);
             }
         );
-    }, 50);
+    }, UI_CONSTANTS.UI_UPDATE_DELAY);
 
     e.target.value = '';
 };
@@ -715,67 +716,61 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 // ============================================
 
 function applyGridWidth(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const inlineDisplay = document.getElementById('gridWidthDisplay');
-
-    const success = applyGridResize(val, gridHeight);
-    if (success === false) {
-        if (inlineDisplay) {
-            inlineDisplay.textContent = gridWidth;
-            // Flash red border on error
-            inlineDisplay.style.transition = 'none';
-            inlineDisplay.style.outline = '2px solid var(--color-danger)';
-            setTimeout(() => {
-                inlineDisplay.style.transition = 'outline var(--transition-base)';
-                inlineDisplay.style.outline = '';
-            }, 300);
-        }
-    } else {
-        if (inlineDisplay) inlineDisplay.textContent = val;
-    }
-    if (typeof updateChevronStates === 'function') updateChevronStates();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_GRID_SIZE,
+        max: CONFIG.MAX_GRID_SIZE,
+        defaultValue: CONFIG.MIN_GRID_SIZE,
+        displayElementId: 'gridWidthDisplay',
+        applyFunction: (val) => applyGridResize(val, gridHeight),
+        getCurrentValue: () => gridWidth,
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyGridHeight(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const inlineDisplay = document.getElementById('gridHeightDisplay');
-
-    const success = applyGridResize(gridWidth, val);
-    if (success === false) {
-        if (inlineDisplay) {
-            inlineDisplay.textContent = gridHeight;
-            // Flash red border on error
-            inlineDisplay.style.transition = 'none';
-            inlineDisplay.style.outline = '2px solid var(--color-danger)';
-            setTimeout(() => {
-                inlineDisplay.style.transition = 'outline var(--transition-base)';
-                inlineDisplay.style.outline = '';
-            }, 300);
-        }
-    } else {
-        if (inlineDisplay) inlineDisplay.textContent = val;
-    }
-    if (typeof updateChevronStates === 'function') updateChevronStates();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_GRID_SIZE,
+        max: CONFIG.MAX_GRID_SIZE,
+        defaultValue: CONFIG.MIN_GRID_SIZE,
+        displayElementId: 'gridHeightDisplay',
+        applyFunction: (val) => applyGridResize(gridWidth, val),
+        getCurrentValue: () => gridHeight,
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyPreviewRepeatX(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    const inlineDisplay = document.getElementById('previewRepeatXDisplay');
-    if (inlineDisplay) inlineDisplay.textContent = val;
-    previewRepeatX = val;
-    updateCanvas();
-    saveToLocalStorage();
-    if (typeof updateChevronStates === 'function') updateChevronStates();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_PREVIEW_REPEAT,
+        max: CONFIG.MAX_PREVIEW_REPEAT,
+        defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
+        displayElementId: 'previewRepeatXDisplay',
+        applyFunction: (val) => {
+            previewRepeatX = val;
+            updateCanvas();
+            saveToLocalStorage();
+        },
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 function applyPreviewRepeatY(value) {
-    const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    const inlineDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineDisplay) inlineDisplay.textContent = val;
-    previewRepeatY = val;
-    updateCanvas();
-    saveToLocalStorage();
-    if (typeof updateChevronStates === 'function') updateChevronStates();
+    applyDimensionInput({
+        value,
+        min: CONFIG.MIN_PREVIEW_REPEAT,
+        max: CONFIG.MAX_PREVIEW_REPEAT,
+        defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
+        displayElementId: 'previewRepeatYDisplay',
+        applyFunction: (val) => {
+            previewRepeatY = val;
+            updateCanvas();
+            saveToLocalStorage();
+        },
+        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+    });
 }
 
 // ============================================
@@ -1145,9 +1140,9 @@ gridChevrons.forEach(btn => {
 
             // Haptic feedback if available
             if (navigator.vibrate) {
-                navigator.vibrate(50);
+                navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
             }
-        }, 500); // 500ms for long press
+        }, UI_CONSTANTS.LONG_PRESS_DURATION);
     }, { passive: true });
 
     btn.addEventListener('touchend', (e) => {
@@ -1238,7 +1233,7 @@ window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
         createNavbarColorButtons();
-    }, 250);
+    }, UI_CONSTANTS.DEBOUNCE_DELAY);
 });
 
 // Canvas edge resize handlers
@@ -1369,8 +1364,8 @@ document.addEventListener('touchmove', (e) => {
         const deltaY = Math.abs(touch.clientY - touchStartPos.y);
         const direction = currentHandle.dataset.direction;
 
-        // Require 10px threshold and directional intent
-        const threshold = 10;
+        // Require threshold and directional intent
+        const threshold = UI_CONSTANTS.DRAG_THRESHOLD;
         let shouldStartResize = false;
 
         if ((direction === 'left' || direction === 'right') && deltaX > threshold) {
@@ -1800,7 +1795,7 @@ function createNavbarColorButtons() {
                 // Reset flag after a short delay to prevent accidental menu opening
                 setTimeout(() => {
                     touchDragInProgress = false;
-                }, 100);
+                }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
             }
         });
 
@@ -2222,9 +2217,9 @@ function renderNavbarPalette() {
                     setBackgroundColorValue();
                     // Haptic feedback if available
                     if (navigator.vibrate) {
-                        navigator.vibrate(50);
+                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
                     }
-                }, 500); // 500ms for long press
+                }, UI_CONSTANTS.LONG_PRESS_DURATION);
             }, { passive: true });
 
             colorDiv.addEventListener('touchend', (e) => {
@@ -2237,7 +2232,7 @@ function renderNavbarPalette() {
                     e.preventDefault();
                     setTimeout(() => {
                         isLongPress = false;
-                    }, 100);
+                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
                 }
             });
 
@@ -2279,9 +2274,9 @@ function renderNavbarPalette() {
                     setBackgroundColorValue();
                     // Haptic feedback if available
                     if (navigator.vibrate) {
-                        navigator.vibrate(50);
+                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
                     }
-                }, 500); // 500ms for long press
+                }, UI_CONSTANTS.LONG_PRESS_DURATION);
             }, { passive: true });
 
             colorDiv.addEventListener('touchend', (e) => {
@@ -2294,7 +2289,7 @@ function renderNavbarPalette() {
                     e.preventDefault();
                     setTimeout(() => {
                         isLongPress = false;
-                    }, 100);
+                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
                 }
             });
 

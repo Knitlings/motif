@@ -135,3 +135,48 @@ export const CONFIG = {
     // Default active palette
     DEFAULT_ACTIVE_PALETTE: 'motif'
 };
+
+/**
+ * UI interaction timing and behavior constants
+ * Centralized to avoid magic numbers throughout the codebase
+ * @type {Object}
+ */
+export const UI_CONSTANTS = {
+    // Timing
+    LONG_PRESS_DURATION: 500,        // ms - Duration to trigger long-press
+    HAPTIC_FEEDBACK_DURATION: 50,    // ms - Vibration feedback duration
+    UI_UPDATE_DELAY: 50,             // ms - Delay for UI updates after actions
+    DEBOUNCE_DELAY: 250,             // ms - Debounce delay for repeated actions
+    ANIMATION_FRAME_DELAY: 16,       // ms - ~60fps for smooth animations
+
+    // Touch/Drag thresholds
+    DRAG_THRESHOLD: 10,              // px - Minimum movement to count as drag
+    TOUCH_MOVE_THRESHOLD: 5,         // px - Touch movement tolerance
+
+    // Color picker
+    COLOR_PICKER_FADE_DELAY: 100,    // ms - Delay before removing color picker
+
+    // Menu positioning
+    MENU_OFFSET_Y: 5,                // px - Vertical offset for dropdown menus
+    MENU_EDGE_PADDING: 10,           // px - Padding from viewport edges
+
+    // Button sizing
+    COLOR_BUTTON_SIZE: 36,           // px - Size of color buttons
+    COLOR_BUTTON_FONT_SIZE: 14,      // px - Font size for color buttons
+    OVERFLOW_BUTTON_SIZE: 36,        // px - Size of overflow menu button
+
+    // Z-index layers
+    Z_INDEX_MENU: 1000,              // Menu overlays
+    Z_INDEX_COLOR_PICKER: 999,       // Color picker dialogs
+    Z_INDEX_DROPDOWN: 100,           // Dropdown panels
+
+    // Responsive breakpoints (duplicated from CONFIG for UI-specific use)
+    MOBILE_BREAKPOINT: 1024,         // px - Mobile vs desktop threshold
+    SMALL_MOBILE_BREAKPOINT: 480,    // px - Small mobile devices
+    TABLET_BREAKPOINT: 768,          // px - Tablet breakpoint
+
+    // Visual feedback
+    ACTIVE_BUTTON_OPACITY: 1,        // Opacity for active state
+    INACTIVE_BUTTON_OPACITY: 0.6,    // Opacity for inactive state
+    HOVER_OPACITY: 0.8,              // Opacity for hover state
+};
