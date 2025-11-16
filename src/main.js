@@ -483,6 +483,7 @@ function deletePatternColor(colorIndex) {
     saveToHistory();
     updateActiveColorUI();
     createPatternColorButtons();
+    createNavbarColorButtons();
     updateCanvas();
 }
 
@@ -531,6 +532,7 @@ function mergePatternColors(sourceIndex, targetIndex) {
         saveToHistory();
         updateActiveColorUI();
         createPatternColorButtons();
+        createNavbarColorButtons();
         updateCanvas();
     });
 }
@@ -697,6 +699,7 @@ document.getElementById('undoBtn').onclick = () => {
 
         updateActiveColorUI();
         createPatternColorButtons();
+        createNavbarColorButtons();
         document.getElementById('backgroundColor').value = backgroundColor;
         document.getElementById('backgroundText').value = backgroundColor;
         updateCanvas();
@@ -713,6 +716,7 @@ document.getElementById('redoBtn').onclick = () => {
 
         updateActiveColorUI();
         createPatternColorButtons();
+        createNavbarColorButtons();
         document.getElementById('backgroundColor').value = backgroundColor;
         document.getElementById('backgroundText').value = backgroundColor;
         updateCanvas();
@@ -753,6 +757,7 @@ document.getElementById('invertBtn').onclick = (e) => {
 
     updateActiveColorUI();
     createPatternColorButtons();
+    createNavbarColorButtons();
     document.getElementById('backgroundColor').value = backgroundColor;
     document.getElementById('backgroundText').value = backgroundColor;
 
@@ -778,6 +783,7 @@ document.getElementById('loadPaletteBtn').onclick = (e) => {
 
     // Update UI
     createPatternColorButtons();
+    createNavbarColorButtons();
     updateActiveColorUI();
     updateCanvas();
     updateColorIndicators();
@@ -903,9 +909,11 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     document.getElementById('backgroundText').value = backgroundColor;
 
                     createPatternColorButtons();
+                    createNavbarColorButtons();
                     updateActiveColorUI();
                     updatePaletteUI();
                     renderPalette();
+                    updateNavbarPaletteName();
 
                     saveToHistory();
                     updateCanvas();
@@ -1116,7 +1124,8 @@ setupKeyboardShortcuts({
     getActivePatternIndex: () => activePatternIndex,
     setActivePatternIndex: (index) => { activePatternIndex = index; },
     updateActiveColorUI,
-    createPatternColorButtons
+    createPatternColorButtons,
+    createNavbarColorButtons
 });
 
 // Initialize canvas interactions
@@ -1144,8 +1153,16 @@ canvasInteractions.setupCanvasEvents();
 renderPalette();
 updatePaletteUI();
 createPatternColorButtons();
+createNavbarColorButtons();
 updateActiveColorUI();
 initGrid();
+
+// Initialize navbar components
+setupHamburgerMenu();
+setupNavbarPaletteDropdown();
+setupGridSettingsLink();
+updateNavbarPaletteName();
+updateNavbarPalettePreview();
 
 // Initialize color toggle on page load
 updateColorIndicators();
@@ -1163,6 +1180,7 @@ Utils.setupColorInput({
     onChange: (color) => {
         patternColors[activePatternIndex] = color;
         createPatternColorButtons();
+        createNavbarColorButtons();
         updateCanvas();
         updateColorIndicators();
         saveToLocalStorage();
@@ -1174,6 +1192,7 @@ Utils.setupColorInput({
     text: 'backgroundText',
     onChange: (color) => {
         backgroundColor = color;
+        createNavbarColorButtons();
         updateCanvas();
         updateColorIndicators();
         saveToLocalStorage();
@@ -1467,6 +1486,720 @@ document.addEventListener('touchcancel', () => {
 // Keyboard shortcuts - Moved to src/ui/keyboard.js
 
 // Panel toggle functionality - Moved to src/ui/panels.js
+
+// ============================================
+// NAVBAR UI COMPONENTS
+// ============================================
+
+// Track currently open color menu
+let currentColorMenu = null;
+
+/**
+ * Show menu for color button with Set Active, Edit, Delete options
+ */
+function showColorButtonMenu(buttonElement, colorIndex, color) {
+    // Close any existing menu
+    closeColorButtonMenu();
+
+    // Create menu
+    const menu = document.createElement('div');
+    menu.className = 'navbar-color-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Select option (if not already active)
+    if (colorIndex !== activePatternIndex) {
+        const selectBtn = document.createElement('button');
+        selectBtn.className = 'navbar-color-menu-item';
+        selectBtn.textContent = 'Select';
+        selectBtn.setAttribute('role', 'menuitem');
+        selectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            activePatternIndex = colorIndex;
+            updateActiveColorUI();
+            createNavbarColorButtons();
+            saveToLocalStorage();
+            closeColorButtonMenu();
+        });
+        menu.appendChild(selectBtn);
+    }
+
+    // Edit option (text changes based on whether it's already active)
+    const editBtn = document.createElement('button');
+    editBtn.className = 'navbar-color-menu-item';
+    editBtn.textContent = colorIndex === activePatternIndex ? 'Edit' : 'Edit and select';
+    editBtn.setAttribute('role', 'menuitem');
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Set as active first (if not already)
+        if (colorIndex !== activePatternIndex) {
+            activePatternIndex = colorIndex;
+            updateActiveColorUI();
+            createNavbarColorButtons();
+            saveToLocalStorage();
+        }
+        // Then open color picker
+        openColorPicker(colorIndex, color);
+        closeColorButtonMenu();
+    });
+    menu.appendChild(editBtn);
+
+    // Delete option (only for colors beyond the first one)
+    if (colorIndex > 0) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('role', 'menuitem');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showDeleteColorDialog(colorIndex);
+            closeColorButtonMenu();
+        });
+        menu.appendChild(deleteBtn);
+    }
+
+    // Position menu below button
+    const rect = buttonElement.getBoundingClientRect();
+    menu.style.position = 'absolute';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeColorButtonMenu);
+    }, 0);
+}
+
+/**
+ * Close the color button menu
+ */
+function closeColorButtonMenu() {
+    if (currentColorMenu) {
+        document.removeEventListener('click', closeColorButtonMenu);
+        currentColorMenu.remove();
+        currentColorMenu = null;
+    }
+}
+
+/**
+ * Create color buttons in navbar
+ * Includes pattern colors, add button, and background color button
+ */
+function createNavbarColorButtons() {
+    const container = document.getElementById('navbarColorButtons');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Create pattern color buttons
+    patternColors.forEach((color, index) => {
+        const btn = document.createElement('div');
+        btn.className = 'navbar-color-btn round';
+        btn.style.backgroundColor = color;
+        btn.setAttribute('data-index', index);
+        btn.setAttribute('draggable', 'true');
+        btn.setAttribute('aria-label', `Pattern color ${index + 1}`);
+
+        if (index === activePatternIndex) {
+            btn.classList.add('active');
+        }
+
+        // Click to show menu
+        let dragStarted = false;
+        btn.addEventListener('mousedown', () => {
+            dragStarted = false;
+        });
+
+        btn.addEventListener('click', (e) => {
+            if (!dragStarted) {
+                e.stopPropagation();
+                showColorButtonMenu(btn, index, color);
+            }
+        });
+
+        // Drag and drop for merging
+        btn.addEventListener('dragstart', (e) => {
+            dragStarted = true;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index.toString());
+
+            // Create custom drag image
+            const dragImage = document.createElement('div');
+            dragImage.style.backgroundColor = color;
+            dragImage.style.width = '36px';
+            dragImage.style.height = '36px';
+            dragImage.style.borderRadius = '50%';
+            dragImage.style.border = '2px solid var(--color-border-dark)';
+            dragImage.style.position = 'absolute';
+            dragImage.style.top = '-1000px';
+            dragImage.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            document.body.appendChild(dragImage);
+            e.dataTransfer.setDragImage(dragImage, 18, 18);
+            setTimeout(() => {
+                document.body.removeChild(dragImage);
+            }, 0);
+
+            setTimeout(() => {
+                btn.style.opacity = '0.5';
+            }, 0);
+        });
+
+        btn.addEventListener('dragend', () => {
+            btn.style.opacity = '1';
+        });
+
+        btn.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            if (!isNaN(draggedIndex) && draggedIndex !== index) {
+                btn.style.backgroundColor = patternColors[draggedIndex];
+                btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+            }
+        });
+
+        btn.addEventListener('dragleave', () => {
+            btn.style.backgroundColor = color;
+            btn.style.boxShadow = '';
+        });
+
+        btn.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            btn.style.backgroundColor = color;
+            btn.style.boxShadow = '';
+
+            const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const targetIndex = index;
+
+            if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
+                mergePatternColors(draggedIndex, targetIndex);
+            }
+        });
+
+        container.appendChild(btn);
+    });
+
+    // Add button (+)
+    if (patternColors.length < CONFIG.MAX_PATTERN_COLORS) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'navbar-color-btn round add-btn';
+        addBtn.textContent = '+';
+        addBtn.setAttribute('aria-label', 'Add new pattern color');
+        addBtn.addEventListener('click', () => {
+            patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
+            activePatternIndex = patternColors.length - 1;
+            createNavbarColorButtons();
+            updateActiveColorUI();
+            updateCanvas();
+            saveToLocalStorage();
+        });
+        container.appendChild(addBtn);
+    }
+
+    // Background color button (square)
+    const bgBtn = document.createElement('div');
+    bgBtn.className = 'navbar-color-btn square';
+    bgBtn.style.backgroundColor = backgroundColor;
+    bgBtn.setAttribute('aria-label', 'Background color');
+    bgBtn.addEventListener('click', () => {
+        openBackgroundColorPicker();
+    });
+    container.appendChild(bgBtn);
+}
+
+/**
+ * Open color picker for a specific pattern color
+ */
+function openColorPicker(colorIndex, currentColor) {
+    // Create a temporary color input
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = currentColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            patternColors[colorIndex] = newColor;
+            createNavbarColorButtons();
+            createPatternColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        }
+        document.body.removeChild(input);
+    });
+
+    input.click();
+}
+
+/**
+ * Open color picker for background color
+ */
+function openBackgroundColorPicker() {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = backgroundColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            backgroundColor = newColor;
+            createNavbarColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        }
+        document.body.removeChild(input);
+    });
+
+    input.click();
+}
+
+/**
+ * Set up hamburger menu toggle
+ */
+function setupHamburgerMenu() {
+    const hamburgerBtn = document.getElementById('navbarHamburgerBtn');
+    const hamburgerMenu = document.getElementById('navbarHamburgerMenu');
+
+    if (!hamburgerBtn || !hamburgerMenu) return;
+
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = hamburgerMenu.classList.toggle('open');
+        hamburgerBtn.setAttribute('aria-expanded', isOpen);
+    });
+
+    // Close menu when clicking menu items
+    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item');
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            hamburgerMenu.classList.remove('open');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!hamburgerMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+            hamburgerMenu.classList.remove('open');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+/**
+ * Set up navbar palette dropdown
+ */
+function setupNavbarPaletteDropdown() {
+    const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
+    const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
+    const paletteGrid = document.getElementById('navbarPaletteGrid');
+    const loadBtn = document.getElementById('navbarLoadPaletteBtn');
+    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
+
+    if (!dropdownBtn || !dropdownContainer) return;
+
+    // Toggle dropdown
+    dropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdownContainer.classList.toggle('open');
+        dropdownBtn.setAttribute('aria-expanded', isOpen);
+        if (isOpen) {
+            renderNavbarPalette();
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dropdownContainer.contains(e.target)) {
+            dropdownContainer.classList.remove('open');
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Load palette button
+    if (loadBtn) {
+        loadBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+            const currentPalette = builtInPalette ? builtInPalette.colors : customPalette;
+            if (currentPalette) {
+                patternColors = [...currentPalette];
+                if (activePatternIndex >= patternColors.length) {
+                    activePatternIndex = 0;
+                }
+                createNavbarColorButtons();
+                createPatternColorButtons();
+                updateActiveColorUI();
+                updateCanvas();
+                saveToHistory();
+                saveToLocalStorage();
+                announceToScreenReader(`Loaded ${activePaletteId} palette to pattern colors`);
+            }
+        });
+    }
+
+    // Palette selector options
+    paletteOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.preventDefault();
+            const paletteId = option.getAttribute('data-palette');
+            switchPalette(paletteId);
+            renderNavbarPalette();
+            updateNavbarPaletteName();
+            updateNavbarPalettePreview();
+
+            // Update active state
+            paletteOptions.forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+        });
+    });
+}
+
+/**
+ * Render palette grid in navbar dropdown
+ */
+function renderNavbarPalette() {
+    const paletteGrid = document.getElementById('navbarPaletteGrid');
+    if (!paletteGrid) return;
+
+    paletteGrid.innerHTML = '';
+    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
+    const isCustomPalette = !builtInPalette;
+
+    currentPalette.forEach((color, index) => {
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'navbar-palette-color';
+        colorDiv.style.backgroundColor = color;
+        colorDiv.setAttribute('aria-label', `Palette color ${index + 1}: ${color}`);
+
+        // For custom palette, clicking shows menu. For built-in, clicking applies color
+        // Shift-click always sets background color
+        if (isCustomPalette) {
+            colorDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (e.shiftKey) {
+                    // Shift-click sets background color
+                    backgroundColor = color;
+                    createNavbarColorButtons();
+                    updateCanvas();
+                    updateColorIndicators();
+                    saveToHistory();
+                    saveToLocalStorage();
+                } else {
+                    // Regular click shows menu
+                    showPaletteColorMenu(colorDiv, index, color);
+                }
+            });
+        } else {
+            colorDiv.addEventListener('click', (e) => {
+                if (e.shiftKey) {
+                    // Shift-click sets background color
+                    backgroundColor = color;
+                    createNavbarColorButtons();
+                    updateCanvas();
+                    updateColorIndicators();
+                    saveToHistory();
+                    saveToLocalStorage();
+                } else {
+                    // Regular click sets active pattern color
+                    patternColors[activePatternIndex] = color;
+                    createNavbarColorButtons();
+                    createPatternColorButtons();
+                    updateActiveColorUI();
+                    updateCanvas();
+                    saveToHistory();
+                    saveToLocalStorage();
+                }
+            });
+        }
+
+        paletteGrid.appendChild(colorDiv);
+    });
+
+    // Add "+" button for custom palette (if not at max)
+    if (isCustomPalette && currentPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'navbar-palette-color navbar-palette-add-btn';
+        addBtn.textContent = '+';
+        addBtn.setAttribute('aria-label', 'Add palette color');
+        addBtn.addEventListener('click', () => {
+            addCustomPaletteColor();
+        });
+        paletteGrid.appendChild(addBtn);
+    }
+}
+
+/**
+ * Show menu for custom palette color with Select/Edit/Delete options
+ */
+function showPaletteColorMenu(colorElement, colorIndex, color) {
+    // Close any existing menu
+    closePaletteColorMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'navbar-palette-color-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Select option - apply this color to active pattern color
+    const selectBtn = document.createElement('button');
+    selectBtn.className = 'navbar-color-menu-item';
+    selectBtn.textContent = 'Select';
+    selectBtn.setAttribute('role', 'menuitem');
+    selectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        patternColors[activePatternIndex] = color;
+        createNavbarColorButtons();
+        createPatternColorButtons();
+        updateActiveColorUI();
+        updateCanvas();
+        saveToHistory();
+        saveToLocalStorage();
+        closePaletteColorMenu();
+    });
+    menu.appendChild(selectBtn);
+
+    // Edit option
+    const editBtn = document.createElement('button');
+    editBtn.className = 'navbar-color-menu-item';
+    editBtn.textContent = 'Edit';
+    editBtn.setAttribute('role', 'menuitem');
+    editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePaletteColorMenu();
+        // Close the palette dropdown
+        const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
+        const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
+        if (dropdownContainer) {
+            dropdownContainer.classList.remove('open');
+        }
+        if (dropdownBtn) {
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
+        // Edit the color, passing a callback to reopen the dropdown
+        editCustomPaletteColor(colorIndex, color, () => {
+            // Reopen dropdown after color picker closes
+            if (dropdownContainer) {
+                dropdownContainer.classList.add('open');
+            }
+            if (dropdownBtn) {
+                dropdownBtn.setAttribute('aria-expanded', 'true');
+            }
+        });
+    });
+    menu.appendChild(editBtn);
+
+    // Delete option (only if not the last color)
+    if (customPalette && customPalette.length > 1) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.setAttribute('role', 'menuitem');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteCustomPaletteColor(colorIndex);
+            closePaletteColorMenu();
+            // Keep the palette dropdown open after delete
+        });
+        menu.appendChild(deleteBtn);
+    }
+
+    // Position menu below color
+    const rect = colorElement.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentPaletteColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closePaletteColorMenu);
+    }, 0);
+}
+
+// Track currently open palette color menu
+let currentPaletteColorMenu = null;
+
+/**
+ * Close the palette color menu
+ */
+function closePaletteColorMenu() {
+    if (currentPaletteColorMenu) {
+        document.removeEventListener('click', closePaletteColorMenu);
+        currentPaletteColorMenu.remove();
+        currentPaletteColorMenu = null;
+    }
+}
+
+/**
+ * Add a new color to custom palette
+ */
+function addCustomPaletteColor() {
+    if (!customPalette) {
+        customPalette = ['#000000'];
+    } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+        customPalette.push('#000000');
+    }
+    renderNavbarPalette();
+    renderPalette();
+    updateNavbarPalettePreview();
+    saveToLocalStorage();
+}
+
+/**
+ * Edit a custom palette color
+ * @param {number} colorIndex - Index of the color to edit
+ * @param {string} currentColor - Current color value
+ * @param {Function} onComplete - Optional callback when color picker closes
+ */
+function editCustomPaletteColor(colorIndex, currentColor, onComplete) {
+    if (!customPalette) return;
+
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = currentColor;
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    document.body.appendChild(input);
+
+    const cleanup = () => {
+        document.body.removeChild(input);
+        if (onComplete) {
+            onComplete();
+        }
+    };
+
+    input.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        if (validateColor(newColor)) {
+            customPalette[colorIndex] = newColor;
+            renderNavbarPalette();
+            renderPalette();
+            updateNavbarPalettePreview();
+            saveToLocalStorage();
+        }
+        cleanup();
+    });
+
+    // Handle cancel (when user closes picker without selecting)
+    input.addEventListener('cancel', () => {
+        cleanup();
+    });
+
+    input.click();
+}
+
+/**
+ * Delete a custom palette color
+ */
+function deleteCustomPaletteColor(colorIndex) {
+    if (!customPalette || customPalette.length <= 1) return;
+
+    customPalette.splice(colorIndex, 1);
+    renderNavbarPalette();
+    renderPalette();
+    updateNavbarPalettePreview();
+    saveToLocalStorage();
+}
+
+/**
+ * Update navbar palette name display and preview
+ */
+function updateNavbarPaletteName() {
+    const paletteNameEl = document.getElementById('navbarPaletteName');
+    if (paletteNameEl) {
+        const capitalizedName = activePaletteId.charAt(0).toUpperCase() + activePaletteId.slice(1);
+        paletteNameEl.textContent = capitalizedName;
+    }
+
+    // Update active state of palette options
+    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
+    paletteOptions.forEach(option => {
+        if (option.getAttribute('data-palette') === activePaletteId) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+
+    // Update 2x2 palette preview
+    updateNavbarPalettePreview();
+}
+
+/**
+ * Update the 2x2 palette preview in the navbar
+ */
+function updateNavbarPalettePreview() {
+    const previewContainer = document.getElementById('navbarPalettePreview');
+    if (!previewContainer) return;
+
+    previewContainer.innerHTML = '';
+
+    // Get current palette colors
+    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
+    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
+
+    // Show first 4 colors (or defaults if fewer)
+    const defaultColor = '#cccccc';
+    const previewColors = [
+        currentPalette[0] || defaultColor,
+        currentPalette[1] || defaultColor,
+        currentPalette[2] || defaultColor,
+        currentPalette[3] || defaultColor
+    ];
+
+    // Create 2x2 grid
+    previewColors.forEach(color => {
+        const colorDiv = document.createElement('div');
+        colorDiv.className = 'navbar-palette-preview-color';
+        colorDiv.style.backgroundColor = color;
+        previewContainer.appendChild(colorDiv);
+    });
+}
+
+/**
+ * Set up grid settings link
+ */
+function setupGridSettingsLink() {
+    const gridSettingsLink = document.getElementById('gridSettingsLink');
+    const settingsPanel = document.getElementById('settingsPanel');
+
+    if (!gridSettingsLink || !settingsPanel) return;
+
+    gridSettingsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Toggle settings panel
+        const isCollapsed = settingsPanel.classList.contains('collapsed');
+        if (isCollapsed) {
+            settingsPanel.classList.remove('collapsed');
+            settingsPanel.setAttribute('aria-expanded', 'true');
+        } else {
+            settingsPanel.classList.add('collapsed');
+            settingsPanel.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
 
 // ============================================
 // GLOBAL ERROR HANDLING

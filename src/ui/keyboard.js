@@ -12,6 +12,7 @@ import { Utils } from '../utils.js';
  * @param {Function} deps.setActivePatternIndex - Function to set active pattern index
  * @param {Function} deps.updateActiveColorUI - Function to update active color UI
  * @param {Function} deps.createPatternColorButtons - Function to create pattern color buttons
+ * @param {Function} deps.createNavbarColorButtons - Function to create navbar color buttons
  */
 export function setupKeyboardShortcuts(deps) {
     const {
@@ -19,7 +20,8 @@ export function setupKeyboardShortcuts(deps) {
         getActivePatternIndex,
         setActivePatternIndex,
         updateActiveColorUI,
-        createPatternColorButtons
+        createPatternColorButtons,
+        createNavbarColorButtons
     } = deps;
 
     document.addEventListener('keydown', (e) => {
@@ -78,6 +80,7 @@ export function setupKeyboardShortcuts(deps) {
                 setActivePatternIndex(patternIndex);
                 updateActiveColorUI();
                 createPatternColorButtons();
+                createNavbarColorButtons();
                 e.preventDefault();
             }
         }
