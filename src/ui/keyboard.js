@@ -11,7 +11,6 @@ import { Utils } from '../utils.js';
  * @param {Function} deps.getActivePatternIndex - Function to get active pattern index
  * @param {Function} deps.setActivePatternIndex - Function to set active pattern index
  * @param {Function} deps.updateActiveColorUI - Function to update active color UI
- * @param {Function} deps.createPatternColorButtons - Function to create pattern color buttons
  * @param {Function} deps.createNavbarColorButtons - Function to create navbar color buttons
  */
 export function setupKeyboardShortcuts(deps) {
@@ -20,7 +19,6 @@ export function setupKeyboardShortcuts(deps) {
         getActivePatternIndex,
         setActivePatternIndex,
         updateActiveColorUI,
-        createPatternColorButtons,
         createNavbarColorButtons
     } = deps;
 
@@ -79,7 +77,6 @@ export function setupKeyboardShortcuts(deps) {
             if (patternIndex !== undefined && patternIndex < patternColors.length) {
                 setActivePatternIndex(patternIndex);
                 updateActiveColorUI();
-                createPatternColorButtons();
                 createNavbarColorButtons();
                 e.preventDefault();
             }

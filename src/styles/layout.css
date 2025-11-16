@@ -300,6 +300,12 @@
     color: var(--color-primary);
 }
 
+/* Visual feedback during dragging - fade the button being dragged */
+.navbar-color-btn.dragging {
+    opacity: 0.5 !important;
+    transform: scale(0.9) !important;
+}
+
 /* Color button click menu */
 .navbar-color-menu {
     position: fixed;

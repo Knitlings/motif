@@ -23,7 +23,6 @@ import editSvg from '../assets/edit.svg';
  * @param {Function} deps.saveToLocalStorage - Function to save to localStorage
  * @param {Function} deps.updateCanvas - Function to update canvas
  * @param {Function} deps.updateColorIndicators - Function to update color indicators
- * @param {Function} deps.createPatternColorButtons - Function to create pattern color buttons
  * @param {Function} deps.updateActiveColorUI - Function to update active color UI
  */
 export function createPaletteManager(deps) {
@@ -42,7 +41,6 @@ export function createPaletteManager(deps) {
         saveToLocalStorage,
         updateCanvas,
         updateColorIndicators,
-        createPatternColorButtons,
         updateActiveColorUI
     } = deps;
 
@@ -109,7 +107,6 @@ export function createPaletteManager(deps) {
                 patternColors[activePatternIndex] = color;
                 setPatternColors(patternColors);
                 updateActiveColorUI();
-                createPatternColorButtons();
                 updateCanvas();
                 updateColorIndicators();
                 saveToLocalStorage();

@@ -251,162 +251,6 @@ function updateColorIndicators() {
     updateNavbarColorPreview();
 }
 
-function createPatternColorButtons() {
-    const container = document.getElementById('patternColorButtons');
-    if (!container) return; // Element doesn't exist in new UI - using navbarColorButtons instead
-    container.innerHTML = '';
-
-    const colorCount = patternColors.length;
-    const shouldShowAddButton = colorCount < CONFIG.MAX_PATTERN_COLORS;
-    const showCount = shouldShowAddButton ? colorCount + 1 : colorCount;
-
-    const mergeHint = document.getElementById('mergeHint');
-    if (mergeHint) {
-        mergeHint.style.display = colorCount >= 2 ? 'block' : 'none';
-    }
-
-    container.style.gridTemplateColumns = `repeat(2, 1fr)`;
-
-    for (let index = 0; index < showCount; index++) {
-        const btn = document.createElement('div');
-        btn.className = 'pattern-btn';
-        const isAddButton = shouldShowAddButton && index === colorCount;
-        const color = isAddButton ? null : patternColors[index];
-
-        if (isAddButton) {
-            btn.classList.add('unused');
-            btn.style.backgroundColor = '#e0e0e0';
-            btn.style.color = '#999';
-            btn.textContent = '+';
-            btn.draggable = false;
-        } else {
-            btn.style.backgroundColor = color;
-            btn.textContent = (index + 1);
-            btn.draggable = true;
-
-            if (index > 0) {
-                const deleteBtn = document.createElement('span');
-                deleteBtn.className = 'pattern-delete-btn';
-                deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    showDeleteColorDialog(index);
-                };
-                btn.appendChild(deleteBtn);
-            }
-        }
-
-        btn.setAttribute('data-index', index);
-
-        if (index === activePatternIndex && !isAddButton) {
-            btn.classList.add('active');
-        }
-
-        let dragStarted = false;
-
-        btn.addEventListener('mousedown', () => {
-            dragStarted = false;
-        });
-
-        if (!isAddButton) {
-            btn.addEventListener('dragstart', (e) => {
-                dragStarted = true;
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', index.toString());
-
-                const dragImage = document.createElement('div');
-                dragImage.style.backgroundColor = color;
-                dragImage.style.color = 'white';
-                dragImage.style.textShadow = '0 1px 2px rgba(0,0,0,0.3)';
-                dragImage.style.fontWeight = 'bold';
-                dragImage.style.fontSize = '0.6rem';
-                dragImage.style.width = '30px';
-                dragImage.style.height = '30px';
-                dragImage.style.display = 'flex';
-                dragImage.style.alignItems = 'center';
-                dragImage.style.justifyContent = 'center';
-                dragImage.style.position = 'absolute';
-                dragImage.style.top = '-1000px';
-                dragImage.textContent = (index + 1);
-                document.body.appendChild(dragImage);
-                e.dataTransfer.setDragImage(dragImage, 15, 15);
-                setTimeout(() => {
-                    document.body.removeChild(dragImage);
-                }, 0);
-
-                setTimeout(() => {
-                    btn.style.opacity = '0.5';
-                }, 0);
-            });
-
-            btn.addEventListener('dragend', (e) => {
-                btn.style.opacity = '1';
-                const allButtons = container.querySelectorAll('.pattern-btn');
-                allButtons.forEach((b, i) => {
-                    const btnColor = patternColors[i];
-                    if (btnColor) {
-                        b.style.backgroundColor = btnColor;
-                    }
-                });
-            });
-        }
-
-        btn.addEventListener('dragover', (e) => {
-            if (!isAddButton) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                if (!isNaN(draggedIndex) && draggedIndex !== index) {
-                    btn.style.backgroundColor = patternColors[draggedIndex];
-                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                }
-            }
-        });
-
-        btn.addEventListener('dragleave', (e) => {
-            if (!isAddButton) {
-                btn.style.backgroundColor = color;
-                btn.style.boxShadow = '';
-            }
-        });
-
-        btn.addEventListener('drop', (e) => {
-            if (!isAddButton) {
-                e.preventDefault();
-                e.stopPropagation();
-                btn.style.backgroundColor = color;
-                btn.style.boxShadow = '';
-
-                const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                const targetIndex = index;
-
-                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
-                    mergePatternColors(draggedIndex, targetIndex);
-                }
-            }
-        });
-
-        btn.addEventListener('click', (e) => {
-            if (!dragStarted) {
-                if (isAddButton) {
-                    patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
-                    activePatternIndex = patternColors.length - 1;
-                    createPatternColorButtons();
-                    updateActiveColorUI();
-                    updateCanvas();
-                    saveToLocalStorage();
-                } else {
-                    activePatternIndex = index;
-                    updateActiveColorUI();
-                    createPatternColorButtons();
-                    saveToLocalStorage();
-                }
-            }
-        });
-
-        container.appendChild(btn);
-    }
-}
 
 function showConfirmDialog(title, message, confirmText, onConfirm) {
     const dialog = document.getElementById('mergeDialog');
@@ -483,7 +327,6 @@ function deletePatternColor(colorIndex) {
 
     saveToHistory();
     updateActiveColorUI();
-    createPatternColorButtons();
     createNavbarColorButtons();
     updateCanvas();
 }
@@ -532,20 +375,12 @@ function mergePatternColors(sourceIndex, targetIndex) {
 
         saveToHistory();
         updateActiveColorUI();
-        createPatternColorButtons();
-        createNavbarColorButtons();
+            createNavbarColorButtons();
         updateCanvas();
     });
 }
 
 function updateActiveColorUI() {
-    const activeColor = patternColors[activePatternIndex];
-
-    const label = document.querySelector('.color-picker-label');
-    if (label) {
-        label.textContent = activePatternIndex + 1;
-    }
-
     updateColorIndicators();
 }
 
@@ -696,8 +531,7 @@ document.getElementById('undoBtn').onclick = () => {
         backgroundColor = state.backgroundColor;
 
         updateActiveColorUI();
-        createPatternColorButtons();
-        createNavbarColorButtons();
+            createNavbarColorButtons();
         updateCanvas();
         announceToScreenReader('Undo successful');
     }
@@ -711,8 +545,7 @@ document.getElementById('redoBtn').onclick = () => {
         backgroundColor = state.backgroundColor;
 
         updateActiveColorUI();
-        createPatternColorButtons();
-        createNavbarColorButtons();
+            createNavbarColorButtons();
         updateCanvas();
         announceToScreenReader('Redo successful');
     }
@@ -854,8 +687,7 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
                     if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
-                    createPatternColorButtons();
-                    createNavbarColorButtons();
+                                    createNavbarColorButtons();
                     updateActiveColorUI();
                     updatePaletteUI();
                     renderPalette();
@@ -1025,7 +857,6 @@ const paletteManager = createPaletteManager({
     saveToLocalStorage,
     updateCanvas,
     updateColorIndicators,
-    createPatternColorButtons,
     updateActiveColorUI
 });
 
@@ -1043,7 +874,6 @@ setupKeyboardShortcuts({
     getActivePatternIndex: () => activePatternIndex,
     setActivePatternIndex: (index) => { activePatternIndex = index; },
     updateActiveColorUI,
-    createPatternColorButtons,
     createNavbarColorButtons
 });
 
@@ -1071,7 +901,6 @@ canvasInteractions.setupCanvasEvents();
 // Initialize UI
 renderPalette();
 updatePaletteUI();
-createPatternColorButtons();
 createNavbarColorButtons();
 updateActiveColorUI();
 initGrid();
@@ -1095,9 +924,6 @@ if (hasInteracted) {
 // (gridWidthDisplay and gridHeightDisplay elements)
 
 // Aspect Ratio controls
-// TODO: These controls need to be added to the hamburger menu section in the HTML
-// Commented out until the HTML elements are added
-/*
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
 const ratioPresetButtons = document.querySelectorAll('.ratio-preset-btn');
 const customRatioControls = document.getElementById('customRatioControls');
@@ -1124,10 +950,12 @@ ratioPresetButtons.forEach(btn => {
             aspectRatio = ratioValue;
             if (aspectRatioSlider) aspectRatioSlider.value = ratioValue;
             if (ratioDisplay2) ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
+            if (customRatioControls) customRatioControls.style.display = 'none';
             updateCanvas();
             saveToLocalStorage();
+        } else {
+            if (customRatioControls) customRatioControls.style.display = 'block';
         }
-        // Note: custom controls visibility is now managed by the hamburger menu toggle
     });
 });
 
@@ -1211,7 +1039,6 @@ if (ratioDisplay2) {
         ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
     })();
 }
-*/
 
 // Inline Grid Dimension Controls
 const gridWidthDisplay = document.getElementById('gridWidthDisplay');
@@ -1380,25 +1207,8 @@ function canShrinkHeight() {
     return result !== false;
 }
 
-// Move aspect ratio controls from panel to hamburger menu
-const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
-const aspectRatioSection = document.querySelector('#settingsPanel .ratio-preset-group')?.parentElement;
-if (cellAspectRatioSection && aspectRatioSection) {
-    // Remove the h3 header from the section before moving
-    const h3 = aspectRatioSection.querySelector('h3');
-    if (h3) h3.remove();
-
-    cellAspectRatioSection.appendChild(aspectRatioSection);
-    aspectRatioSection.style.display = 'block';
-
-    // Make custom controls always visible in this context
-    const customRatioControls = document.getElementById('customRatioControls');
-    if (customRatioControls) {
-        customRatioControls.style.display = 'block';
-    }
-}
-
 // Setup toggle for cell aspect ratio section
+const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
 const cellAspectRatioToggle = document.getElementById('cellAspectRatioToggle');
 if (cellAspectRatioToggle && cellAspectRatioSection) {
     cellAspectRatioToggle.addEventListener('click', (e) => {
@@ -1594,8 +1404,6 @@ document.addEventListener('touchcancel', () => {
 });
 
 // Keyboard shortcuts - Moved to src/ui/keyboard.js
-
-// Panel toggle functionality - Moved to src/ui/panels.js
 
 // ============================================
 // NAVBAR UI COMPONENTS
@@ -1829,41 +1637,33 @@ function createNavbarColorButtons() {
         // Drag and drop for merging
         btn.addEventListener('dragstart', (e) => {
             dragStarted = true;
+
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', index.toString());
 
-            // Create custom drag image
-            const dragImage = document.createElement('div');
-            dragImage.style.backgroundColor = color;
-            dragImage.style.width = '36px';
-            dragImage.style.height = '36px';
-            dragImage.style.borderRadius = '50%';
-            dragImage.style.border = '2px solid var(--color-border-dark)';
-            dragImage.style.position = 'absolute';
-            dragImage.style.top = '-1000px';
-            dragImage.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-            document.body.appendChild(dragImage);
-            e.dataTransfer.setDragImage(dragImage, 18, 18);
-            setTimeout(() => {
-                document.body.removeChild(dragImage);
-            }, 0);
-
-            setTimeout(() => {
-                btn.style.opacity = '0.5';
-            }, 0);
+            // Add visual feedback to the dragged button
+            btn.classList.add('dragging');
         });
 
         btn.addEventListener('dragend', () => {
-            btn.style.opacity = '1';
+            btn.classList.remove('dragging');
         });
 
         btn.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-            if (!isNaN(draggedIndex) && draggedIndex !== index) {
-                btn.style.backgroundColor = patternColors[draggedIndex];
-                btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+            const draggedData = e.dataTransfer.getData('text/plain');
+
+            if (draggedData === 'background') {
+                // Dragging background to pattern color - show swap indicator
+                btn.style.boxShadow = '0 0 0 3px var(--color-primary)';
+            } else {
+                const draggedIndex = parseInt(draggedData);
+                if (!isNaN(draggedIndex) && draggedIndex !== index) {
+                    // Dragging pattern color to pattern color - show merge indicator
+                    btn.style.backgroundColor = patternColors[draggedIndex];
+                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                }
             }
         });
 
@@ -1878,11 +1678,28 @@ function createNavbarColorButtons() {
             btn.style.backgroundColor = color;
             btn.style.boxShadow = '';
 
-            const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
-            const targetIndex = index;
+            const draggedData = e.dataTransfer.getData('text/plain');
 
-            if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
-                mergePatternColors(draggedIndex, targetIndex);
+            if (draggedData === 'background') {
+                // Swap pattern color with background
+                const temp = backgroundColor;
+                backgroundColor = patternColors[index];
+                patternColors[index] = temp;
+
+                saveToHistory();
+                createNavbarColorButtons();
+                updateCanvas();
+                updateColorIndicators();
+                saveToLocalStorage();
+                announceToScreenReader(`Swapped background color with pattern color ${index + 1}`);
+            } else {
+                // Merge pattern colors
+                const draggedIndex = parseInt(draggedData);
+                const targetIndex = index;
+
+                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
+                    mergePatternColors(draggedIndex, targetIndex);
+                }
             }
         });
 
@@ -1912,11 +1729,17 @@ function createNavbarColorButtons() {
                 const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
                     elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                    if (!isNaN(targetIndex)) {
-                        // Highlight drop target
-                        elementUnder.style.backgroundColor = patternColors[index];
-                        elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                    const isBackground = elementUnder.classList.contains('square');
+                    if (isBackground) {
+                        // Dragging to background - show swap indicator
+                        elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
+                    } else {
+                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                        if (!isNaN(targetIndex)) {
+                            // Dragging to pattern color - show merge indicator
+                            elementUnder.style.backgroundColor = patternColors[index];
+                            elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                        }
                     }
                 } else {
                     // Reset all buttons
@@ -1924,6 +1747,9 @@ function createNavbarColorButtons() {
                         const btnIndex = parseInt(b.getAttribute('data-index'));
                         if (!isNaN(btnIndex) && b !== btn) {
                             b.style.backgroundColor = patternColors[btnIndex];
+                            b.style.boxShadow = '';
+                        }
+                        if (b.classList.contains('square')) {
                             b.style.boxShadow = '';
                         }
                     });
@@ -1941,9 +1767,24 @@ function createNavbarColorButtons() {
 
                 if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
                     elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                    if (!isNaN(targetIndex) && targetIndex !== index) {
-                        mergePatternColors(index, targetIndex);
+                    const isBackground = elementUnder.classList.contains('square');
+                    if (isBackground) {
+                        // Swap with background
+                        const temp = backgroundColor;
+                        backgroundColor = patternColors[index];
+                        patternColors[index] = temp;
+
+                        saveToHistory();
+                        createNavbarColorButtons();
+                        updateCanvas();
+                        updateColorIndicators();
+                        saveToLocalStorage();
+                        announceToScreenReader(`Swapped pattern color ${index + 1} with background color`);
+                    } else {
+                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                        if (!isNaN(targetIndex) && targetIndex !== index) {
+                            mergePatternColors(index, targetIndex);
+                        }
                     }
                 }
 
@@ -2021,9 +1862,146 @@ function createNavbarColorButtons() {
     bgBtn.className = 'navbar-color-btn square';
     bgBtn.style.backgroundColor = backgroundColor;
     bgBtn.setAttribute('aria-label', 'Background color');
-    bgBtn.addEventListener('click', () => {
-        openBackgroundColorPicker();
+    bgBtn.setAttribute('draggable', 'true');
+    bgBtn.setAttribute('data-type', 'background');
+
+    let bgDragStarted = false;
+
+    bgBtn.addEventListener('mousedown', () => {
+        bgDragStarted = false;
     });
+
+    bgBtn.addEventListener('click', () => {
+        if (!bgDragStarted) {
+            openBackgroundColorPicker();
+        }
+    });
+
+    // Make background draggable
+    bgBtn.addEventListener('dragstart', (e) => {
+        bgDragStarted = true;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'background');
+        bgBtn.classList.add('dragging');
+    });
+
+    bgBtn.addEventListener('dragend', () => {
+        bgBtn.classList.remove('dragging');
+    });
+
+    // Accept pattern color drops to swap
+    bgBtn.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const draggedData = e.dataTransfer.getData('text/plain');
+        if (draggedData !== 'background') {
+            bgBtn.style.boxShadow = '0 0 0 3px var(--color-primary)';
+        }
+    });
+
+    bgBtn.addEventListener('dragleave', () => {
+        bgBtn.style.boxShadow = '';
+    });
+
+    bgBtn.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bgBtn.style.boxShadow = '';
+
+        const draggedData = e.dataTransfer.getData('text/plain');
+        if (draggedData !== 'background') {
+            // Swapping pattern color with background
+            const patternIndex = parseInt(draggedData);
+            if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < patternColors.length) {
+                const temp = backgroundColor;
+                backgroundColor = patternColors[patternIndex];
+                patternColors[patternIndex] = temp;
+
+                saveToHistory();
+                createNavbarColorButtons();
+                updateCanvas();
+                updateColorIndicators();
+                saveToLocalStorage();
+                announceToScreenReader(`Swapped pattern color ${patternIndex + 1} with background color`);
+            }
+        }
+    });
+
+    // Touch drag support for background button
+    let bgTouchDragInProgress = false;
+    let bgTouchStartX = 0;
+    let bgTouchStartY = 0;
+
+    bgBtn.addEventListener('touchstart', (e) => {
+        bgTouchStartX = e.touches[0].clientX;
+        bgTouchStartY = e.touches[0].clientY;
+        bgTouchDragInProgress = false;
+    }, { passive: true });
+
+    bgBtn.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - bgTouchStartX);
+        const deltaY = Math.abs(touch.clientY - bgTouchStartY);
+
+        if (deltaX > 5 || deltaY > 5) {
+            if (!bgTouchDragInProgress) {
+                bgTouchDragInProgress = true;
+                bgBtn.style.opacity = '0.5';
+            }
+
+            // Find element under touch point
+            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                elementUnder !== bgBtn && !elementUnder.classList.contains('add-btn') &&
+                !elementUnder.classList.contains('square')) {
+                // Highlight pattern color button for swap
+                elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
+            } else {
+                // Reset all pattern buttons
+                document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                    if (!b.classList.contains('square') && !b.classList.contains('add-btn')) {
+                        b.style.boxShadow = '';
+                    }
+                });
+            }
+        }
+    }, { passive: true });
+
+    bgBtn.addEventListener('touchend', (e) => {
+        if (bgTouchDragInProgress) {
+            e.preventDefault();
+            bgBtn.style.opacity = '1';
+
+            const touch = e.changedTouches[0];
+            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                !elementUnder.classList.contains('add-btn') && !elementUnder.classList.contains('square')) {
+                const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                if (!isNaN(targetIndex)) {
+                    // Swap background with pattern color
+                    const temp = backgroundColor;
+                    backgroundColor = patternColors[targetIndex];
+                    patternColors[targetIndex] = temp;
+
+                    saveToHistory();
+                    createNavbarColorButtons();
+                    updateCanvas();
+                    updateColorIndicators();
+                    saveToLocalStorage();
+                    announceToScreenReader(`Swapped background color with pattern color ${targetIndex + 1}`);
+                }
+            }
+
+            // Reset all buttons
+            document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                b.style.boxShadow = '';
+            });
+
+            bgTouchDragInProgress = false;
+        }
+    });
+
     container.appendChild(bgBtn);
 }
 
@@ -2045,8 +2023,7 @@ function openColorPicker(colorIndex, currentColor) {
         if (validateColor(newColor)) {
             patternColors[colorIndex] = newColor;
             createNavbarColorButtons();
-            createPatternColorButtons();
-            updateCanvas();
+                    updateCanvas();
             updateColorIndicators();
             saveToHistory();
             saveToLocalStorage();
@@ -2160,8 +2137,7 @@ function setupNavbarPaletteDropdown() {
                     activePatternIndex = 0;
                 }
                 createNavbarColorButtons();
-                createPatternColorButtons();
-                updateActiveColorUI();
+                            updateActiveColorUI();
                 updateCanvas();
                 saveToHistory();
                 saveToLocalStorage();
@@ -2288,8 +2264,7 @@ function renderNavbarPalette() {
                     // Regular click sets active pattern color
                     patternColors[activePatternIndex] = color;
                     createNavbarColorButtons();
-                    createPatternColorButtons();
-                    updateActiveColorUI();
+                                    updateActiveColorUI();
                     updateCanvas();
                     saveToHistory();
                     saveToLocalStorage();
@@ -2369,8 +2344,7 @@ function showPaletteColorMenu(colorElement, colorIndex, color) {
         e.stopPropagation();
         patternColors[activePatternIndex] = color;
         createNavbarColorButtons();
-        createPatternColorButtons();
-        updateActiveColorUI();
+            updateActiveColorUI();
         updateCanvas();
         saveToHistory();
         saveToLocalStorage();
