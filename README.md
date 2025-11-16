@@ -25,10 +25,12 @@ Built with vanilla JavaScript, HTML, and CSS using a modular ES6 architecture. T
 **Project structure:**
 ```
 src/
-├── config.js          # Configuration constants
+├── config.js          # Configuration constants and UI constants
 ├── utils.js           # Utility functions
 ├── managers/          # Storage, history, and canvas management
 ├── core/              # Grid operations and export/import
+├── ui/                # UI modules (handlers, menus, palette, etc.)
+├── utils/             # Specialized utilities (validation, error handling)
 └── main.js            # Application initialization
 ```
 

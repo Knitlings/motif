@@ -8,6 +8,60 @@
     <meta name="description" content="Learn how to use Motif grid pattern editor">
     <link rel="stylesheet" href="/src/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/src/styles/main.css">
+    <style>
+        /* Input mode toggle */
+        .input-mode-toggle {
+            display: flex;
+            gap: 0;
+            margin: 1.5rem 0;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            overflow: hidden;
+            width: fit-content;
+        }
+
+        .input-mode-btn {
+            padding: 0.5rem 1.5rem;
+            background: var(--color-bg);
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--color-text);
+            transition: all 0.2s ease;
+            border-right: 1px solid var(--color-border);
+        }
+
+        .input-mode-btn:last-child {
+            border-right: none;
+        }
+
+        .input-mode-btn:hover {
+            background: var(--color-bg-secondary, #f5f5f5);
+        }
+
+        .input-mode-btn.active {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .input-mode-btn:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: -2px;
+            z-index: 1;
+        }
+
+        /* Content visibility based on input mode */
+        body[data-input-mode="desktop"] .touch-only {
+            display: none;
+        }
+
+        body[data-input-mode="touch"] .desktop-only {
+            display: none;
+        }
+
+        /* .both is always visible */
+    </style>
 </head>
 <body>
     <div class="content-page">
@@ -15,13 +69,18 @@
 
         <h1>Help</h1>
 
+        <div class="input-mode-toggle" role="tablist" aria-label="Input mode selection">
+            <button class="input-mode-btn active" data-mode="desktop" role="tab" aria-selected="true" aria-controls="help-content">Desktop</button>
+            <button class="input-mode-btn" data-mode="touch" role="tab" aria-selected="false" aria-controls="help-content">Touch</button>
+        </div>
+
         <div class="toc">
             <h2>Contents</h2>
             <ul>
                 <li><a href="#create">Create</a></li>
                 <li><a href="#preview">Preview</a></li>
                 <li><a href="#colors">Colours</a></li>
-                <li><a href="#grid">Grid settings</a></li>
+                <li><a href="#grid">Pattern settings</a></li>
                 <li><a href="#undo">Undo and Redo</a></li>
                 <li><a href="#download">Download</a></li>
                 <li><a href="#import">Import/Export</a></li>
@@ -33,13 +92,17 @@
         <p>Draw a single repeat of your pattern—the preview will show how it tiles.</p>
 
         <h3>Paint</h3>
-        <p>Click a cell to paint it with the active colour. Click and drag to paint multiple cells at once.</p>
+        <p class="desktop-only">Click a cell to paint it with the active colour. Click and drag to paint multiple cells at once.</p>
+        <p class="touch-only">Tap a cell to paint it with the active colour. Tap and drag to paint multiple cells at once.</p>
 
         <h3>Erase</h3>
-        <p>Click a painted cell again to toggle between the background colour and the active colour. Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour. Click the × below the grid to clear the entire grid to the background colour.</p> 
+        <p class="both">Click or tap a painted cell again to toggle between the background colour and the active colour.</p>
+        <p class="desktop-only">Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
+        <p class="touch-only">Tap cells while the background colour is selected to paint with it.</p>
+        <p class="both">Click or tap the × below the pattern to clear the entire pattern to the background colour.</p>
 
         <h3>Resize</h3>
-        <p>Drag the edges of the grid to change the grid dimensions, or use the <a href="#grid">grid settings</a> panel.</p>
+        <p class="both">Drag the edges of the pattern to change the pattern dimensions, or use the <a href="#grid">pattern settings</a> in the navbar.</p>
 
         <h2 id="preview">Preview</h2>
 
@@ -47,44 +110,58 @@
 
         <h2 id="colors">Colours</h2>
 
-        <p>Click the colour panel button (top left) to open colour settings.</p>
+        <p class="both">Click or tap the colour panel button (top left) to open colour settings.</p>
 
         <h3>Adding pattern colours</h3>
-        <p>Click the + button to add a new colour. You can add up to 20 colours per pattern.</p>
+        <p class="both">Click or tap the + button to add a new colour. You can add up to 20 colours per pattern.</p>
 
         <h3>Changing colours</h3>
-        <p>Click any colour chip to open a colour picker and adjust it.</p>
+        <p class="both">Click or tap any colour chip to open a colour picker and adjust it.</p>
 
         <h3>Removing colours</h3>
-        <p>Hover over a colour chip and click the × to delete it. You'll be warned if cells use that colour.</p>
+        <p class="desktop-only">Hover over a colour chip and click the × to delete it. You'll be warned if cells use that colour.</p>
+        <p class="touch-only">Tap a colour chip, then tap the × to delete it. You'll be warned if cells use that colour.</p>
+
+        <h3>Swapping colours</h3>
+        <p class="both">Drag one colour chip onto another to swap their positions. A blue border indicates a swap operation. You can also drag pattern colours to the background colour to swap them.</p>
 
         <h3>Merging colours</h3>
-        <p>Drag one colour chip onto another to merge them. The target colour becomes the dragged colour, and the dragged chip is removed.</p>
+        <p class="desktop-only">Hold <kbd>Shift</kbd> and drag one colour chip onto another to merge them.</p>
+        <p class="touch-only">Drag one colour chip onto another and hold for 500ms before releasing to merge them.</p>
+        <p class="both">A dark shadow indicates a merge operation. The target colour becomes the dragged colour, and the dragged chip is removed.</p>
 
         <h3>Background colour</h3>
-        <p>This is the default colour for empty cells. Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
+        <p>This is the default colour for empty cells.</p>
+        <p class="desktop-only">Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
+        <p class="touch-only">Long-press the background colour in the palette to select it as the active drawing colour, then tap cells to paint with it.</p>
 
         <h3>Quick palette</h3>
-        <p>Click any colour in the quick palette to set it as the active pattern colour. Hold <kbd>Shift</kbd> and click a colour in the quick palette to set it as the background colour.</p>
+        <p class="both">Click or tap any colour in the quick palette to set it as the active pattern colour.</p>
+        <p class="desktop-only">Hold <kbd>Shift</kbd> and click a colour in the quick palette to set it as the background colour.</p>
+        <p class="touch-only">Long-press a colour in the quick palette to set it as the background colour.</p>
 
-        <h2 id="grid">Grid settings</h2>
+        <h2 id="grid">Pattern settings</h2>
 
-        <p>Click the grid button (top right) to open grid settings.</p>
+        <p>Pattern settings are now conveniently located in the top navbar for quick access.</p>
 
-        <h3>Grid dimensions</h3>
-        <p>Adjust how many columns and rows are displayed in your pattern grid. You can also change the grid size by dragging the edges of the grid. </p>
+        <h3>Pattern dimensions</h3>
+        <p class="both">Click/tap or use the width and height inputs in the navbar to adjust how many columns and rows are displayed in your pattern. You can also change the pattern size by dragging the edges of the pattern.</p>
+        <p class="desktop-only">Click the chevron arrows to add rows/columns. Hold <kbd>Shift</kbd> and click to remove them.</p>
+        <p class="touch-only">Tap the chevron arrows to add rows/columns. Long-press to remove them.</p>
 
         <h3>Cell aspect ratio</h3>
-        <p>Choose from preset ratios or set a custom ratio. This is useful if your craft requires non-square cells (like knitting, where stitches are wider than tall).</p>
+        <p class="both">Click or tap the hamburger menu (☰) to access aspect ratio settings. Choose from preset ratios like "Square 1:1" or "Knit stitch 4:3", or set a custom ratio. This is useful if your craft requires non-square cells (like knitting, where stitches are wider than tall).</p>
 
         <h2 id="undo">Undo and Redo</h2>
 
-        <p>The curved arrow buttons below the canvas let you undo and redo your changes. Motif remembers your entire editing history for the current session.</p>
+        <p class="both">Click or tap the curved arrow buttons below the canvas to undo and redo your changes. Motif remembers your entire editing history for the current session.</p>
+        <p class="desktop-only">You can also use <kbd>Cmd/Ctrl</kbd> + <kbd>Z</kbd> to undo and <kbd>Cmd/Ctrl</kbd> + <kbd>Y</kbd> to redo.</p>
 
 
         <h2 id="download">Download</h2>
 
-        <p>Your work is automatically saved as you go. Click the "Download pattern" dropdown below the grid to export your current pattern as an image file.</p>
+        <p>Your work is automatically saved as you go.</p>
+        <p class="both">Click or tap the "Download pattern" dropdown below the pattern to export your current pattern as an image file.</p>
 
         <h3>PNG</h3>
         <p>Download your pattern as a raster image.</p>
@@ -94,7 +171,7 @@
 
         <h2 id="import">Import/Export</h2>
 
-        <p>Click "Import/Export" in the top bar to create or load a previously saved JSON file. The JSON file contains your grid dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
+        <p class="both">Click or tap "Import/Export" in the top bar to create or load a previously saved JSON file. The JSON file contains your pattern dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
 
         <h2 id="keyboard">Keyboard Shortcuts</h2>
 
@@ -131,5 +208,7 @@
 
         <p style="margin-top: 2rem;"><a href="/">← Back to Motif</a></p>
     </div>
+
+    <script type="module" src="/help.js"></script>
 </body>
 </html>

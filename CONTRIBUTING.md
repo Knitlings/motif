@@ -40,7 +40,7 @@ npm run test:e2e:ui         # Interactive E2E testing
 ```
 src/
 ├── main.js              # Application orchestrator and event handling
-├── config.js            # Configuration constants and limits
+├── config.js            # Configuration constants, limits, and UI constants
 ├── utils.js             # Utility functions (math, DOM helpers)
 ├── assets/              # Static assets (SVGs, images) imported in JS
 │   ├── delete.svg       # Delete icon
@@ -52,6 +52,13 @@ src/
 ├── core/                # Pure business logic
 │   ├── grid.js          # Grid operations (resize, bounds, manipulation)
 │   └── export.js        # Export/import functionality (SVG, PNG, JSON)
+├── ui/                  # UI interaction modules
+│   ├── handlers.js      # Reusable interaction handlers (LongPress, TouchDrag)
+│   ├── menus.js         # Menu management (ColorMenuManager)
+│   ├── palette.js       # Color palette UI
+│   ├── panels.js        # Panel management
+│   ├── interactions.js  # UI interaction utilities
+│   └── keyboard.js      # Keyboard shortcuts
 ├── styles/              # Modular CSS files
 │   ├── main.css         # Main stylesheet (imports all modules)
 │   ├── variables.css    # Design tokens
@@ -61,7 +68,8 @@ src/
 │   └── responsive.css   # Mobile and tablet styles
 └── utils/               # Specialized utilities
     ├── validation.js    # Input validation functions
-    └── errorHandler.js  # Centralized error handling
+    ├── errorHandler.js  # Centralized error handling
+    └── featureDetection.js  # Browser feature detection
 ```
 
 ### Key Concepts
