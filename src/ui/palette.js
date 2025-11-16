@@ -50,7 +50,8 @@ export function createPaletteManager(deps) {
      * Render the palette UI with all colors
      */
     function renderPalette() {
-        const paletteGrid = document.getElementById('paletteGrid');
+        const paletteGrid = document.getElementById('navbarPaletteGrid');
+        if (!paletteGrid) return;
         paletteGrid.innerHTML = '';
 
         const colors = getCurrentPaletteColors();
@@ -92,8 +93,10 @@ export function createPaletteManager(deps) {
             // Function to set background color
             const setBackgroundColorValue = () => {
                 setBackgroundColor(color);
-                document.getElementById('backgroundColor').value = color;
-                document.getElementById('backgroundText').value = color;
+                const bgColorInput = document.getElementById('backgroundColor');
+                const bgTextInput = document.getElementById('backgroundText');
+                if (bgColorInput) bgColorInput.value = color;
+                if (bgTextInput) bgTextInput.value = color;
                 updateCanvas();
                 updateColorIndicators();
                 saveToLocalStorage();

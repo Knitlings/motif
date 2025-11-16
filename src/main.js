@@ -31,7 +31,7 @@ import {
 } from './utils/errorHandler.js';
 import { checkBrowserCompatibility } from './utils/featureDetection.js';
 import { createPaletteManager } from './ui/palette.js';
-import { setupPanelToggles, setupDropdowns } from './ui/panels.js';
+import { setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
 
@@ -253,6 +253,7 @@ function updateColorIndicators() {
 
 function createPatternColorButtons() {
     const container = document.getElementById('patternColorButtons');
+    if (!container) return; // Element doesn't exist in new UI - using navbarColorButtons instead
     container.innerHTML = '';
 
     const colorCount = patternColors.length;
@@ -539,10 +540,6 @@ function mergePatternColors(sourceIndex, targetIndex) {
 
 function updateActiveColorUI() {
     const activeColor = patternColors[activePatternIndex];
-    if (activeColor) {
-        document.getElementById('activePatternColor').value = activeColor;
-        document.getElementById('activePatternText').value = activeColor;
-    }
 
     const label = document.querySelector('.color-picker-label');
     if (label) {
@@ -624,11 +621,6 @@ function applyGridResizeFromEdge(direction, delta) {
     gridWidth = result.width;
     gridHeight = result.height;
 
-    document.getElementById('widthDisplay2').textContent = gridWidth;
-    document.getElementById('heightDisplay2').textContent = gridHeight;
-    document.getElementById('gridWidth2').value = gridWidth;
-    document.getElementById('gridHeight2').value = gridHeight;
-
     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
     if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
@@ -706,8 +698,6 @@ document.getElementById('undoBtn').onclick = () => {
         updateActiveColorUI();
         createPatternColorButtons();
         createNavbarColorButtons();
-        document.getElementById('backgroundColor').value = backgroundColor;
-        document.getElementById('backgroundText').value = backgroundColor;
         updateCanvas();
         announceToScreenReader('Undo successful');
     }
@@ -723,8 +713,6 @@ document.getElementById('redoBtn').onclick = () => {
         updateActiveColorUI();
         createPatternColorButtons();
         createNavbarColorButtons();
-        document.getElementById('backgroundColor').value = backgroundColor;
-        document.getElementById('backgroundText').value = backgroundColor;
         updateCanvas();
         announceToScreenReader('Redo successful');
     }
@@ -755,48 +743,6 @@ document.querySelectorAll('.palette-option').forEach(option => {
     });
 });
 
-document.getElementById('invertBtn').onclick = (e) => {
-    e.preventDefault();
-    const temp = patternColors[activePatternIndex];
-    patternColors[activePatternIndex] = backgroundColor;
-    backgroundColor = temp;
-
-    updateActiveColorUI();
-    createPatternColorButtons();
-    createNavbarColorButtons();
-    document.getElementById('backgroundColor').value = backgroundColor;
-    document.getElementById('backgroundText').value = backgroundColor;
-
-    saveToHistory();
-    updateCanvas();
-    updateColorIndicators();
-};
-
-document.getElementById('loadPaletteBtn').onclick = (e) => {
-    e.preventDefault();
-
-    // Get current palette colors
-    const paletteColors = getCurrentPaletteColors();
-
-    // Save current state to history before making changes
-    saveToHistory();
-
-    // Replace pattern colors with palette colors
-    patternColors = [...paletteColors];
-
-    // Set active color to first color
-    activePatternIndex = 0;
-
-    // Update UI
-    createPatternColorButtons();
-    createNavbarColorButtons();
-    updateActiveColorUI();
-    updateCanvas();
-    updateColorIndicators();
-    saveToLocalStorage();
-
-    announceToScreenReader(`Loaded ${paletteColors.length} colors from palette to pattern colors`);
-};
 
 document.getElementById('exportSvgBtn').onclick = (e) => {
     e.preventDefault();
@@ -898,31 +844,15 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     }
 
                     // Update all UI elements
-                    document.getElementById('gridWidth2').value = gridWidth;
-                    document.getElementById('gridHeight2').value = gridHeight;
-                    document.getElementById('widthDisplay2').textContent = gridWidth;
-                    document.getElementById('heightDisplay2').textContent = gridHeight;
-
                     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
                     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
                     if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
                     if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
-                    aspectRatioSlider.value = aspectRatio;
-                    document.getElementById('ratioDisplay2').textContent = Utils.aspectRatioToDisplay(aspectRatio);
-
-                    previewRepeatXInput.value = previewRepeatX;
-                    previewRepeatYInput.value = previewRepeatY;
-                    document.getElementById('repeatXDisplay').textContent = previewRepeatX;
-                    document.getElementById('repeatYDisplay').textContent = previewRepeatY;
-
                     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
                     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
                     if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
                     if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
-
-                    document.getElementById('backgroundColor').value = backgroundColor;
-                    document.getElementById('backgroundText').value = backgroundColor;
 
                     createPatternColorButtons();
                     createNavbarColorButtons();
@@ -954,25 +884,21 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 
 function applyGridWidth(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const input = document.getElementById('gridWidth2');
-    const display = document.getElementById('widthDisplay2');
     const inlineDisplay = document.getElementById('gridWidthDisplay');
 
     const success = applyGridResize(val, gridHeight);
     if (success === false) {
-        input.value = gridWidth;
-        display.textContent = gridWidth;
-        if (inlineDisplay) inlineDisplay.textContent = gridWidth;
-
-        input.style.transition = 'none';
-        input.style.borderColor = 'var(--color-danger)';
-        setTimeout(() => {
-            input.style.transition = 'border-color var(--transition-base)';
-            input.style.borderColor = '';
-        }, 300);
+        if (inlineDisplay) {
+            inlineDisplay.textContent = gridWidth;
+            // Flash red border on error
+            inlineDisplay.style.transition = 'none';
+            inlineDisplay.style.outline = '2px solid var(--color-danger)';
+            setTimeout(() => {
+                inlineDisplay.style.transition = 'outline var(--transition-base)';
+                inlineDisplay.style.outline = '';
+            }, 300);
+        }
     } else {
-        input.value = val;
-        display.textContent = val;
         if (inlineDisplay) inlineDisplay.textContent = val;
     }
     if (typeof updateChevronStates === 'function') updateChevronStates();
@@ -980,25 +906,21 @@ function applyGridWidth(value) {
 
 function applyGridHeight(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
-    const input = document.getElementById('gridHeight2');
-    const display = document.getElementById('heightDisplay2');
     const inlineDisplay = document.getElementById('gridHeightDisplay');
 
     const success = applyGridResize(gridWidth, val);
     if (success === false) {
-        input.value = gridHeight;
-        display.textContent = gridHeight;
-        if (inlineDisplay) inlineDisplay.textContent = gridHeight;
-
-        input.style.transition = 'none';
-        input.style.borderColor = 'var(--color-danger)';
-        setTimeout(() => {
-            input.style.transition = 'border-color var(--transition-base)';
-            input.style.borderColor = '';
-        }, 300);
+        if (inlineDisplay) {
+            inlineDisplay.textContent = gridHeight;
+            // Flash red border on error
+            inlineDisplay.style.transition = 'none';
+            inlineDisplay.style.outline = '2px solid var(--color-danger)';
+            setTimeout(() => {
+                inlineDisplay.style.transition = 'outline var(--transition-base)';
+                inlineDisplay.style.outline = '';
+            }, 300);
+        }
     } else {
-        input.value = val;
-        display.textContent = val;
         if (inlineDisplay) inlineDisplay.textContent = val;
     }
     if (typeof updateChevronStates === 'function') updateChevronStates();
@@ -1006,8 +928,6 @@ function applyGridHeight(value) {
 
 function applyPreviewRepeatX(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    previewRepeatXInput.value = val;
-    document.getElementById('repeatXDisplay').textContent = val;
     const inlineDisplay = document.getElementById('previewRepeatXDisplay');
     if (inlineDisplay) inlineDisplay.textContent = val;
     previewRepeatX = val;
@@ -1018,8 +938,6 @@ function applyPreviewRepeatX(value) {
 
 function applyPreviewRepeatY(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
-    previewRepeatYInput.value = val;
-    document.getElementById('repeatYDisplay').textContent = val;
     const inlineDisplay = document.getElementById('previewRepeatYDisplay');
     if (inlineDisplay) inlineDisplay.textContent = val;
     previewRepeatY = val;
@@ -1044,17 +962,7 @@ if (!browserCapabilities.canvas) {
 // Try to load saved state from localStorage (will be null if localStorage unavailable)
 const savedState = browserCapabilities.localStorage ? StorageManager.load() : null;
 
-// Get input elements
-const gridWidth2Input = document.getElementById('gridWidth2');
-const gridHeight2Input = document.getElementById('gridHeight2');
-const aspectRatioSlider = document.getElementById('aspectRatio2');
-const previewRepeatXInput = document.getElementById('previewRepeatX');
-const previewRepeatYInput = document.getElementById('previewRepeatY');
-const backgroundColorPicker = document.getElementById('backgroundColor');
-const backgroundColorText = document.getElementById('backgroundText');
-const activePatternColorPicker = document.getElementById('activePatternColor');
-const activePatternColorText = document.getElementById('activePatternText');
-
+// Initialize from saved state or defaults
 if (savedState) {
     gridWidth = Utils.clampInt(savedState.gridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_WIDTH);
     gridHeight = Utils.clampInt(savedState.gridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_HEIGHT);
@@ -1073,52 +981,26 @@ if (savedState) {
         activePatternIndex = 0;
     }
 } else {
-    const initialWidth = Utils.clampInt(gridWidth2Input.value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_WIDTH);
-    const initialHeight = Utils.clampInt(gridHeight2Input.value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.DEFAULT_GRID_HEIGHT);
-    const initialAspectRatio = Utils.clampFloat(aspectRatioSlider.value, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO, CONFIG.DEFAULT_ASPECT_RATIO);
-    const initialPreviewRepeatX = Utils.clampInt(previewRepeatXInput.value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.DEFAULT_PREVIEW_REPEAT);
-    const initialPreviewRepeatY = Utils.clampInt(previewRepeatYInput.value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.DEFAULT_PREVIEW_REPEAT);
-    const initialBackgroundColor = backgroundColorPicker.value || CONFIG.DEFAULT_BACKGROUND_COLOR;
-    const initialActivePatternColor = activePatternColorPicker.value || CONFIG.DEFAULT_PATTERN_COLOR;
-
-    gridWidth = initialWidth;
-    gridHeight = initialHeight;
-    aspectRatio = initialAspectRatio;
-    previewRepeatX = initialPreviewRepeatX;
-    previewRepeatY = initialPreviewRepeatY;
-    backgroundColor = initialBackgroundColor;
-    patternColors[0] = initialActivePatternColor;
+    gridWidth = CONFIG.DEFAULT_GRID_WIDTH;
+    gridHeight = CONFIG.DEFAULT_GRID_HEIGHT;
+    aspectRatio = CONFIG.DEFAULT_ASPECT_RATIO;
+    previewRepeatX = CONFIG.DEFAULT_PREVIEW_REPEAT;
+    previewRepeatY = CONFIG.DEFAULT_PREVIEW_REPEAT;
+    backgroundColor = CONFIG.DEFAULT_BACKGROUND_COLOR;
+    patternColors[0] = CONFIG.DEFAULT_PATTERN_COLOR;
 }
 
-// Update all UI inputs to match loaded/initialized state
-gridWidth2Input.value = gridWidth;
-gridHeight2Input.value = gridHeight;
-document.getElementById('widthDisplay2').textContent = gridWidth;
-document.getElementById('heightDisplay2').textContent = gridHeight;
+// Update all UI display elements to match loaded/initialized state
 
 const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
 const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
 if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
 if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
-aspectRatioSlider.value = aspectRatio;
-document.getElementById('ratioDisplay2').textContent = aspectRatio.toFixed(2);
-
-previewRepeatXInput.value = previewRepeatX;
-previewRepeatYInput.value = previewRepeatY;
-document.getElementById('repeatXDisplay').textContent = previewRepeatX;
-document.getElementById('repeatYDisplay').textContent = previewRepeatY;
-
 const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
 if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
 if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
-
-backgroundColorPicker.value = backgroundColor;
-backgroundColorText.value = backgroundColor;
-
-activePatternColorPicker.value = patternColors[activePatternIndex];
-activePatternColorText.value = patternColors[activePatternIndex];
 
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
@@ -1151,9 +1033,6 @@ const paletteManager = createPaletteManager({
 const renderPalette = paletteManager.renderPalette;
 const switchPalette = paletteManager.switchPalette;
 const updatePaletteUI = paletteManager.updatePaletteUI;
-
-// Initialize panel toggles
-const panelToggles = setupPanelToggles(announceToScreenReader, updateColorIndicators);
 
 // Initialize dropdowns
 setupDropdowns();
@@ -1212,81 +1091,24 @@ if (hasInteracted) {
     instructions.style.display = 'none';
 }
 
-// Color input controls using utility functions
-Utils.setupColorInput({
-    picker: 'activePatternColor',
-    text: 'activePatternText',
-    onChange: (color) => {
-        patternColors[activePatternIndex] = color;
-        createPatternColorButtons();
-        createNavbarColorButtons();
-        updateCanvas();
-        updateColorIndicators();
-        saveToLocalStorage();
-    }
-});
-
-Utils.setupColorInput({
-    picker: 'backgroundColor',
-    text: 'backgroundText',
-    onChange: (color) => {
-        backgroundColor = color;
-        createNavbarColorButtons();
-        updateCanvas();
-        updateColorIndicators();
-        saveToLocalStorage();
-    }
-});
-
-// Grid dimension controls
-Utils.setupNumberInput({
-    input: 'gridWidth2',
-    display: 'widthDisplay2',
-    min: CONFIG.MIN_GRID_SIZE,
-    max: CONFIG.MAX_GRID_SIZE,
-    defaultVal: CONFIG.DEFAULT_GRID_WIDTH,
-    onApply: applyGridWidth
-});
-
-Utils.setupNumberInput({
-    input: 'gridHeight2',
-    display: 'heightDisplay2',
-    min: CONFIG.MIN_GRID_SIZE,
-    max: CONFIG.MAX_GRID_SIZE,
-    defaultVal: CONFIG.DEFAULT_GRID_HEIGHT,
-    onApply: applyGridHeight
-});
-
-// Preview repeat controls
-Utils.setupNumberInput({
-    input: 'previewRepeatX',
-    display: 'repeatXDisplay',
-    min: CONFIG.MIN_PREVIEW_REPEAT,
-    max: CONFIG.MAX_PREVIEW_REPEAT,
-    defaultVal: CONFIG.DEFAULT_PREVIEW_REPEAT,
-    onApply: applyPreviewRepeatX
-});
-
-Utils.setupNumberInput({
-    input: 'previewRepeatY',
-    display: 'repeatYDisplay',
-    min: CONFIG.MIN_PREVIEW_REPEAT,
-    max: CONFIG.MAX_PREVIEW_REPEAT,
-    defaultVal: CONFIG.DEFAULT_PREVIEW_REPEAT,
-    onApply: applyPreviewRepeatY
-});
+// Grid dimension controls - now handled by contenteditable spans
+// (gridWidthDisplay and gridHeightDisplay elements)
 
 // Aspect Ratio controls
+// TODO: These controls need to be added to the hamburger menu section in the HTML
+// Commented out until the HTML elements are added
+/*
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
 const ratioPresetButtons = document.querySelectorAll('.ratio-preset-btn');
 const customRatioControls = document.getElementById('customRatioControls');
+const aspectRatioSlider = document.getElementById('aspectRatio2');
 
 const switchToCustomRatio = () => {
     ratioPresetButtons.forEach(b => b.classList.remove('active'));
     const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
     if (customBtn) {
         customBtn.classList.add('active');
-        customRatioControls.style.display = 'block';
+        if (customRatioControls) customRatioControls.style.display = 'block';
     }
 };
 
@@ -1300,8 +1122,8 @@ ratioPresetButtons.forEach(btn => {
         if (ratio !== 'custom') {
             const ratioValue = parseFloat(ratio);
             aspectRatio = ratioValue;
-            aspectRatioSlider.value = ratioValue;
-            ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
+            if (aspectRatioSlider) aspectRatioSlider.value = ratioValue;
+            if (ratioDisplay2) ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
             updateCanvas();
             saveToLocalStorage();
         }
@@ -1309,82 +1131,87 @@ ratioPresetButtons.forEach(btn => {
     });
 });
 
-aspectRatioSlider.oninput = (e) => {
-    switchToCustomRatio();
-    aspectRatio = parseFloat(e.target.value);
-    ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-    updateCanvas();
-    saveToLocalStorage();
-};
-
-ratioDisplay2.addEventListener('focus', () => {
-    switchToCustomRatio();
-});
-
-ratioDisplay2.addEventListener('input', (e) => {
-    const inputText = e.target.textContent.trim();
-    const val = Utils.displayToAspectRatio(inputText);
-    if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
-        aspectRatio = val;
-        aspectRatioSlider.value = val;
+if (aspectRatioSlider) {
+    aspectRatioSlider.oninput = (e) => {
+        switchToCustomRatio();
+        aspectRatio = parseFloat(e.target.value);
+        if (ratioDisplay2) ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
         updateCanvas();
         saveToLocalStorage();
-    }
-});
+    };
+}
 
-ratioDisplay2.addEventListener('blur', (e) => {
-    const inputText = e.target.textContent.trim();
-    let val = Utils.displayToAspectRatio(inputText);
+if (ratioDisplay2) {
+    ratioDisplay2.addEventListener('focus', () => {
+        switchToCustomRatio();
+    });
 
-    if (val === null) {
-        val = CONFIG.DEFAULT_ASPECT_RATIO;
-    }
-
-    val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
-
-    aspectRatio = val;
-    e.target.textContent = Utils.aspectRatioToDisplay(val);
-    aspectRatioSlider.value = val;
-    updateCanvas();
-    saveToLocalStorage();
-});
-
-ratioDisplay2.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        e.target.blur();
-    }
-});
-
-// Initialize button state and display based on current aspect ratio
-(() => {
-    const currentRatio = aspectRatio;
-    let matchedPreset = false;
-
-    ratioPresetButtons.forEach(btn => {
-        const ratio = btn.getAttribute('data-ratio');
-        if (ratio !== 'custom') {
-            const ratioValue = parseFloat(ratio);
-            if (Math.abs(currentRatio - ratioValue) < 0.01) {
-                btn.classList.add('active');
-                customRatioControls.style.display = 'none';
-                matchedPreset = true;
-            } else {
-                btn.classList.remove('active');
-            }
+    ratioDisplay2.addEventListener('input', (e) => {
+        const inputText = e.target.textContent.trim();
+        const val = Utils.displayToAspectRatio(inputText);
+        if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
+            aspectRatio = val;
+            if (aspectRatioSlider) aspectRatioSlider.value = val;
+            updateCanvas();
+            saveToLocalStorage();
         }
     });
 
-    if (!matchedPreset) {
-        const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-        if (customBtn) {
-            customBtn.classList.add('active');
-            customRatioControls.style.display = 'block';
-        }
-    }
+    ratioDisplay2.addEventListener('blur', (e) => {
+        const inputText = e.target.textContent.trim();
+        let val = Utils.displayToAspectRatio(inputText);
 
-    ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-})();
+        if (val === null) {
+            val = CONFIG.DEFAULT_ASPECT_RATIO;
+        }
+
+        val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
+
+        aspectRatio = val;
+        e.target.textContent = Utils.aspectRatioToDisplay(val);
+        if (aspectRatioSlider) aspectRatioSlider.value = val;
+        updateCanvas();
+        saveToLocalStorage();
+    });
+
+    ratioDisplay2.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
+    });
+
+    // Initialize button state and display based on current aspect ratio
+    (() => {
+        const currentRatio = aspectRatio;
+        let matchedPreset = false;
+
+        ratioPresetButtons.forEach(btn => {
+            const ratio = btn.getAttribute('data-ratio');
+            if (ratio !== 'custom') {
+                const ratioValue = parseFloat(ratio);
+                if (Math.abs(currentRatio - ratioValue) < 0.01) {
+                    btn.classList.add('active');
+                    if (customRatioControls) customRatioControls.style.display = 'none';
+                    matchedPreset = true;
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        });
+
+        if (!matchedPreset) {
+            const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
+            if (customBtn) {
+                customBtn.classList.add('active');
+                if (customRatioControls) customRatioControls.style.display = 'block';
+            }
+        }
+
+        ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
+    })();
+}
+*/
 
 // Inline Grid Dimension Controls
 const gridWidthDisplay = document.getElementById('gridWidthDisplay');

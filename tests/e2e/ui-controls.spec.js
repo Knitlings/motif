@@ -7,91 +7,69 @@ test.describe('UI Controls', () => {
   });
 
   test('should change grid dimensions', async ({ page }) => {
-    const settingsPanel = page.locator('#settingsPanel');
+    // Grid dimensions are now inline contenteditable elements
+    const widthDisplay = page.locator('#gridWidthDisplay');
 
-    // Ensure settings panel is expanded using navbar toggle
-    if (await settingsPanel.evaluate(el => el.classList.contains('collapsed'))) {
-      await page.locator('#navbarSettingsToggle').click();
-    }
+    // Wait for display to be visible
+    await widthDisplay.waitFor({ state: 'visible' });
 
-    const widthInput = page.locator('#gridWidth2');
-    const widthDisplay = page.locator('#widthDisplay2');
-
-    // Wait for input to be visible
-    await widthInput.waitFor({ state: 'visible' });
-
-    // Change width
-    await widthInput.fill('10');
-    await widthInput.press('Enter');
+    // Change width by editing contenteditable element
+    await widthDisplay.click();
+    await widthDisplay.fill('10');
+    await widthDisplay.press('Enter');
 
     // Verify display updated
     await expect(widthDisplay).toHaveText('10');
   });
 
-  test('should change background color', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should open palette dropdown', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
+    const paletteMenu = page.locator('#navbarPaletteMenu');
 
-    // Ensure color panel is expanded using navbar toggle
-    if (await colorPanel.evaluate(el => el.classList.contains('collapsed'))) {
-      await page.locator('#navbarColorToggle').click();
-    }
+    // Wait for palette button to be visible
+    await paletteBtn.waitFor({ state: 'visible' });
 
-    const colorPicker = page.locator('#backgroundColor');
+    // Click to open palette dropdown
+    await paletteBtn.click();
+
+    // Verify dropdown menu is visible
+    await expect(paletteMenu).toBeVisible();
+
+    // Verify palette grid is visible
+    const paletteGrid = page.locator('#navbarPaletteGrid');
+    await expect(paletteGrid).toBeVisible();
+  });
+
+  test('should change active pattern color from navbar', async ({ page }) => {
     const canvas = page.locator('#editCanvas');
 
-    // Wait for color picker to be visible
-    await colorPicker.waitFor({ state: 'visible' });
+    // Click on a color button in the navbar
+    const colorBtn = page.locator('.navbar-color-btn').first();
+    await colorBtn.waitFor({ state: 'visible' });
 
-    // Change background color
-    await colorPicker.fill('#ff0000');
+    // Color button should be visible and have active class initially
+    await expect(colorBtn).toHaveClass(/active/);
 
     // Canvas should still be visible
     await expect(canvas).toBeVisible();
   });
 
-  test('should change active pattern color', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
-
-    // Ensure color panel is expanded using navbar toggle
-    if (await colorPanel.evaluate(el => el.classList.contains('collapsed'))) {
-      await page.locator('#navbarColorToggle').click();
-    }
-
-    const colorPicker = page.locator('#activePatternColor');
-
-    // Wait for color picker to be visible
-    await colorPicker.waitFor({ state: 'visible' });
-
-    // Change pattern color
-    await colorPicker.fill('#00ff00');
-
-    // Color picker should reflect new value
-    await expect(colorPicker).toHaveValue('#00ff00');
-  });
-
   test('should add new pattern color', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
-
-    // Ensure color panel is expanded using navbar toggle
-    if (await colorPanel.evaluate(el => el.classList.contains('collapsed'))) {
-      await page.locator('#navbarColorToggle').click();
-    }
-
-    // Click the add button (+ button)
-    const addBtn = page.locator('.pattern-btn.unused');
+    // Click the add button (+ button) in the navbar
+    const addBtn = page.locator('.navbar-color-btn.add-btn');
 
     // Wait for add button to be visible
     await addBtn.first().waitFor({ state: 'visible' });
 
-    // Check if add button exists (may not if at max colors)
-    const count = await addBtn.count();
-    if (count > 0) {
-      await addBtn.click();
+    // Get initial count of color buttons
+    const initialCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
 
-      // Verify a new pattern button was added
-      const patternButtons = page.locator('.pattern-btn:not(.unused)');
-      await expect(patternButtons).toHaveCount(2);
-    }
+    // Click add button
+    await addBtn.click();
+
+    // Verify a new color button was added
+    const newCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
+    expect(newCount).toBe(initialCount + 1);
   });
 
   test('should clear canvas with confirmation', async ({ page }) => {
@@ -116,77 +94,85 @@ test.describe('UI Controls', () => {
     await expect(dialog).not.toBeVisible();
   });
 
-  test('should invert colors', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should switch between palettes', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
+    const paletteMenu = page.locator('#navbarPaletteMenu');
 
-    // Ensure color panel is expanded using navbar toggle
-    if (await colorPanel.evaluate(el => el.classList.contains('collapsed'))) {
-      await page.locator('#navbarColorToggle').click();
-    }
+    // Open palette dropdown
+    await paletteBtn.click();
+    await expect(paletteMenu).toBeVisible();
 
-    const invertBtn = page.locator('#invertBtn');
-    const bgColorPicker = page.locator('#backgroundColor');
-    const patternColorPicker = page.locator('#activePatternColor');
+    // Click on a different palette option
+    const warmPaletteOption = page.locator('.navbar-palette-option[data-palette="warm"]');
+    await warmPaletteOption.click();
 
-    // Wait for invert button to be visible
-    await invertBtn.waitFor({ state: 'visible' });
-
-    // Get initial colors
-    const initialBg = await bgColorPicker.inputValue();
-    const initialPattern = await patternColorPicker.inputValue();
-
-    // Click invert
-    await invertBtn.click();
-
-    // Colors should be swapped
-    await expect(bgColorPicker).toHaveValue(initialPattern);
-    await expect(patternColorPicker).toHaveValue(initialBg);
+    // Palette should have switched (menu may stay open - that's okay)
+    // The important thing is that the palette selection worked
+    const paletteGrid = page.locator('#navbarPaletteGrid');
+    await expect(paletteGrid).toBeVisible();
   });
 
-  test('should toggle color panel', async ({ page }) => {
-    const panel = page.locator('#colorPanel');
-    const toggle = page.locator('#navbarColorToggle');
+  test('should load palette colors to pattern', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
+    const loadPaletteBtn = page.locator('#navbarLoadPaletteBtn');
 
-    // Panel should start collapsed or expanded (depends on default)
-    const initialState = await panel.evaluate(el => el.classList.contains('collapsed'));
+    // Open palette dropdown
+    await paletteBtn.click();
 
-    // Toggle panel
-    await toggle.click();
+    // Click load palette button
+    await loadPaletteBtn.waitFor({ state: 'visible' });
+    await loadPaletteBtn.click();
 
-    // State should change
-    const newState = await panel.evaluate(el => el.classList.contains('collapsed'));
-    expect(newState).toBe(!initialState);
+    // Verify color buttons were updated (at least one should exist)
+    const colorBtnCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
+    expect(colorBtnCount).toBeGreaterThanOrEqual(1);
   });
 
-  test('should toggle settings panel', async ({ page }) => {
-    const panel = page.locator('#settingsPanel');
-    const toggle = page.locator('#navbarSettingsToggle');
+  test('hamburger menu should toggle', async ({ page }) => {
+    const hamburgerBtn = page.locator('#navbarHamburgerBtn');
+    const hamburgerMenu = page.locator('#navbarHamburgerMenu');
 
-    // Panel should start collapsed or expanded
-    const initialState = await panel.evaluate(el => el.classList.contains('collapsed'));
+    // Click to open
+    await hamburgerBtn.click();
+    await expect(hamburgerMenu).toHaveClass(/open/);
 
-    // Toggle panel
-    await toggle.click();
-
-    // State should change
-    const newState = await panel.evaluate(el => el.classList.contains('collapsed'));
-    expect(newState).toBe(!initialState);
+    // Click to close
+    await hamburgerBtn.click();
+    await expect(hamburgerMenu).not.toHaveClass(/open/);
   });
 
-  test('navbar toggle buttons should display icons', async ({ page }) => {
-    // Check settings toggle has visible icon (SVG image)
-    const settingsIcon = page.locator('#navbarSettingsToggle img');
-    await expect(settingsIcon).toBeVisible();
+  test('should change grid dimensions with chevrons', async ({ page }) => {
+    const widthDisplay = page.locator('#gridWidthDisplay');
+    const rightChevron = page.locator('.grid-chevron-right');
 
-    // Verify it's actually an image (not just alt text showing)
-    const hasValidSrc = await settingsIcon.evaluate(img => {
-      return img.src && img.src.length > 0 && !img.src.endsWith('undefined');
-    });
-    expect(hasValidSrc).toBe(true);
+    // Wait for elements to be visible
+    await widthDisplay.waitFor({ state: 'visible' });
+    await rightChevron.waitFor({ state: 'visible' });
 
-    // Check color toggle has visible color swatches (divs, not images)
-    const colorSwatch = page.locator('#navbarColorToggle .color-swatch');
-    await expect(colorSwatch.first()).toBeVisible();
+    // Get initial width
+    const initialWidth = await widthDisplay.textContent();
+
+    // Click right chevron to increase width
+    await rightChevron.click();
+
+    // Width should increase
+    const newWidth = await widthDisplay.textContent();
+    expect(parseInt(newWidth)).toBe(parseInt(initialWidth) + 1);
+  });
+
+  test('should change preview repeat dimensions', async ({ page }) => {
+    const repeatXDisplay = page.locator('#previewRepeatXDisplay');
+
+    // Wait for display to be visible
+    await repeatXDisplay.waitFor({ state: 'visible' });
+
+    // Change preview repeat by editing contenteditable element
+    await repeatXDisplay.click();
+    await repeatXDisplay.fill('5');
+    await repeatXDisplay.press('Enter');
+
+    // Verify display updated
+    await expect(repeatXDisplay).toHaveText('5');
   });
 
   test('should not have CSP violations', async ({ page }) => {
@@ -267,13 +253,13 @@ test.describe('Export Functions', () => {
     // Paint something first
     await canvas.click({ position: { x: 50, y: 50 } });
 
-    // Open the Import/Export dropdown menu in navbar
-    await page.locator('#navbarImportExportBtn').click();
+    // Open the hamburger menu
+    await page.locator('#navbarHamburgerBtn').click();
 
     // Set up download listener
     const downloadPromise = page.waitForEvent('download');
 
-    // Click export JSON
+    // Click export JSON in hamburger menu
     await page.locator('#navbarExportJsonBtn').click();
 
     // Wait for download

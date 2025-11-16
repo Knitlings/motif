@@ -5,41 +5,6 @@
 
 /* Tablet and below (1024px and under) - matches MOBILE_BREAKPOINT in config.js */
 @media (max-width: 1024px) {
-    /* === SIDE PANELS === */
-    /* Make panels full-screen overlays on mobile */
-    .side-panel {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        width: 100% !important;
-        min-width: 100% !important;
-        max-width: 100%;
-        height: 100vh;
-        z-index: 300;
-        border: none;
-    }
-
-    .side-panel.right-panel {
-        left: 0;
-        right: 0;
-        border: none;
-    }
-
-    .side-panel.collapsed {
-        display: none;
-    }
-
-    .panel-content {
-        padding: var(--space-8) var(--space-6);
-        padding-top: 80px; /* Space for close button */
-    }
-
-    /* Show close button on mobile */
-    .panel-close-btn {
-        display: flex;
-    }
-
     /* === NAVBAR === */
     /* Adjust navbar for mobile */
     .header-navbar {
@@ -298,12 +263,6 @@
     .canvas-container {
         padding: var(--space-4) var(--space-3);
         gap: var(--space-6);
-    }
-
-    /* Reduce panel content padding */
-    .panel-content {
-        padding: var(--space-6) var(--space-4);
-        padding-top: 72px;
     }
 }
 
