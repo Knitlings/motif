@@ -200,8 +200,9 @@ export const CanvasManager = {
         const canFitSideBySide = totalWidthSideBySide <= availableWidth;
 
         // Decide on final layout and calculate cell sizes accordingly
+        // Force stacking on mobile portrait to maximize grid size
         let cellSize, shouldStack;
-        if (canFitSideBySide) {
+        if (canFitSideBySide && !(isMobile && !isLandscape)) {
             // Use the side-by-side cell size
             cellSize = cellSizeSideBySide;
             shouldStack = false;

@@ -3,8 +3,8 @@
    Media queries for mobile and tablet devices
    ============================================ */
 
-/* Tablet and below (768px and under) */
-@media (max-width: 768px) {
+/* Tablet and below (1024px and under) - matches MOBILE_BREAKPOINT in config.js */
+@media (max-width: 1024px) {
     /* === SIDE PANELS === */
     /* Make panels full-screen overlays on mobile */
     .side-panel {

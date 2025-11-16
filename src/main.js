@@ -1443,7 +1443,16 @@ setupContenteditableDimension(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG
 // Grid chevron buttons
 const gridChevrons = document.querySelectorAll('.grid-chevron');
 gridChevrons.forEach(btn => {
+    let pressTimer = null;
+    let isLongPress = false;
+
     btn.addEventListener('click', (e) => {
+        // Ignore if this was a long press (already handled)
+        if (isLongPress) {
+            isLongPress = false;
+            return;
+        }
+
         const dimension = btn.getAttribute('data-dimension');
         const direction = btn.getAttribute('data-direction');
 
@@ -1460,6 +1469,46 @@ gridChevrons.forEach(btn => {
         }
 
         applyGridResizeFromEdge(edgeDirection, delta);
+    });
+
+    // Touch long press for remove (same as shift+click)
+    btn.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            const dimension = btn.getAttribute('data-dimension');
+            const direction = btn.getAttribute('data-direction');
+
+            // Map data-direction to edge direction
+            let edgeDirection;
+            if (dimension === 'width') {
+                edgeDirection = direction === 'decrease' ? 'left' : 'right';
+            } else if (dimension === 'height') {
+                edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
+            }
+
+            applyGridResizeFromEdge(edgeDirection, -1); // Remove row/column
+
+            // Haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }, 500); // 500ms for long press
+    }, { passive: true });
+
+    btn.addEventListener('touchend', (e) => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    });
+
+    btn.addEventListener('touchcancel', (e) => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+        isLongPress = false;
     });
 });
 
@@ -1561,6 +1610,9 @@ let isResizing = false;
 let resizeDirection = null;
 let resizeStartSize = null;
 let resizeStartPos = null;
+let touchStartPos = null;
+let currentHandle = null;
+let resizeInitiated = false;
 
 // Helper function to start resize (works for both mouse and touch)
 function startResize(handle, clientX, clientY) {
@@ -1592,13 +1644,13 @@ resizeHandles.forEach(handle => {
         startResize(handle, e.clientX, e.clientY);
     });
 
-    // Touch events
+    // Touch events - delay resize start until we detect intentional drag
     handle.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
         const touch = e.touches[0];
-        startResize(handle, touch.clientX, touch.clientY);
-    }, { passive: false });
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+        currentHandle = handle;
+        resizeInitiated = false;
+    }, { passive: true });
 });
 
 // Helper function to handle resize movement (works for both mouse and touch)
@@ -1673,15 +1725,45 @@ document.addEventListener('touchmove', (e) => {
         e.preventDefault();
         const touch = e.touches[0];
         handleResizeMove(touch.clientX, touch.clientY);
+    } else if (touchStartPos && currentHandle && !resizeInitiated) {
+        // Check if user is intentionally dragging the handle (not just scrolling)
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+        const direction = currentHandle.dataset.direction;
+
+        // Require 10px threshold and directional intent
+        const threshold = 10;
+        let shouldStartResize = false;
+
+        if ((direction === 'left' || direction === 'right') && deltaX > threshold) {
+            // For horizontal handles, horizontal movement should dominate
+            shouldStartResize = deltaX > deltaY * 1.5;
+        } else if ((direction === 'top' || direction === 'bottom') && deltaY > threshold) {
+            // For vertical handles, vertical movement should dominate
+            shouldStartResize = deltaY > deltaX * 1.5;
+        }
+
+        if (shouldStartResize) {
+            e.preventDefault();
+            resizeInitiated = true;
+            startResize(currentHandle, touchStartPos.x, touchStartPos.y);
+        }
     }
 }, { passive: false });
 
 document.addEventListener('touchend', () => {
     endResize();
+    touchStartPos = null;
+    currentHandle = null;
+    resizeInitiated = false;
 });
 
 document.addEventListener('touchcancel', () => {
     endResize();
+    touchStartPos = null;
+    currentHandle = null;
+    resizeInitiated = false;
 });
 
 // Keyboard shortcuts - Moved to src/ui/keyboard.js

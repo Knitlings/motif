@@ -155,14 +155,14 @@
                 <!-- Create Canvas -->
                 <section class="canvas-section" aria-labelledby="create-heading">
                     <div id="create-heading" class="canvas-heading grid-control" role="region" aria-label="Grid dimensions">
-                        <button class="grid-chevron grid-chevron-left" data-dimension="width" data-direction="decrease" aria-label="Add column to left (Shift+click to remove)">←</button>
-                        <button class="grid-chevron grid-chevron-up" data-dimension="height" data-direction="decrease" aria-label="Add row to top (Shift+click to remove)">↑</button>
+                        <button class="grid-chevron grid-chevron-left" data-dimension="width" data-direction="decrease" aria-label="Add column to left (Shift+click or long-press to remove)">←</button>
+                        <button class="grid-chevron grid-chevron-up" data-dimension="height" data-direction="decrease" aria-label="Add row to top (Shift+click or long-press to remove)">↑</button>
                         <span class="grid-control-label">Grid</span>
                         <span class="grid-dimension" id="gridWidthDisplay" contenteditable="true" role="textbox" aria-label="Grid width" spellcheck="false">5</span>
                         <span class="grid-control-separator">×</span>
                         <span class="grid-dimension" id="gridHeightDisplay" contenteditable="true" role="textbox" aria-label="Grid height" spellcheck="false">5</span>
-                        <button class="grid-chevron grid-chevron-down" data-dimension="height" data-direction="increase" aria-label="Add row to bottom (Shift+click to remove)">↓</button>
-                        <button class="grid-chevron grid-chevron-right" data-dimension="width" data-direction="increase" aria-label="Add column to right (Shift+click to remove)">→</button>
+                        <button class="grid-chevron grid-chevron-down" data-dimension="height" data-direction="increase" aria-label="Add row to bottom (Shift+click or long-press to remove)">↓</button>
+                        <button class="grid-chevron grid-chevron-right" data-dimension="width" data-direction="increase" aria-label="Add column to right (Shift+click or long-press to remove)">→</button>
                     </div>
                     <div class="canvas-wrapper">
                         <div class="canvas-resize-container">
@@ -233,7 +233,7 @@
                     <h3>Cell Aspect Ratio</h3>
                     <div class="ratio-preset-group" role="group" aria-label="Aspect ratio presets">
                         <button class="ratio-preset-btn active" data-ratio="1.0" aria-pressed="true">Square 1:1</button>
-                        <button class="ratio-preset-btn" data-ratio="0.75" aria-pressed="false">Knit 4:3</button>
+                        <button class="ratio-preset-btn" data-ratio="0.75" aria-pressed="false">Knit stitch 4:3</button>
                         <button class="ratio-preset-btn" data-ratio="custom" aria-pressed="false">Custom</button>
                     </div>
                     <div class="input-group" id="customRatioControls" style="display: none; margin-top: var(--space-3);">
