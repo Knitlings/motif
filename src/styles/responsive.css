@@ -71,13 +71,67 @@
         font-size: 28px;
     }
 
-    /* Hide color preview in navbar center on mobile */
-    .navbar-center {
+    /* Hide navbar branding on mobile and portrait tablets to save space */
+    .navbar-branding {
         display: none;
     }
 
-    #navbarColorPreview {
-        display: none !important;
+    /* Show navbar center on mobile (contains color buttons and palette) */
+    /* Use static positioning instead of absolute to prevent overlap with hamburger */
+    .navbar-center {
+        position: static;
+        transform: none;
+        display: flex;
+        gap: var(--space-2);
+        flex: 1;
+        justify-content: center;
+        max-width: 100%;
+    }
+
+    /* Make color buttons slightly smaller on mobile */
+    .navbar-color-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    /* Match overflow menu button sizes */
+    .navbar-overflow-color-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    /* Make palette dropdown button smaller */
+    .navbar-palette-dropdown-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .navbar-palette-preview {
+        width: 22px;
+        height: 22px;
+    }
+
+    /* Make palette dropdown colors smaller on mobile */
+    .navbar-palette-color,
+    .navbar-palette-add-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Ensure palette dropdown doesn't overflow screen */
+    .navbar-palette-dropdown-menu {
+        max-width: calc(100vw - var(--space-8));
+        left: auto;
+        right: 0;
+        transform: none;
     }
 
     /* Adjust dropdown positioning */
@@ -175,9 +229,9 @@
     }
 }
 
-/* Landscape orientation on mobile/tablet - hide headings to save vertical space */
-@media (max-width: 1024px) and (orientation: landscape) {
-    .canvas-heading {
+/* Tablets and smaller (both orientations) - hide branding for more color button space */
+@media (max-width: 1024px) {
+    .navbar-branding {
         display: none;
     }
 }
@@ -202,6 +256,42 @@
     /* Stack navbar nav items if needed */
     .navbar-nav {
         gap: var(--space-3);
+    }
+
+    /* Make color UI even smaller on very small screens */
+    .navbar-color-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+    }
+
+    .navbar-overflow-color-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+    }
+
+    .navbar-palette-dropdown-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
+        padding: 3px;
+        gap: 3px;
+    }
+
+    .navbar-palette-preview {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Smaller palette dropdown colors */
+    .navbar-palette-color,
+    .navbar-palette-add-btn {
+        width: 28px;
+        height: 28px;
     }
 
     /* Reduce canvas padding further */
@@ -253,5 +343,58 @@
     /* Smaller dropdown button text */
     .navbar-dropdown-btn {
         font-size: var(--font-size-xs);
+    }
+
+    /* Further reduce color UI for very small screens */
+    .navbar-color-btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        min-height: 26px;
+        border-width: 1px;
+    }
+
+    .navbar-overflow-color-btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        min-height: 26px;
+        border-width: 1px;
+    }
+
+    .navbar-palette-dropdown-btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        min-height: 26px;
+        padding: 3px;
+        gap: 0;
+    }
+
+    .navbar-palette-preview {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Hide dropdown arrow on very small screens to save space */
+    .navbar-dropdown-arrow {
+        display: none;
+    }
+
+    /* Reduce gap in navbar center */
+    .navbar-center {
+        gap: var(--space-1);
+    }
+
+    /* Even smaller palette dropdown colors */
+    .navbar-palette-color,
+    .navbar-palette-add-btn {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Reduce grid to 3 columns on very small screens */
+    .navbar-palette-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }

@@ -130,6 +130,14 @@
                     <label for="navbarImportJsonInput" class="navbar-hamburger-item" role="menuitem" tabindex="0">Import JSON</label>
                     <a href="#" id="navbarExportJsonBtn" class="navbar-hamburger-item" role="menuitem">Export JSON</a>
                     <div class="navbar-hamburger-divider"></div>
+                    <button class="navbar-hamburger-item navbar-hamburger-expandable" id="cellAspectRatioToggle" aria-expanded="false" aria-controls="cellAspectRatioSection">
+                        Cell Aspect Ratio
+                        <span class="navbar-hamburger-arrow" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="navbar-hamburger-section" id="cellAspectRatioSection" style="display: none;">
+                        <!-- Aspect ratio controls will be moved here -->
+                    </div>
+                    <div class="navbar-hamburger-divider"></div>
                     <a href="/about.html" class="navbar-hamburger-item" role="menuitem">About</a>
                     <a href="/help.html" class="navbar-hamburger-item" role="menuitem">Help</a>
                     <input type="file" id="navbarImportJsonInput" accept=".json" style="display: none;" aria-label="Import JSON file">
@@ -146,7 +154,16 @@
             <div class="canvas-container">
                 <!-- Create Canvas -->
                 <section class="canvas-section" aria-labelledby="create-heading">
-                    <h2 id="create-heading" class="canvas-heading">Create</h2>
+                    <div id="create-heading" class="canvas-heading grid-control" role="region" aria-label="Grid dimensions">
+                        <button class="grid-chevron grid-chevron-left" data-dimension="width" data-direction="decrease" aria-label="Add column to left (Shift+click to remove)">←</button>
+                        <button class="grid-chevron grid-chevron-up" data-dimension="height" data-direction="decrease" aria-label="Add row to top (Shift+click to remove)">↑</button>
+                        <span class="grid-control-label">Grid</span>
+                        <span class="grid-dimension" id="gridWidthDisplay" contenteditable="true" role="textbox" aria-label="Grid width" spellcheck="false">5</span>
+                        <span class="grid-control-separator">×</span>
+                        <span class="grid-dimension" id="gridHeightDisplay" contenteditable="true" role="textbox" aria-label="Grid height" spellcheck="false">5</span>
+                        <button class="grid-chevron grid-chevron-down" data-dimension="height" data-direction="increase" aria-label="Add row to bottom (Shift+click to remove)">↓</button>
+                        <button class="grid-chevron grid-chevron-right" data-dimension="width" data-direction="increase" aria-label="Add column to right (Shift+click to remove)">→</button>
+                    </div>
                     <div class="canvas-wrapper">
                         <div class="canvas-resize-container">
                             <canvas id="editCanvas" role="img" aria-label="Grid pattern editor canvas - click to paint, shift-click to erase"></canvas>
@@ -176,13 +193,17 @@
                                 <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Download as SVG</a>
                             </div>
                         </div>
-                        <a href="#" class="text-link" id="gridSettingsLink" aria-label="Open grid settings">Grid Settings</a>
                     </div>
                 </section>
 
                 <!-- Preview Canvas -->
                 <section class="canvas-section" aria-labelledby="preview-heading">
-                    <h2 id="preview-heading" class="canvas-heading">Preview</h2>
+                    <div id="preview-heading" class="canvas-heading grid-control" role="region" aria-label="Preview repeats">
+                        <span class="grid-control-label">Preview</span>
+                        <span class="grid-dimension" id="previewRepeatXDisplay" contenteditable="true" role="textbox" aria-label="Horizontal repeats" spellcheck="false">3</span>
+                        <span class="grid-control-separator">×</span>
+                        <span class="grid-dimension" id="previewRepeatYDisplay" contenteditable="true" role="textbox" aria-label="Vertical repeats" spellcheck="false">3</span>
+                    </div>
                     <div class="canvas-wrapper">
                         <canvas id="previewCanvas" role="img" aria-label="Tiled pattern preview"></canvas>
                     </div>
@@ -194,17 +215,17 @@
         <aside class="side-panel right-panel collapsed" id="settingsPanel" aria-label="Settings controls" aria-expanded="false">
             <div class="panel-content">
                 <button class="panel-close-btn" id="settingsPanelClose" aria-label="Close settings panel">×</button>
-                <!-- Grid Dimensions -->
-                <div>
-                    <h3>Grid Dimensions</h3>
-                    <div class="input-group">
-                        <label for="gridWidth2">Width: <span id="widthDisplay2">5</span> <span class="hint">(2-100)</span></label>
-                        <input type="number" id="gridWidth2" min="2" max="100" value="5" aria-label="Grid width">
-                    </div>
-                    <div class="input-group">
-                        <label for="gridHeight2">Height: <span id="heightDisplay2">5</span> <span class="hint">(2-100)</span></label>
-                        <input type="number" id="gridHeight2" min="2" max="100" value="5" aria-label="Grid height">
-                    </div>
+
+                <!-- Hidden inputs for backward compatibility -->
+                <div style="display: none;">
+                    <input type="number" id="gridWidth2" min="2" max="100" value="5" aria-label="Grid width">
+                    <span id="widthDisplay2">5</span>
+                    <input type="number" id="gridHeight2" min="2" max="100" value="5" aria-label="Grid height">
+                    <span id="heightDisplay2">5</span>
+                    <input type="number" id="previewRepeatX" min="1" max="10" value="3" aria-label="Horizontal repeat count">
+                    <span id="repeatXDisplay">3</span>
+                    <input type="number" id="previewRepeatY" min="1" max="10" value="3" aria-label="Vertical repeat count">
+                    <span id="repeatYDisplay">3</span>
                 </div>
 
                 <!-- Aspect Ratio -->
@@ -218,19 +239,6 @@
                     <div class="input-group" id="customRatioControls" style="display: none; margin-top: var(--space-3);">
                         <label for="aspectRatio2">Ratio: <span id="ratioDisplay2" contenteditable="true" role="textbox" aria-label="Custom aspect ratio" style="cursor: text;">1:1</span> <span class="hint">(10:1 to 1:10)</span></label>
                         <input type="range" id="aspectRatio2" min="0.1" max="10" step="0.1" value="1" aria-label="Aspect ratio slider">
-                    </div>
-                </div>
-
-                <!-- Preview Repeats -->
-                <div>
-                    <h3>Preview Repeats</h3>
-                    <div class="input-group">
-                        <label for="previewRepeatX">Horizontal: <span id="repeatXDisplay">3</span> <span class="hint">(1-10)</span></label>
-                        <input type="number" id="previewRepeatX" min="1" max="10" value="3" aria-label="Horizontal repeat count">
-                    </div>
-                    <div class="input-group">
-                        <label for="previewRepeatY">Vertical: <span id="repeatYDisplay">3</span> <span class="hint">(1-10)</span></label>
-                        <input type="number" id="previewRepeatY" min="1" max="10" value="3" aria-label="Vertical repeat count">
                     </div>
                 </div>
             </div>

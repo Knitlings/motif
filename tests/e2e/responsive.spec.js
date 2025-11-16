@@ -2,15 +2,8 @@ import { test, expect } from '@playwright/test';
 
 // Helper function to add a second pattern color
 async function addSecondPatternColor(page) {
-  const colorPanel = page.locator('#colorPanel');
-
-  // Ensure color panel is expanded
-  if (await colorPanel.evaluate(el => el.classList.contains('collapsed'))) {
-    await page.locator('#navbarColorToggle').click();
-  }
-
-  // Click the add button (+ button)
-  const addBtn = page.locator('.pattern-btn.unused').first();
+  // Click the add button (+ button) in the navbar
+  const addBtn = page.locator('.navbar-color-btn.add-btn').first();
   await addBtn.waitFor({ state: 'visible' });
   await addBtn.click();
 }
@@ -25,56 +18,55 @@ test.describe('Desktop Layout (>768px)', () => {
     await page.waitForSelector('#editCanvas');
   });
 
-  test('should show color preview circles when multiple colors exist', async ({ page }) => {
-    const colorPreview = page.locator('#navbarColorPreview');
+  test('should show color buttons in navbar center', async ({ page }) => {
+    const navbarCenter = page.locator('.navbar-center');
+    const colorButtons = page.locator('.navbar-color-buttons');
 
-    // Initially should not be visible (only 1 color)
-    await expect(colorPreview).not.toHaveClass(/visible/);
+    // Navbar center should be visible
+    await expect(navbarCenter).toBeVisible();
+    await expect(colorButtons).toBeVisible();
+
+    // Should have at least one color button initially
+    const colorBtnCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
+    expect(colorBtnCount).toBeGreaterThanOrEqual(1);
 
     // Add a second color
     await addSecondPatternColor(page);
 
-    // Now should be visible with 2+ colors
-    await expect(colorPreview).toHaveClass(/visible/);
-    await expect(colorPreview).toBeVisible();
+    // Now should have 2 color buttons
+    const newColorBtnCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
+    expect(newColorBtnCount).toBe(2);
   });
 
-  test('should show color panel as sidebar', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should show palette dropdown in navbar', async ({ page }) => {
+    const paletteDropdown = page.locator('.navbar-palette-dropdown-container');
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
 
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
+    // Palette dropdown should be visible
+    await expect(paletteDropdown).toBeVisible();
+    await expect(paletteBtn).toBeVisible();
 
-    // Panel should not have display: none
-    await expect(colorPanel).not.toHaveCSS('display', 'none');
+    // Click to open dropdown
+    await paletteBtn.click();
 
-    // Panel should be positioned on the left
-    await expect(colorPanel).toHaveCSS('left', '0px');
-
-    // Panel should have specific width (not 100%)
-    const width = await colorPanel.evaluate(el => {
-      return window.getComputedStyle(el).width;
-    });
-    expect(width).not.toBe('100%');
+    // Dropdown menu should be visible
+    const paletteMenu = page.locator('.navbar-palette-dropdown-menu');
+    await expect(paletteMenu).toBeVisible();
   });
 
-  test('should show settings panel as sidebar', async ({ page }) => {
-    const settingsPanel = page.locator('#settingsPanel');
+  test('should show hamburger menu in navbar', async ({ page }) => {
+    const hamburgerBtn = page.locator('#navbarHamburgerBtn');
+    const hamburgerMenu = page.locator('#navbarHamburgerMenu');
 
-    // Open settings panel
-    await page.locator('#navbarSettingsToggle').click();
+    // Hamburger button should be visible
+    await expect(hamburgerBtn).toBeVisible();
 
-    // Panel should not have display: none
-    await expect(settingsPanel).not.toHaveCSS('display', 'none');
+    // Click to open menu
+    await hamburgerBtn.click();
 
-    // Panel should be positioned on the right
-    await expect(settingsPanel).toHaveCSS('right', '0px');
-
-    // Panel should have specific width (not 100%)
-    const width = await settingsPanel.evaluate(el => {
-      return window.getComputedStyle(el).width;
-    });
-    expect(width).not.toBe('100%');
+    // Menu should be visible
+    await expect(hamburgerMenu).toHaveClass(/open/);
+    await expect(hamburgerMenu).toBeVisible();
   });
 
   test('should have navbar height of 64px', async ({ page }) => {
@@ -101,55 +93,41 @@ test.describe('Tablet Layout (768px)', () => {
     await page.waitForSelector('#editCanvas');
   });
 
-  test('should hide color preview circles', async ({ page }) => {
-    const colorPreview = page.locator('#navbarColorPreview');
+  test('should show color buttons in navbar center', async ({ page }) => {
+    const navbarCenter = page.locator('.navbar-center');
+    const colorButtons = page.locator('.navbar-color-buttons');
 
-    // Add a second color
-    await addSecondPatternColor(page);
+    // Navbar center should be visible on tablet
+    await expect(navbarCenter).toBeVisible();
+    await expect(colorButtons).toBeVisible();
 
-    // Color preview should be hidden on tablet
-    await expect(colorPreview).toHaveCSS('display', 'none');
+    // Color buttons should be visible
+    const colorBtn = page.locator('.navbar-color-btn').first();
+    await expect(colorBtn).toBeVisible();
   });
 
-  test('should show color panel as full-screen overlay', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should have smaller color buttons (32x32px)', async ({ page }) => {
+    const colorBtn = page.locator('.navbar-color-btn').first();
 
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
-
-    // Panel should be full-screen (check position properties)
-    await expect(colorPanel).toHaveCSS('position', 'fixed');
-    await expect(colorPanel).toHaveCSS('top', '0px');
-    await expect(colorPanel).toHaveCSS('left', '0px');
-    await expect(colorPanel).toHaveCSS('right', '0px');
+    const box = await colorBtn.boundingBox();
+    expect(box.width).toBe(32);
+    expect(box.height).toBe(32);
   });
 
-  test('should show close button in panels', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
-    const closeBtn = page.locator('#colorPanelClose');
+  test('should show palette dropdown', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
 
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
+    // Palette dropdown button should be visible
+    await expect(paletteBtn).toBeVisible();
 
-    // Close button should be visible on tablet
-    await expect(closeBtn).toBeVisible();
-
-    // Should be able to close with button
-    await closeBtn.click();
-    await expect(colorPanel).toHaveClass(/collapsed/);
+    const box = await paletteBtn.boundingBox();
+    expect(box.width).toBe(32);
+    expect(box.height).toBe(32);
   });
 
   test('should have navbar height of 56px', async ({ page }) => {
     const navbar = page.locator('.header-navbar');
     await expect(navbar).toHaveCSS('height', '56px');
-  });
-
-  test('should have larger touch target buttons (44x44px)', async ({ page }) => {
-    const colorToggle = page.locator('#navbarColorToggle');
-
-    const box = await colorToggle.boundingBox();
-    expect(box.width).toBe(44);
-    expect(box.height).toBe(44);
   });
 });
 
@@ -163,73 +141,41 @@ test.describe('Mobile Layout (375px)', () => {
     await page.waitForSelector('#editCanvas');
   });
 
-  test('should hide color preview circles', async ({ page }) => {
-    const colorPreview = page.locator('#navbarColorPreview');
+  test('should show color buttons in navbar center', async ({ page }) => {
+    const navbarCenter = page.locator('.navbar-center');
+    const colorButtons = page.locator('.navbar-color-buttons');
 
-    // Add a second color
-    await addSecondPatternColor(page);
+    // Navbar center should be visible on mobile
+    await expect(navbarCenter).toBeVisible();
+    await expect(colorButtons).toBeVisible();
 
-    // Color preview should be hidden on mobile
-    await expect(colorPreview).toHaveCSS('display', 'none');
+    // Color buttons should be visible
+    const colorBtn = page.locator('.navbar-color-btn').first();
+    await expect(colorBtn).toBeVisible();
   });
 
-  test('should show color panel as full-screen overlay', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should have even smaller color buttons (28x28px)', async ({ page }) => {
+    const colorBtn = page.locator('.navbar-color-btn').first();
 
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
-
-    // Panel should be full-screen (check position properties)
-    await expect(colorPanel).toHaveCSS('position', 'fixed');
-    await expect(colorPanel).toHaveCSS('top', '0px');
-    await expect(colorPanel).toHaveCSS('left', '0px');
-    await expect(colorPanel).toHaveCSS('right', '0px');
+    const box = await colorBtn.boundingBox();
+    expect(box.width).toBe(28);
+    expect(box.height).toBe(28);
   });
 
-  test('should show settings panel as full-screen overlay', async ({ page }) => {
-    const settingsPanel = page.locator('#settingsPanel');
+  test('should show palette dropdown', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
 
-    // Open settings panel
-    await page.locator('#navbarSettingsToggle').click();
+    // Palette dropdown button should be visible
+    await expect(paletteBtn).toBeVisible();
 
-    // Panel should be full-screen (check position properties)
-    await expect(settingsPanel).toHaveCSS('position', 'fixed');
-    await expect(settingsPanel).toHaveCSS('top', '0px');
-    await expect(settingsPanel).toHaveCSS('left', '0px');
-    await expect(settingsPanel).toHaveCSS('right', '0px');
+    const box = await paletteBtn.boundingBox();
+    expect(box.width).toBe(28);
+    expect(box.height).toBe(28);
   });
 
   test('should have navbar height of 56px', async ({ page }) => {
     const navbar = page.locator('.header-navbar');
     await expect(navbar).toHaveCSS('height', '56px');
-  });
-
-  test('should have larger touch target buttons (44x44px)', async ({ page }) => {
-    const colorToggle = page.locator('#navbarColorToggle');
-
-    const box = await colorToggle.boundingBox();
-    expect(box.width).toBe(44);
-    expect(box.height).toBe(44);
-  });
-
-  test('should show close button in color panel', async ({ page }) => {
-    const closeBtn = page.locator('#colorPanelClose');
-
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
-
-    // Close button should be visible on mobile
-    await expect(closeBtn).toBeVisible();
-  });
-
-  test('should show close button in settings panel', async ({ page }) => {
-    const closeBtn = page.locator('#settingsPanelClose');
-
-    // Open settings panel
-    await page.locator('#navbarSettingsToggle').click();
-
-    // Close button should be visible on mobile
-    await expect(closeBtn).toBeVisible();
   });
 
   test('should have working grid resize handles', async ({ page }) => {
@@ -258,35 +204,49 @@ test.describe('Small Mobile Layout (360px)', () => {
     await page.waitForSelector('#editCanvas');
   });
 
-  test('should hide color preview circles', async ({ page }) => {
-    const colorPreview = page.locator('#navbarColorPreview');
+  test('should show color buttons in navbar center', async ({ page }) => {
+    const navbarCenter = page.locator('.navbar-center');
+    const colorButtons = page.locator('.navbar-color-buttons');
 
-    // Add a second color
-    await addSecondPatternColor(page);
-
-    // Color preview should be hidden on small mobile
-    await expect(colorPreview).toHaveCSS('display', 'none');
+    // Navbar center should be visible on small mobile
+    await expect(navbarCenter).toBeVisible();
+    await expect(colorButtons).toBeVisible();
   });
 
-  test('should have slightly smaller buttons (40x40px)', async ({ page }) => {
-    const colorToggle = page.locator('#navbarColorToggle');
+  test('should have smallest color buttons (26x26px)', async ({ page }) => {
+    const colorBtn = page.locator('.navbar-color-btn').first();
 
-    const box = await colorToggle.boundingBox();
-    expect(box.width).toBe(40);
-    expect(box.height).toBe(40);
+    const box = await colorBtn.boundingBox();
+    expect(box.width).toBe(26);
+    expect(box.height).toBe(26);
   });
 
-  test('should show panels as full-screen overlay', async ({ page }) => {
-    const colorPanel = page.locator('#colorPanel');
+  test('should show palette dropdown', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
 
-    // Open color panel
-    await page.locator('#navbarColorToggle').click();
+    // Palette dropdown button should be visible
+    await expect(paletteBtn).toBeVisible();
 
-    // Panel should be full-screen even on small devices (check position properties)
-    await expect(colorPanel).toHaveCSS('position', 'fixed');
-    await expect(colorPanel).toHaveCSS('top', '0px');
-    await expect(colorPanel).toHaveCSS('left', '0px');
-    await expect(colorPanel).toHaveCSS('right', '0px');
+    const box = await paletteBtn.boundingBox();
+    expect(box.width).toBe(26);
+    expect(box.height).toBe(26);
+  });
+
+  test('should have 3-column palette grid in dropdown', async ({ page }) => {
+    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
+
+    // Open dropdown
+    await paletteBtn.click();
+
+    const paletteGrid = page.locator('.navbar-palette-grid');
+
+    // Check grid has 3 columns on very small screens
+    const gridColumns = await paletteGrid.evaluate(el => {
+      return window.getComputedStyle(el).gridTemplateColumns;
+    });
+
+    // Should have 3 equal columns
+    expect(gridColumns.split(' ').length).toBe(3);
   });
 
   test('should have navbar height of 56px', async ({ page }) => {

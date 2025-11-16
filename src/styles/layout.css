@@ -352,6 +352,34 @@
     color: white;
 }
 
+/* Overflow menu for extra colors on mobile */
+.navbar-overflow-menu {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    min-width: auto;
+}
+
+.navbar-overflow-color-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border: 2px solid var(--color-border-dark);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    background: transparent;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.navbar-overflow-color-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
 /* ============================================
    NAVBAR PALETTE DROPDOWN
    ============================================ */
@@ -386,16 +414,17 @@
 
 .navbar-palette-preview {
     display: grid;
-    grid-template-columns: repeat(2, 12px);
-    grid-template-rows: repeat(2, 12px);
-    gap: 2px;
-    padding: 2px;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 1px;
+    width: 24px;
+    height: 24px;
 }
 
 .navbar-palette-preview-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
+    width: 100%;
+    height: 100%;
+    border-radius: 1px;
 }
 
 .navbar-palette-dropdown-menu {
@@ -576,7 +605,7 @@
     border-radius: var(--border-radius-md);
     box-shadow: var(--shadow-lg);
     z-index: 1000;
-    overflow: hidden;
+    overflow: visible;
     padding: var(--space-3);
 }
 
@@ -609,6 +638,43 @@
     height: var(--border-width);
     background: var(--color-border-secondary);
     margin: var(--space-2) 0;
+}
+
+.navbar-hamburger-expandable {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+}
+
+.navbar-hamburger-arrow {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    transition: transform var(--transition-base);
+}
+
+.navbar-hamburger-expandable[aria-expanded="true"] .navbar-hamburger-arrow {
+    transform: rotate(180deg);
+}
+
+.navbar-hamburger-section {
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-bg-secondary);
+}
+
+.navbar-hamburger-section .ratio-preset-group {
+    margin-bottom: var(--space-3);
+}
+
+.navbar-hamburger-section #customRatioControls {
+    margin-top: var(--space-3);
+}
+
+.navbar-hamburger-section input[type="range"] {
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-1);
+    padding: var(--space-2) 0;
 }
 
 /* ============================================

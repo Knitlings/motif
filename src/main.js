@@ -629,8 +629,14 @@ function applyGridResizeFromEdge(direction, delta) {
     document.getElementById('gridWidth2').value = gridWidth;
     document.getElementById('gridHeight2').value = gridHeight;
 
+    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
     saveToHistory();
     updateCanvas();
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function paintCell(row, col, isShiftKey, useInitialState = false) {
@@ -897,6 +903,11 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     document.getElementById('widthDisplay2').textContent = gridWidth;
                     document.getElementById('heightDisplay2').textContent = gridHeight;
 
+                    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+                    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+                    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+                    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
                     aspectRatioSlider.value = aspectRatio;
                     document.getElementById('ratioDisplay2').textContent = Utils.aspectRatioToDisplay(aspectRatio);
 
@@ -904,6 +915,11 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     previewRepeatYInput.value = previewRepeatY;
                     document.getElementById('repeatXDisplay').textContent = previewRepeatX;
                     document.getElementById('repeatYDisplay').textContent = previewRepeatY;
+
+                    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+                    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
                     document.getElementById('backgroundColor').value = backgroundColor;
                     document.getElementById('backgroundText').value = backgroundColor;
@@ -940,11 +956,13 @@ function applyGridWidth(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
     const input = document.getElementById('gridWidth2');
     const display = document.getElementById('widthDisplay2');
+    const inlineDisplay = document.getElementById('gridWidthDisplay');
 
     const success = applyGridResize(val, gridHeight);
     if (success === false) {
         input.value = gridWidth;
         display.textContent = gridWidth;
+        if (inlineDisplay) inlineDisplay.textContent = gridWidth;
 
         input.style.transition = 'none';
         input.style.borderColor = 'var(--color-danger)';
@@ -955,18 +973,22 @@ function applyGridWidth(value) {
     } else {
         input.value = val;
         display.textContent = val;
+        if (inlineDisplay) inlineDisplay.textContent = val;
     }
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function applyGridHeight(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE, CONFIG.MIN_GRID_SIZE);
     const input = document.getElementById('gridHeight2');
     const display = document.getElementById('heightDisplay2');
+    const inlineDisplay = document.getElementById('gridHeightDisplay');
 
     const success = applyGridResize(gridWidth, val);
     if (success === false) {
         input.value = gridHeight;
         display.textContent = gridHeight;
+        if (inlineDisplay) inlineDisplay.textContent = gridHeight;
 
         input.style.transition = 'none';
         input.style.borderColor = 'var(--color-danger)';
@@ -977,25 +999,33 @@ function applyGridHeight(value) {
     } else {
         input.value = val;
         display.textContent = val;
+        if (inlineDisplay) inlineDisplay.textContent = val;
     }
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function applyPreviewRepeatX(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
     previewRepeatXInput.value = val;
     document.getElementById('repeatXDisplay').textContent = val;
+    const inlineDisplay = document.getElementById('previewRepeatXDisplay');
+    if (inlineDisplay) inlineDisplay.textContent = val;
     previewRepeatX = val;
     updateCanvas();
     saveToLocalStorage();
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function applyPreviewRepeatY(value) {
     const val = Utils.clampInt(value, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT, CONFIG.MIN_PREVIEW_REPEAT);
     previewRepeatYInput.value = val;
     document.getElementById('repeatYDisplay').textContent = val;
+    const inlineDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineDisplay) inlineDisplay.textContent = val;
     previewRepeatY = val;
     updateCanvas();
     saveToLocalStorage();
+    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 // ============================================
@@ -1066,6 +1096,11 @@ gridHeight2Input.value = gridHeight;
 document.getElementById('widthDisplay2').textContent = gridWidth;
 document.getElementById('heightDisplay2').textContent = gridHeight;
 
+const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
 aspectRatioSlider.value = aspectRatio;
 document.getElementById('ratioDisplay2').textContent = aspectRatio.toFixed(2);
 
@@ -1073,6 +1108,11 @@ previewRepeatXInput.value = previewRepeatX;
 previewRepeatYInput.value = previewRepeatY;
 document.getElementById('repeatXDisplay').textContent = previewRepeatX;
 document.getElementById('repeatYDisplay').textContent = previewRepeatY;
+
+const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
 backgroundColorPicker.value = backgroundColor;
 backgroundColorText.value = backgroundColor;
@@ -1160,7 +1200,6 @@ initGrid();
 // Initialize navbar components
 setupHamburgerMenu();
 setupNavbarPaletteDropdown();
-setupGridSettingsLink();
 updateNavbarPaletteName();
 updateNavbarPalettePreview();
 
@@ -1258,10 +1297,7 @@ ratioPresetButtons.forEach(btn => {
         ratioPresetButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        if (ratio === 'custom') {
-            customRatioControls.style.display = 'block';
-        } else {
-            customRatioControls.style.display = 'none';
+        if (ratio !== 'custom') {
             const ratioValue = parseFloat(ratio);
             aspectRatio = ratioValue;
             aspectRatioSlider.value = ratioValue;
@@ -1269,6 +1305,7 @@ ratioPresetButtons.forEach(btn => {
             updateCanvas();
             saveToLocalStorage();
         }
+        // Note: custom controls visibility is now managed by the hamburger menu toggle
     });
 });
 
@@ -1349,9 +1386,173 @@ ratioDisplay2.addEventListener('keydown', (e) => {
     ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
 })();
 
+// Inline Grid Dimension Controls
+const gridWidthDisplay = document.getElementById('gridWidthDisplay');
+const gridHeightDisplay = document.getElementById('gridHeightDisplay');
+const previewRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+const previewRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+
+// Helper function to setup contenteditable dimension displays
+function setupContenteditableDimension(element, applyFunc, min, max) {
+    if (!element) return;
+
+    element.addEventListener('input', (e) => {
+        const text = e.target.textContent.trim();
+        const val = parseInt(text, 10);
+        if (!isNaN(val) && val >= min && val <= max) {
+            // Valid value, update immediately
+            element.dataset.lastValid = text;
+        }
+    });
+
+    element.addEventListener('blur', (e) => {
+        const text = e.target.textContent.trim();
+        let val = parseInt(text, 10);
+
+        if (isNaN(val)) {
+            val = element.dataset.lastValid ? parseInt(element.dataset.lastValid, 10) : min;
+        }
+
+        val = Utils.clampInt(val, min, max, min);
+        e.target.textContent = val;
+        element.dataset.lastValid = val;
+        applyFunc(val);
+    });
+
+    element.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
+        // Prevent non-numeric input
+        if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+        }
+    });
+
+    // Initialize
+    element.dataset.lastValid = element.textContent.trim();
+}
+
+// Setup grid dimension displays
+setupContenteditableDimension(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupContenteditableDimension(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupContenteditableDimension(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+setupContenteditableDimension(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+
+// Grid chevron buttons
+const gridChevrons = document.querySelectorAll('.grid-chevron');
+gridChevrons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const dimension = btn.getAttribute('data-dimension');
+        const direction = btn.getAttribute('data-direction');
+
+        // Grid arrows: add/remove from specific edge
+        // Normal click adds (+1), shift+click removes (-1)
+        const delta = e.shiftKey ? -1 : 1;
+
+        // Map data-direction to edge direction
+        let edgeDirection;
+        if (dimension === 'width') {
+            edgeDirection = direction === 'decrease' ? 'left' : 'right';
+        } else if (dimension === 'height') {
+            edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
+        }
+
+        applyGridResizeFromEdge(edgeDirection, delta);
+    });
+});
+
+// Function to update chevron disabled states
+function updateChevronStates() {
+    gridChevrons.forEach(btn => {
+        const dimension = btn.getAttribute('data-dimension');
+        let shouldDisable = false;
+
+        // All arrows add in their direction, so disable when at max size
+        if (dimension === 'width') {
+            shouldDisable = gridWidth >= CONFIG.MAX_GRID_SIZE;
+        } else if (dimension === 'height') {
+            shouldDisable = gridHeight >= CONFIG.MAX_GRID_SIZE;
+        }
+
+        btn.disabled = shouldDisable;
+        btn.classList.toggle('disabled', shouldDisable);
+    });
+}
+
+// Helper functions to check if grid can shrink
+function canShrinkWidth() {
+    const result = resizeGrid({
+        grid,
+        gridWidth,
+        gridHeight,
+        newWidth: gridWidth - 1,
+        newHeight: gridHeight
+    });
+    return result !== false;
+}
+
+function canShrinkHeight() {
+    const result = resizeGrid({
+        grid,
+        gridWidth,
+        gridHeight,
+        newWidth: gridWidth,
+        newHeight: gridHeight - 1
+    });
+    return result !== false;
+}
+
+// Move aspect ratio controls from panel to hamburger menu
+const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
+const aspectRatioSection = document.querySelector('#settingsPanel .ratio-preset-group')?.parentElement;
+if (cellAspectRatioSection && aspectRatioSection) {
+    // Remove the h3 header from the section before moving
+    const h3 = aspectRatioSection.querySelector('h3');
+    if (h3) h3.remove();
+
+    cellAspectRatioSection.appendChild(aspectRatioSection);
+    aspectRatioSection.style.display = 'block';
+
+    // Make custom controls always visible in this context
+    const customRatioControls = document.getElementById('customRatioControls');
+    if (customRatioControls) {
+        customRatioControls.style.display = 'block';
+    }
+}
+
+// Setup toggle for cell aspect ratio section
+const cellAspectRatioToggle = document.getElementById('cellAspectRatioToggle');
+if (cellAspectRatioToggle && cellAspectRatioSection) {
+    cellAspectRatioToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent hamburger menu from closing
+        const isExpanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
+        cellAspectRatioToggle.setAttribute('aria-expanded', !isExpanded);
+        cellAspectRatioSection.style.display = isExpanded ? 'none' : 'block';
+    });
+
+    // Prevent clicks inside the section from closing the hamburger menu
+    cellAspectRatioSection.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+// Initialize chevron states
+updateChevronStates();
+
 // Window resize handler
+// Debounced resize handler to recreate navbar buttons when viewport changes
+let resizeTimeout;
 window.addEventListener('resize', () => {
     updateCanvas();
+
+    // Debounce navbar button recreation
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        createNavbarColorButtons();
+    }, 250);
 });
 
 // Canvas edge resize handlers
@@ -1585,6 +1786,90 @@ function closeColorButtonMenu() {
 }
 
 /**
+ * Show overflow menu with hidden colors on mobile
+ */
+function showOverflowColorsMenu(buttonElement, startIndex) {
+    // Close any existing menu
+    closeColorButtonMenu();
+
+    // Create menu container
+    const menu = document.createElement('div');
+    menu.className = 'navbar-color-menu navbar-overflow-menu';
+    menu.setAttribute('role', 'menu');
+
+    // Add color buttons for overflow colors
+    for (let i = startIndex; i < patternColors.length; i++) {
+        const color = patternColors[i];
+        const colorBtn = document.createElement('button');
+        colorBtn.className = 'navbar-overflow-color-btn';
+        colorBtn.style.backgroundColor = color;
+        colorBtn.setAttribute('role', 'menuitem');
+        colorBtn.setAttribute('aria-label', `Pattern color ${i + 1}: ${color}`);
+
+        if (i === activePatternIndex) {
+            colorBtn.style.border = '3px solid var(--color-primary)';
+        }
+
+        colorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Show the regular color menu for this color
+            closeColorButtonMenu();
+            showColorButtonMenu(colorBtn, i, color);
+        });
+
+        menu.appendChild(colorBtn);
+    }
+
+    // Position menu below button
+    const rect = buttonElement.getBoundingClientRect();
+    menu.style.position = 'absolute';
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.left = `${rect.left + rect.width / 2}px`;
+    menu.style.transform = 'translateX(-50%)';
+
+    document.body.appendChild(menu);
+    currentColorMenu = menu;
+
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeColorButtonMenu);
+    }, 0);
+}
+
+/**
+ * Calculate how many color buttons can fit in the navbar
+ * Uses viewport-based estimates for reliability
+ */
+function calculateMaxVisibleColors() {
+    const viewportWidth = window.innerWidth;
+
+    // Conservative estimates based on viewport size
+    // These account for: navbar padding, branding (desktop), palette dropdown,
+    // background button, add button, and gaps
+    let maxVisible;
+
+    if (viewportWidth <= 370) {
+        // Very small mobile: ~320-370px viewport
+        maxVisible = 4;
+    } else if (viewportWidth <= 480) {
+        // Small mobile: ~375-480px viewport
+        maxVisible = 5;
+    } else if (viewportWidth <= 768) {
+        // Tablet portrait: ~600-768px viewport
+        maxVisible = 8;
+    } else if (viewportWidth <= 1024) {
+        // Tablet landscape / small desktop
+        maxVisible = 12;
+    } else {
+        // Desktop: 1024px+ (no overflow needed - max 20 colors can fit)
+        maxVisible = 20;
+    }
+
+    // Return the calculated max, but don't exceed actual color count
+    return Math.min(maxVisible, patternColors.length);
+}
+
+/**
  * Create color buttons in navbar
  * Includes pattern colors, add button, and background color button
  */
@@ -1594,8 +1879,16 @@ function createNavbarColorButtons() {
 
     container.innerHTML = '';
 
+    // Calculate how many colors can fit dynamically
+    const maxVisibleColors = calculateMaxVisibleColors();
+    const needsOverflow = patternColors.length > maxVisibleColors;
+
     // Create pattern color buttons
     patternColors.forEach((color, index) => {
+        // Skip colors beyond max visible if overflow is needed
+        if (needsOverflow && index >= maxVisibleColors) {
+            return;
+        }
         const btn = document.createElement('div');
         btn.className = 'navbar-color-btn round';
         btn.style.backgroundColor = color;
@@ -1609,12 +1902,16 @@ function createNavbarColorButtons() {
 
         // Click to show menu
         let dragStarted = false;
+        let touchDragInProgress = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+
         btn.addEventListener('mousedown', () => {
             dragStarted = false;
         });
 
         btn.addEventListener('click', (e) => {
-            if (!dragStarted) {
+            if (!dragStarted && !touchDragInProgress) {
                 e.stopPropagation();
                 showColorButtonMenu(btn, index, color);
             }
@@ -1680,8 +1977,118 @@ function createNavbarColorButtons() {
             }
         });
 
+        // Touch drag support
+        let touchDraggedIndex = null;
+
+        btn.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchDragInProgress = false;
+        }, { passive: true });
+
+        btn.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const deltaX = Math.abs(touch.clientX - touchStartX);
+            const deltaY = Math.abs(touch.clientY - touchStartY);
+
+            // If moved more than 5px, start drag
+            if (deltaX > 5 || deltaY > 5) {
+                if (!touchDragInProgress) {
+                    touchDragInProgress = true;
+                    touchDraggedIndex = index;
+                    btn.style.opacity = '0.5';
+                }
+
+                // Find element under touch point
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
+                    const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                    if (!isNaN(targetIndex)) {
+                        // Highlight drop target
+                        elementUnder.style.backgroundColor = patternColors[index];
+                        elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                    }
+                } else {
+                    // Reset all buttons
+                    document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                        const btnIndex = parseInt(b.getAttribute('data-index'));
+                        if (!isNaN(btnIndex) && b !== btn) {
+                            b.style.backgroundColor = patternColors[btnIndex];
+                            b.style.boxShadow = '';
+                        }
+                    });
+                }
+            }
+        }, { passive: true });
+
+        btn.addEventListener('touchend', (e) => {
+            if (touchDragInProgress) {
+                e.preventDefault(); // Prevent click event
+                btn.style.opacity = '1';
+
+                const touch = e.changedTouches[0];
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
+                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
+                    const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
+                    if (!isNaN(targetIndex) && targetIndex !== index) {
+                        mergePatternColors(index, targetIndex);
+                    }
+                }
+
+                // Reset all buttons
+                document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                    const btnIndex = parseInt(b.getAttribute('data-index'));
+                    if (!isNaN(btnIndex)) {
+                        b.style.backgroundColor = patternColors[btnIndex];
+                        b.style.boxShadow = '';
+                    }
+                });
+
+                // Reset flag after a short delay to prevent accidental menu opening
+                setTimeout(() => {
+                    touchDragInProgress = false;
+                }, 100);
+            }
+        });
+
+        btn.addEventListener('touchcancel', () => {
+            btn.style.opacity = '1';
+            touchDragInProgress = false;
+            // Reset all buttons
+            document.querySelectorAll('.navbar-color-btn').forEach(b => {
+                const btnIndex = parseInt(b.getAttribute('data-index'));
+                if (!isNaN(btnIndex)) {
+                    b.style.backgroundColor = patternColors[btnIndex];
+                    b.style.boxShadow = '';
+                }
+            });
+        });
+
         container.appendChild(btn);
     });
+
+    // Overflow button (...) for hidden colors on mobile
+    if (needsOverflow) {
+        const overflowBtn = document.createElement('div');
+        overflowBtn.className = 'navbar-color-btn round overflow-btn';
+        overflowBtn.textContent = '•••';
+        overflowBtn.setAttribute('aria-label', `${patternColors.length - maxVisibleColors} more colors`);
+        overflowBtn.style.fontSize = '14px';
+        overflowBtn.style.fontWeight = 'bold';
+        overflowBtn.style.display = 'flex';
+        overflowBtn.style.alignItems = 'center';
+        overflowBtn.style.justifyContent = 'center';
+        overflowBtn.style.background = 'var(--color-bg-secondary)';
+        overflowBtn.style.border = '2px solid var(--color-border-dark)';
+        overflowBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showOverflowColorsMenu(overflowBtn, maxVisibleColors);
+        });
+        container.appendChild(overflowBtn);
+    }
 
     // Add button (+)
     if (patternColors.length < CONFIG.MAX_PATTERN_COLORS) {
@@ -1784,8 +2191,8 @@ function setupHamburgerMenu() {
         hamburgerBtn.setAttribute('aria-expanded', isOpen);
     });
 
-    // Close menu when clicking menu items
-    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item');
+    // Close menu when clicking menu items (but not expandable ones)
+    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item:not(.navbar-hamburger-expandable)');
     menuItems.forEach(item => {
         item.addEventListener('click', () => {
             hamburgerMenu.classList.remove('open');
@@ -1889,34 +2296,85 @@ function renderNavbarPalette() {
         colorDiv.style.backgroundColor = color;
         colorDiv.setAttribute('aria-label', `Palette color ${index + 1}: ${color}`);
 
+        // Long press support for touch devices
+        let pressTimer = null;
+        let isLongPress = false;
+
+        const setBackgroundColorValue = () => {
+            backgroundColor = color;
+            createNavbarColorButtons();
+            updateCanvas();
+            updateColorIndicators();
+            saveToHistory();
+            saveToLocalStorage();
+        };
+
         // For custom palette, clicking shows menu. For built-in, clicking applies color
-        // Shift-click always sets background color
+        // Shift-click or long press sets background color
         if (isCustomPalette) {
             colorDiv.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Ignore if this was a long press (already handled)
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                }
+
                 if (e.shiftKey) {
                     // Shift-click sets background color
-                    backgroundColor = color;
-                    createNavbarColorButtons();
-                    updateCanvas();
-                    updateColorIndicators();
-                    saveToHistory();
-                    saveToLocalStorage();
+                    setBackgroundColorValue();
                 } else {
                     // Regular click shows menu
                     showPaletteColorMenu(colorDiv, index, color);
                 }
             });
+
+            // Touch long press for background color
+            colorDiv.addEventListener('touchstart', (e) => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    setBackgroundColorValue();
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }, 500); // 500ms for long press
+            }, { passive: true });
+
+            colorDiv.addEventListener('touchend', (e) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                // If it was a long press, prevent the click event
+                if (isLongPress) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        isLongPress = false;
+                    }, 100);
+                }
+            });
+
+            colorDiv.addEventListener('touchmove', () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                isLongPress = false;
+            }, { passive: true });
         } else {
             colorDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Ignore if this was a long press (already handled)
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
+                }
+
                 if (e.shiftKey) {
                     // Shift-click sets background color
-                    backgroundColor = color;
-                    createNavbarColorButtons();
-                    updateCanvas();
-                    updateColorIndicators();
-                    saveToHistory();
-                    saveToLocalStorage();
+                    setBackgroundColorValue();
                 } else {
                     // Regular click sets active pattern color
                     patternColors[activePatternIndex] = color;
@@ -1928,6 +2386,41 @@ function renderNavbarPalette() {
                     saveToLocalStorage();
                 }
             });
+
+            // Touch long press for background color (built-in palettes)
+            colorDiv.addEventListener('touchstart', (e) => {
+                isLongPress = false;
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    setBackgroundColorValue();
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }, 500); // 500ms for long press
+            }, { passive: true });
+
+            colorDiv.addEventListener('touchend', (e) => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                // If it was a long press, prevent the click event
+                if (isLongPress) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        isLongPress = false;
+                    }, 100);
+                }
+            });
+
+            colorDiv.addEventListener('touchmove', () => {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                isLongPress = false;
+            }, { passive: true });
         }
 
         paletteGrid.appendChild(colorDiv);
@@ -1939,7 +2432,8 @@ function renderNavbarPalette() {
         addBtn.className = 'navbar-palette-color navbar-palette-add-btn';
         addBtn.textContent = '+';
         addBtn.setAttribute('aria-label', 'Add palette color');
-        addBtn.addEventListener('click', () => {
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             addCustomPaletteColor();
         });
         paletteGrid.appendChild(addBtn);
@@ -2174,30 +2668,6 @@ function updateNavbarPalettePreview() {
         colorDiv.className = 'navbar-palette-preview-color';
         colorDiv.style.backgroundColor = color;
         previewContainer.appendChild(colorDiv);
-    });
-}
-
-/**
- * Set up grid settings link
- */
-function setupGridSettingsLink() {
-    const gridSettingsLink = document.getElementById('gridSettingsLink');
-    const settingsPanel = document.getElementById('settingsPanel');
-
-    if (!gridSettingsLink || !settingsPanel) return;
-
-    gridSettingsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        // Toggle settings panel
-        const isCollapsed = settingsPanel.classList.contains('collapsed');
-        if (isCollapsed) {
-            settingsPanel.classList.remove('collapsed');
-            settingsPanel.setAttribute('aria-expanded', 'true');
-        } else {
-            settingsPanel.classList.add('collapsed');
-            settingsPanel.setAttribute('aria-expanded', 'false');
-        }
     });
 }
 
