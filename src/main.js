@@ -1444,15 +1444,16 @@ document.addEventListener('touchcancel', () => {
 // NAVBAR UI COMPONENTS
 // ============================================
 
-// Track currently open color menu
-let currentColorMenu = null;
+// Track currently open color menus
+let currentColorMenu = null; // For overflow menu (grid of color buttons)
+let currentColorActionMenu = null; // For edit/delete menu
 
 /**
  * Show menu for color button with Set Active, Edit, Delete options
  */
 function showColorButtonMenu(buttonElement, colorIndex, color) {
-    // Close any existing menu
-    closeColorButtonMenu();
+    // Close any existing action menu (but keep overflow menu open if it exists)
+    closeColorActionMenu();
 
     // Create menu
     const menu = document.createElement('div');
@@ -1472,7 +1473,7 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
             updateActiveColorUI();
             createNavbarColorButtons();
             saveToLocalStorage();
-            closeColorButtonMenu();
+            closeColorActionMenu();
         });
         menu.appendChild(selectBtn);
     }
@@ -1494,7 +1495,7 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
         }
         // Then open color picker
         openColorPicker(colorIndex, color);
-        closeColorButtonMenu();
+        closeColorActionMenu();
     });
     menu.appendChild(editBtn);
 
@@ -1507,7 +1508,7 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             showDeleteColorDialog(colorIndex);
-            closeColorButtonMenu();
+            closeColorActionMenu();
         });
         menu.appendChild(deleteBtn);
     }
@@ -1533,18 +1534,30 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
 
     menu.style.left = `${leftPos}px`;
     menu.style.transform = 'translateX(-50%)';
-    currentColorMenu = menu;
+    currentColorActionMenu = menu;
 
     // Close menu when clicking outside
     setTimeout(() => {
-        document.addEventListener('click', closeColorButtonMenu);
+        document.addEventListener('click', closeColorActionMenu);
     }, 0);
 }
 
 /**
- * Close the color button menu
+ * Close the color action menu (edit/delete menu)
+ */
+function closeColorActionMenu() {
+    if (currentColorActionMenu) {
+        document.removeEventListener('click', closeColorActionMenu);
+        currentColorActionMenu.remove();
+        currentColorActionMenu = null;
+    }
+}
+
+/**
+ * Close the color button menu (overflow menu and action menu)
  */
 function closeColorButtonMenu() {
+    closeColorActionMenu();
     if (currentColorMenu) {
         document.removeEventListener('click', closeColorButtonMenu);
         currentColorMenu.remove();
@@ -1580,7 +1593,7 @@ function showOverflowColorsMenu(buttonElement, startIndex) {
         colorBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             // Show the regular color menu for this color
-            closeColorButtonMenu();
+            // Don't close the overflow menu - just show the edit/delete menu on top
             showColorButtonMenu(colorBtn, i, color);
         });
 

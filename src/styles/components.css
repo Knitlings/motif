@@ -181,6 +181,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 0; /* Allow canvas to overflow grid control width */
 }
 
 .canvas-resize-container {
