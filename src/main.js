@@ -1266,8 +1266,29 @@ updateChevronStates();
 // Window resize handler
 // Debounced resize handler to recreate navbar buttons when viewport changes
 let resizeTimeout;
+let lastKnownWidth = window.innerWidth;
+let lastKnownHeight = window.innerHeight;
+
 window.addEventListener('resize', () => {
-    updateCanvas();
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+
+    // On mobile, ignore resize events that are likely just browser chrome showing/hiding
+    // Only update if both dimensions changed significantly (orientation change or actual window resize)
+    const isLandscape = currentWidth > currentHeight;
+    const isMobile = currentWidth <= 1024 || (isLandscape && currentHeight <= 500);
+    const widthChanged = Math.abs(currentWidth - lastKnownWidth) > 10;
+    const heightChanged = Math.abs(currentHeight - lastKnownHeight) > 10;
+
+    // Update canvas only if:
+    // - Not on mobile, OR
+    // - Both dimensions changed (orientation change), OR
+    // - Width changed significantly (not just chrome)
+    if (!isMobile || (widthChanged && heightChanged) || (!isLandscape && widthChanged && Math.abs(currentWidth - lastKnownWidth) > 50)) {
+        lastKnownWidth = currentWidth;
+        lastKnownHeight = currentHeight;
+        updateCanvas();
+    }
 
     // Debounce navbar button recreation
     clearTimeout(resizeTimeout);
