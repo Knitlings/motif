@@ -26,11 +26,14 @@ export const CanvasManager = {
         this.editCtx = this.editCanvas.getContext('2d');
         this.previewCtx = this.previewCanvas.getContext('2d');
 
-        // Cache initial viewport height for mobile landscape stability
+        // Cache initial viewport dimensions for mobile stability (prevent jumping when browser chrome appears/disappears)
         const isLandscape = window.innerWidth > window.innerHeight;
         const isMobile = window.innerWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && window.innerHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
         if (isMobile && isLandscape) {
             this.cachedViewportHeight = window.innerHeight;
+        }
+        if (isMobile && !isLandscape) {
+            this.cachedViewportWidth = window.innerWidth;
         }
 
         // Update cache if orientation changes
@@ -40,8 +43,13 @@ export const CanvasManager = {
                 const newIsMobile = window.innerWidth <= CONFIG.MOBILE_BREAKPOINT || (newIsLandscape && window.innerHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
                 if (newIsMobile && newIsLandscape) {
                     this.cachedViewportHeight = window.innerHeight;
+                    this.cachedViewportWidth = null;
+                } else if (newIsMobile && !newIsLandscape) {
+                    this.cachedViewportHeight = null;
+                    this.cachedViewportWidth = window.innerWidth;
                 } else {
                     this.cachedViewportHeight = null;
+                    this.cachedViewportWidth = null;
                 }
             }, CONFIG.ORIENTATION_CHANGE_DELAY); // Small delay to let orientation settle
         });
@@ -182,7 +190,16 @@ export const CanvasManager = {
 
         // Gap between canvases - smaller in landscape to encourage side-by-side layout
         const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
-        const availableWidth = window.innerWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
+
+        // Use cached viewport width in mobile portrait to prevent jumping when browser bar appears/disappears
+        let viewportWidth = window.innerWidth;
+        if (isMobile && !isLandscape && this.cachedViewportWidth) {
+            // Use the cached width from initial load instead of current width
+            // This keeps canvas size stable when browser bar slides in/out
+            viewportWidth = this.cachedViewportWidth;
+        }
+
+        const availableWidth = viewportWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
 
         // First, try to calculate cell sizes assuming side-by-side layout
         // Available width for each canvas when side-by-side
