@@ -170,9 +170,18 @@ export const CanvasManager = {
      */
     update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor) {
         // Calculate viewport constraints - adjust for mobile vs desktop
-        const isLandscape = window.innerWidth > window.innerHeight;
-        const isMobile = window.innerWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && window.innerHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
-        const isSmallMobile = window.innerWidth <= CONFIG.SMALL_MOBILE_BREAKPOINT;
+        // Use cached dimensions if available for consistency
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
+        const currentIsLandscape = currentWidth > currentHeight;
+        const currentIsMobile = currentWidth <= CONFIG.MOBILE_BREAKPOINT || (currentIsLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
+
+        // Use cached width for mobile portrait if available
+        const effectiveWidth = (currentIsMobile && !currentIsLandscape && this.cachedViewportWidth) ? this.cachedViewportWidth : currentWidth;
+
+        const isLandscape = effectiveWidth > currentHeight;
+        const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
+        const isSmallMobile = effectiveWidth <= CONFIG.SMALL_MOBILE_BREAKPOINT;
 
         // On mobile, panels are overlays (not side-by-side), so ignore panel width
         const collapsedPanelWidth = isMobile ? 0 : CONFIG.COLLAPSED_PANEL_WIDTH;
@@ -191,15 +200,8 @@ export const CanvasManager = {
         // Gap between canvases - smaller in landscape to encourage side-by-side layout
         const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
 
-        // Use cached viewport width in mobile portrait to prevent jumping when browser bar appears/disappears
-        let viewportWidth = window.innerWidth;
-        if (isMobile && !isLandscape && this.cachedViewportWidth) {
-            // Use the cached width from initial load instead of current width
-            // This keeps canvas size stable when browser bar slides in/out
-            viewportWidth = this.cachedViewportWidth;
-        }
-
-        const availableWidth = viewportWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
+        // Calculate available width using effectiveWidth for consistency
+        const availableWidth = effectiveWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
 
         // First, try to calculate cell sizes assuming side-by-side layout
         // Available width for each canvas when side-by-side
