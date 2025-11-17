@@ -66,6 +66,8 @@ let aspectRatio = CONFIG.DEFAULT_ASPECT_RATIO;
 let patternColors = [CONFIG.DEFAULT_PATTERN_COLOR];
 let activePatternIndex = 0;
 let backgroundColor = CONFIG.DEFAULT_BACKGROUND_COLOR;
+let isBackgroundActive = false; // Track if background color is active for drawing (mobile long-press)
+let isShiftKeyHeld = false; // Track if Shift key is held (desktop)
 let previewRepeatX = CONFIG.DEFAULT_PREVIEW_REPEAT;
 let previewRepeatY = CONFIG.DEFAULT_PREVIEW_REPEAT;
 let grid = [];
@@ -383,6 +385,38 @@ function mergePatternColors(sourceIndex, targetIndex) {
 
 function updateActiveColorUI() {
     updateColorIndicators();
+    updateNavbarButtonStates();
+}
+
+/**
+ * Update navbar button visual states (active pattern color and background color)
+ */
+function updateNavbarButtonStates() {
+    // Background is "active" if: mobile long-press active OR shift key held on desktop
+    const backgroundIsCurrentlyActive = isBackgroundActive || isShiftKeyHeld;
+
+    // Update pattern color buttons
+    document.querySelectorAll('.navbar-color-btn.round').forEach((btn) => {
+        const index = parseInt(btn.getAttribute('data-index'));
+        if (!isNaN(index)) {
+            // Remove active class if background is active, or if this isn't the active pattern
+            if (backgroundIsCurrentlyActive || index !== activePatternIndex) {
+                btn.classList.remove('active');
+            } else {
+                btn.classList.add('active');
+            }
+        }
+    });
+
+    // Update background button
+    const bgBtn = document.querySelector('.navbar-color-btn.square');
+    if (bgBtn) {
+        if (backgroundIsCurrentlyActive) {
+            bgBtn.classList.add('active');
+        } else {
+            bgBtn.classList.remove('active');
+        }
+    }
 }
 
 // ============================================
@@ -478,7 +512,8 @@ function paintCell(row, col, isShiftKey, useInitialState = false) {
         const activeColorValue = activePatternIndex + 1;
         let cellChanged = false;
 
-        if (isShiftKey) {
+        // Paint with background if shift is held OR if background is active (mobile long-press)
+        if (isShiftKey || isBackgroundActive) {
             if (useInitialState && initialCellState !== 0) {
                 grid[row][col] = 0;
                 cellChanged = true;
@@ -691,7 +726,6 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                                     createNavbarColorButtons();
                     updateActiveColorUI();
                     updatePaletteUI();
-                    renderPalette();
                     updateNavbarPaletteName();
 
                     saveToHistory();
@@ -867,9 +901,16 @@ setupDropdowns();
 setupKeyboardShortcuts({
     getPatternColors: () => patternColors,
     getActivePatternIndex: () => activePatternIndex,
-    setActivePatternIndex: (index) => { activePatternIndex = index; },
+    setActivePatternIndex: (index) => {
+        activePatternIndex = index;
+        isBackgroundActive = false; // Deactivate background when selecting pattern color via keyboard
+    },
     updateActiveColorUI,
-    createNavbarColorButtons
+    createNavbarColorButtons,
+    setShiftKeyState: (isHeld) => {
+        isShiftKeyHeld = isHeld;
+        updateNavbarButtonStates();
+    }
 });
 
 // Initialize canvas interactions
@@ -894,7 +935,6 @@ const canvasInteractions = setupCanvasInteractions({
 canvasInteractions.setupCanvasEvents();
 
 // Initialize UI
-renderPalette();
 updatePaletteUI();
 createNavbarColorButtons();
 updateActiveColorUI();
@@ -1428,6 +1468,7 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
         selectBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             activePatternIndex = colorIndex;
+            isBackgroundActive = false; // Deactivate background when selecting pattern color
             updateActiveColorUI();
             createNavbarColorButtons();
             saveToLocalStorage();
@@ -1446,6 +1487,7 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
         // Set as active first (if not already)
         if (colorIndex !== activePatternIndex) {
             activePatternIndex = colorIndex;
+            isBackgroundActive = false; // Deactivate background when selecting pattern color
             updateActiveColorUI();
             createNavbarColorButtons();
             saveToLocalStorage();
@@ -1472,12 +1514,25 @@ function showColorButtonMenu(buttonElement, colorIndex, color) {
 
     // Position menu below button
     const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'absolute';
+    menu.style.position = 'fixed';
     menu.style.top = `${rect.bottom + 8}px`;
-    menu.style.left = `${rect.left + rect.width / 2}px`;
-    menu.style.transform = 'translateX(-50%)';
 
+    // Calculate horizontal position, ensuring menu stays within viewport
     document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth;
+    let leftPos = rect.left + rect.width / 2;
+
+    // Check if menu would overflow on the right
+    if (leftPos + menuWidth / 2 > window.innerWidth) {
+        leftPos = window.innerWidth - menuWidth / 2 - 8;
+    }
+    // Check if menu would overflow on the left
+    if (leftPos - menuWidth / 2 < 0) {
+        leftPos = menuWidth / 2 + 8;
+    }
+
+    menu.style.left = `${leftPos}px`;
+    menu.style.transform = 'translateX(-50%)';
     currentColorMenu = menu;
 
     // Close menu when clicking outside
@@ -1532,14 +1587,30 @@ function showOverflowColorsMenu(buttonElement, startIndex) {
         menu.appendChild(colorBtn);
     }
 
-    // Position menu below button
+    // Position menu below navbar (navbar is fixed at top, so menu should be too)
+    // Get the navbar element to calculate its height
+    const navbar = document.querySelector('.header-navbar');
+    const navbarHeight = navbar ? navbar.offsetHeight : 64;
     const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'absolute';
-    menu.style.top = `${rect.bottom + 8}px`;
-    menu.style.left = `${rect.left + rect.width / 2}px`;
-    menu.style.transform = 'translateX(-50%)';
+    menu.style.position = 'fixed';
+    menu.style.top = `${navbarHeight + 8}px`;
 
+    // Calculate horizontal position, ensuring menu stays within viewport
     document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth;
+    let leftPos = rect.left + rect.width / 2;
+
+    // Check if menu would overflow on the right
+    if (leftPos + menuWidth / 2 > window.innerWidth) {
+        leftPos = window.innerWidth - menuWidth / 2 - 8;
+    }
+    // Check if menu would overflow on the left
+    if (leftPos - menuWidth / 2 < 0) {
+        leftPos = menuWidth / 2 + 8;
+    }
+
+    menu.style.left = `${leftPos}px`;
+    menu.style.transform = 'translateX(-50%)';
     currentColorMenu = menu;
 
     // Close menu when clicking outside
@@ -1922,15 +1993,30 @@ function createNavbarColorButtons() {
         }
     });
 
-    // Touch drag support for background button
+    // Touch drag support and long-press for background button
     let bgTouchDragInProgress = false;
     let bgTouchStartX = 0;
     let bgTouchStartY = 0;
+    let bgLongPressTimer = null;
+    let bgIsLongPress = false;
 
     bgBtn.addEventListener('touchstart', (e) => {
         bgTouchStartX = e.touches[0].clientX;
         bgTouchStartY = e.touches[0].clientY;
         bgTouchDragInProgress = false;
+        bgIsLongPress = false;
+
+        // Start long-press timer
+        bgLongPressTimer = setTimeout(() => {
+            bgIsLongPress = true;
+            // Toggle background as active drawing color
+            isBackgroundActive = !isBackgroundActive;
+            updateActiveColorUI();
+            // Provide haptic feedback if available
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }, 500); // 500ms for long press
     }, { passive: true });
 
     bgBtn.addEventListener('touchmove', (e) => {
@@ -1939,6 +2025,12 @@ function createNavbarColorButtons() {
         const deltaY = Math.abs(touch.clientY - bgTouchStartY);
 
         if (deltaX > 5 || deltaY > 5) {
+            // Cancel long-press if user starts dragging
+            if (bgLongPressTimer) {
+                clearTimeout(bgLongPressTimer);
+                bgLongPressTimer = null;
+            }
+
             if (!bgTouchDragInProgress) {
                 bgTouchDragInProgress = true;
                 bgBtn.style.opacity = '0.5';
@@ -1963,6 +2055,19 @@ function createNavbarColorButtons() {
     }, { passive: true });
 
     bgBtn.addEventListener('touchend', (e) => {
+        // Clear long-press timer
+        if (bgLongPressTimer) {
+            clearTimeout(bgLongPressTimer);
+            bgLongPressTimer = null;
+        }
+
+        // If it was a long press, prevent normal click behavior
+        if (bgIsLongPress) {
+            e.preventDefault();
+            bgIsLongPress = false;
+            return;
+        }
+
         if (bgTouchDragInProgress) {
             e.preventDefault();
             bgBtn.style.opacity = '1';
@@ -2432,7 +2537,6 @@ function addCustomPaletteColor() {
         customPalette.push('#000000');
     }
     renderNavbarPalette();
-    renderPalette();
     updateNavbarPalettePreview();
     saveToLocalStorage();
 }
@@ -2466,7 +2570,6 @@ function editCustomPaletteColor(colorIndex, currentColor, onComplete) {
         if (validateColor(newColor)) {
             customPalette[colorIndex] = newColor;
             renderNavbarPalette();
-            renderPalette();
             updateNavbarPalettePreview();
             saveToLocalStorage();
         }
@@ -2489,7 +2592,6 @@ function deleteCustomPaletteColor(colorIndex) {
 
     customPalette.splice(colorIndex, 1);
     renderNavbarPalette();
-    renderPalette();
     updateNavbarPalettePreview();
     saveToLocalStorage();
 }

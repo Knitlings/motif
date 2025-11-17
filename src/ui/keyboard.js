@@ -19,8 +19,22 @@ export function setupKeyboardShortcuts(deps) {
         getActivePatternIndex,
         setActivePatternIndex,
         updateActiveColorUI,
-        createNavbarColorButtons
+        createNavbarColorButtons,
+        setShiftKeyState
     } = deps;
+
+    // Track shift key state for visual feedback (background color becomes "active")
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift' && setShiftKeyState) {
+            setShiftKeyState(true);
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift' && setShiftKeyState) {
+            setShiftKeyState(false);
+        }
+    });
 
     document.addEventListener('keydown', (e) => {
         // Ignore keyboard shortcuts when typing in inputs

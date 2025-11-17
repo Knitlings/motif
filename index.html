@@ -109,9 +109,9 @@
                         <div class="canvas-resize-container">
                             <canvas id="editCanvas" role="img" aria-label="Grid pattern editor canvas - click to paint, shift-click to erase"></canvas>
                             <div id="canvasInstructions" class="canvas-instructions" aria-hidden="true">
-                                <div class="canvas-instructions-text hint">
-                                    Click to paint<br>
-                                    Shift+click to erase
+                                <div class="canvas-instructions-text hint" id="canvasHint">
+                                    <span class="desktop-hint">Click to paint<br>Shift+click to erase</span>
+                                    <span class="touch-hint">Tap to paint<br>Tap again to erase</span>
                                 </div>
                             </div>
                             <div class="resize-handle resize-handle-top" data-direction="top" role="button" tabindex="0" aria-label="Resize grid from top"></div>
