@@ -14,6 +14,8 @@
 - **Multi-colour support:** Work with up to 20 colours per pattern
 - **Export options:** Save your work as PNG, SVG, or JSON
 
+For more details, see the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html).
+
 ## Technical Overview
 
 Built with vanilla JavaScript, HTML, and CSS using a modular ES6 architecture. The codebase is organized into focused modules for configuration, utilities, state management, canvas rendering, and core business logic.
