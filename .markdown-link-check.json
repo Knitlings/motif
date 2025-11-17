@@ -1,7 +1,7 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https://github.com/Itroun/motif"
+      "pattern": "^https://github.com/Knitlings/motif"
     }
   ],
   "timeout": "5s",
