@@ -1,11 +1,8 @@
-# Motif
-
-**Design repeating patterns on a flexible grid with live preview.**
+# Motif: create patterns, see them repeat.
 
 **[Try it live at motif.works](https://motif.works)**
 
 ![Motif Pattern Editor](screenshot1.png)
-![Motif Pattern Editor](screenshot2.png)
 
 ## Features
 
@@ -14,6 +11,14 @@
 - **Custom aspect ratios:** Square cells or custom dimensions for crafts like knitting
 - **Multi-colour support:** Work with up to 20 colours per pattern
 - **Export options:** Save your work as PNG, SVG, or JSON
+
+<details>
+<summary>Screenshots</summary>
+
+![A large pattern is repeated two times vertically](screenshot1.png)
+![A border pattern is repeated three timed horizontally](screenshot2.png)
+
+</details>
 
 For more details, see the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html).
 
