@@ -2493,17 +2493,11 @@ function showPaletteColorMenu(colorElement, colorIndex, color) {
     editBtn.setAttribute('role', 'menuitem');
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        closePaletteColorMenu();
-        // Close the palette dropdown
+        // Get dropdown elements before opening picker
         const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
         const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
-        if (dropdownContainer) {
-            dropdownContainer.classList.remove('open');
-        }
-        if (dropdownBtn) {
-            dropdownBtn.setAttribute('aria-expanded', 'false');
-        }
-        // Edit the color, passing a callback to reopen the dropdown
+
+        // Open color picker FIRST (while user gesture is active)
         editCustomPaletteColor(colorIndex, color, () => {
             // Reopen dropdown after color picker closes
             if (dropdownContainer) {
@@ -2513,6 +2507,15 @@ function showPaletteColorMenu(colorElement, colorIndex, color) {
                 dropdownBtn.setAttribute('aria-expanded', 'true');
             }
         });
+
+        // THEN close menu and dropdown
+        closePaletteColorMenu();
+        if (dropdownContainer) {
+            dropdownContainer.classList.remove('open');
+        }
+        if (dropdownBtn) {
+            dropdownBtn.setAttribute('aria-expanded', 'false');
+        }
     });
     menu.appendChild(editBtn);
 
