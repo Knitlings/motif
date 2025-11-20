@@ -113,20 +113,26 @@ export function createPaletteManager(deps) {
             };
 
             // Handle click (desktop shift+click or regular click)
-            btn.onclick = (e) => {
+            btn.addEventListener('click', (e) => {
                 // Ignore if this was a long press (already handled)
                 if (isLongPress) {
                     isLongPress = false;
                     return;
                 }
 
-                // Always set color on click (editing is via pen icon)
-                if (e.shiftKey) {
-                    setBackgroundColorValue();
-                } else {
-                    setActiveColor();
+                // Check if click was on edit/delete button
+                const target = e.target;
+                const isChildButton = target.closest('.palette-edit-btn') || target.closest('.palette-delete-btn');
+
+                // Only set color if click was NOT on a child button
+                if (!isChildButton) {
+                    if (e.shiftKey) {
+                        setBackgroundColorValue();
+                    } else {
+                        setActiveColor();
+                    }
                 }
-            };
+            });
 
             // Handle touch start (for long press detection)
             btn.addEventListener('touchstart', (e) => {
