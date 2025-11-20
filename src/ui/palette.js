@@ -65,10 +65,10 @@ export function createPaletteManager(deps) {
                 const editBtn = document.createElement('span');
                 editBtn.className = 'palette-edit-btn';
                 editBtn.innerHTML = `<img src="${editSvg}" alt="Edit" class="edit-icon">`;
-                editBtn.onclick = (e) => {
+                editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editPaletteColor(index);
-                };
+                });
                 btn.appendChild(editBtn);
             }
 
@@ -77,10 +77,10 @@ export function createPaletteManager(deps) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'palette-delete-btn';
                 deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
-                deleteBtn.onclick = (e) => {
+                deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     removePaletteColor(index);
-                };
+                });
                 btn.appendChild(deleteBtn);
             }
 
@@ -155,8 +155,14 @@ export function createPaletteManager(deps) {
                         isLongPress = false;
                     }, 100);
                 } else {
-                    // Short tap - set active color
-                    setActiveColor();
+                    // Short tap - check if tap was on edit/delete button
+                    const target = e.target;
+                    const isChildButton = target.closest('.palette-edit-btn') || target.closest('.palette-delete-btn');
+
+                    // Only set active color if tap was NOT on a child button
+                    if (!isChildButton) {
+                        setActiveColor();
+                    }
                 }
             });
 
@@ -205,12 +211,19 @@ export function createPaletteManager(deps) {
         const input = document.createElement('input');
         input.type = 'color';
         input.value = customPalette[index];
-        input.onchange = () => {
+        input.style.position = 'absolute';
+        input.style.opacity = '0';
+        input.style.pointerEvents = 'none';
+        document.body.appendChild(input);
+
+        input.addEventListener('change', () => {
             customPalette[index] = input.value;
             setCustomPalette(customPalette);
             renderPalette();
             saveToLocalStorage();
-        };
+            document.body.removeChild(input);
+        });
+
         input.click();
     }
 
