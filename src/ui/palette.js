@@ -65,23 +65,10 @@ export function createPaletteManager(deps) {
                 const editBtn = document.createElement('span');
                 editBtn.className = 'palette-edit-btn';
                 editBtn.innerHTML = `<img src="${editSvg}" alt="Edit" class="edit-icon">`;
-
-                // Handle touch (mobile) - prevent parent handlers from interfering
-                editBtn.addEventListener('touchstart', (e) => {
-                    e.stopPropagation(); // Stop parent's long-press timer from starting
-                }, { passive: true });
-
-                editBtn.addEventListener('touchend', (e) => {
-                    e.stopPropagation(); // Stop parent from handling this touch
-                    // Don't preventDefault - let click event fire with user gesture
-                }, { passive: true });
-
-                // Handle click (desktop and synthesized from mobile touch)
                 editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editPaletteColor(index);
                 });
-
                 btn.appendChild(editBtn);
             }
 
@@ -90,23 +77,10 @@ export function createPaletteManager(deps) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'palette-delete-btn';
                 deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
-
-                // Handle touch (mobile) - prevent parent handlers from interfering
-                deleteBtn.addEventListener('touchstart', (e) => {
-                    e.stopPropagation(); // Stop parent's long-press timer from starting
-                }, { passive: true });
-
-                deleteBtn.addEventListener('touchend', (e) => {
-                    e.stopPropagation(); // Stop parent from handling this touch
-                    // Don't preventDefault - let click event fire with user gesture
-                }, { passive: true });
-
-                // Handle click (desktop and synthesized from mobile touch)
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     removePaletteColor(index);
                 });
-
                 btn.appendChild(deleteBtn);
             }
 
@@ -139,26 +113,20 @@ export function createPaletteManager(deps) {
             };
 
             // Handle click (desktop shift+click or regular click)
-            btn.addEventListener('click', (e) => {
+            btn.onclick = (e) => {
                 // Ignore if this was a long press (already handled)
                 if (isLongPress) {
                     isLongPress = false;
                     return;
                 }
 
-                // Check if click was on edit/delete button
-                const target = e.target;
-                const isChildButton = target.closest('.palette-edit-btn') || target.closest('.palette-delete-btn');
-
-                // Only set color if click was NOT on a child button
-                if (!isChildButton) {
-                    if (e.shiftKey) {
-                        setBackgroundColorValue();
-                    } else {
-                        setActiveColor();
-                    }
+                // Always set color on click (editing is via pen icon)
+                if (e.shiftKey) {
+                    setBackgroundColorValue();
+                } else {
+                    setActiveColor();
                 }
-            });
+            };
 
             // Handle touch start (for long press detection)
             btn.addEventListener('touchstart', (e) => {
@@ -187,14 +155,8 @@ export function createPaletteManager(deps) {
                         isLongPress = false;
                     }, 100);
                 } else {
-                    // Short tap - check if tap was on edit/delete button
-                    const target = e.target;
-                    const isChildButton = target.closest('.palette-edit-btn') || target.closest('.palette-delete-btn');
-
-                    // Only set active color if tap was NOT on a child button
-                    if (!isChildButton) {
-                        setActiveColor();
-                    }
+                    // Short tap - set active color
+                    setActiveColor();
                 }
             });
 
@@ -223,11 +185,12 @@ export function createPaletteManager(deps) {
     /**
      * Switch to a different palette
      * @param {string} paletteId - ID of the palette to switch to
+     * Note: Rendering is handled by the caller (navbar code uses renderNavbarPalette)
      */
     function switchPalette(paletteId) {
         setActivePaletteId(paletteId);
         updatePaletteUI();
-        renderPalette();
+        // renderPalette() removed - navbar handles its own rendering
         saveToLocalStorage();
     }
 
@@ -243,19 +206,12 @@ export function createPaletteManager(deps) {
         const input = document.createElement('input');
         input.type = 'color';
         input.value = customPalette[index];
-        input.style.position = 'absolute';
-        input.style.opacity = '0';
-        input.style.pointerEvents = 'none';
-        document.body.appendChild(input);
-
-        input.addEventListener('change', () => {
+        input.onchange = () => {
             customPalette[index] = input.value;
             setCustomPalette(customPalette);
             renderPalette();
             saveToLocalStorage();
-            document.body.removeChild(input);
-        });
-
+        };
         input.click();
     }
 
