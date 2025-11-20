@@ -295,7 +295,9 @@ canvas {
     margin-bottom: var(--space-4);
 }
 
-.input-group label {
+.input-group label,
+/* Special case: div styled as label to avoid focus stealing from contenteditable elements */
+.input-label-style {
     display: block;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);

@@ -210,6 +210,19 @@ h3 {
     text-decoration: none;
 }
 
+/* Inline links within paragraphs should be more obvious */
+.content-page p a {
+    text-decoration: underline;
+    text-decoration-color: rgba(139, 46, 62, 0.3); /* Semi-transparent underline */
+    text-underline-offset: 2px;
+    transition: text-decoration-color 0.2s ease;
+}
+
+.content-page p a:hover {
+    text-decoration-color: var(--color-accent); /* Full opacity on hover */
+}
+
+/* List links can remain without underline by default */
 .content-page a:hover {
     text-decoration: underline;
 }

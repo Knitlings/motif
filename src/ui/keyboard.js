@@ -25,6 +25,10 @@ export function setupKeyboardShortcuts(deps) {
 
     // Track shift key state for visual feedback (background color becomes "active")
     document.addEventListener('keydown', (e) => {
+        // Don't activate background color mode when typing in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+            return;
+        }
         if (e.key === 'Shift' && setShiftKeyState) {
             setShiftKeyState(true);
         }

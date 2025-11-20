@@ -4,7 +4,8 @@
 
 **[Try it live at motif.works](https://motif.works)**
 
-![Motif Pattern Editor](screenshot.png)
+![Motif Pattern Editor](screenshot1.png)
+![Motif Pattern Editor](screenshot2.png)
 
 ## Features
 
