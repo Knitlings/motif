@@ -1,8 +1,8 @@
-# Motif: create patterns, see them repeat.
-
-**[Try it live at motif.works](https://motif.works)**
+# Motif
 
 ![Motif Pattern Editor](screenshot1.png)
+
+Draw grid based patterns and see how they look when they repeat. Try Motif at [motif.works](https://motif.works).
 
 ## Features
 
@@ -12,15 +12,17 @@
 - **Multi-colour support:** Work with up to 20 colours per pattern
 - **Export options:** Save your work as PNG, SVG, or JSON
 
+## More information
+
+See the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html) to learn more about Motif.
+
 <details>
-<summary>Screenshots</summary>
+<summary><strong>More Screenshots</strong> (click to expand)</summary>
 
 ![A large pattern is repeated two times vertically](screenshot1.png)
 ![A border pattern is repeated three timed horizontally](screenshot2.png)
 
 </details>
-
-For more details, see the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html).
 
 ## Technical Overview
 
