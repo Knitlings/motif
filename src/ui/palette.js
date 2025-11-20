@@ -65,10 +65,23 @@ export function createPaletteManager(deps) {
                 const editBtn = document.createElement('span');
                 editBtn.className = 'palette-edit-btn';
                 editBtn.innerHTML = `<img src="${editSvg}" alt="Edit" class="edit-icon">`;
+
+                // Handle touch (mobile) - prevent parent handlers from interfering
+                editBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation(); // Stop parent's long-press timer from starting
+                }, { passive: true });
+
+                editBtn.addEventListener('touchend', (e) => {
+                    e.stopPropagation(); // Stop parent from handling this touch
+                    // Don't preventDefault - let click event fire with user gesture
+                }, { passive: true });
+
+                // Handle click (desktop and synthesized from mobile touch)
                 editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     editPaletteColor(index);
                 });
+
                 btn.appendChild(editBtn);
             }
 
@@ -77,10 +90,23 @@ export function createPaletteManager(deps) {
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'palette-delete-btn';
                 deleteBtn.innerHTML = `<img src="${deleteSvg}" alt="Delete" class="delete-icon">`;
+
+                // Handle touch (mobile) - prevent parent handlers from interfering
+                deleteBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation(); // Stop parent's long-press timer from starting
+                }, { passive: true });
+
+                deleteBtn.addEventListener('touchend', (e) => {
+                    e.stopPropagation(); // Stop parent from handling this touch
+                    // Don't preventDefault - let click event fire with user gesture
+                }, { passive: true });
+
+                // Handle click (desktop and synthesized from mobile touch)
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     removePaletteColor(index);
                 });
+
                 btn.appendChild(deleteBtn);
             }
 
