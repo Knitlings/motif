@@ -8,6 +8,8 @@
 
   ## [Unreleased]
 
+  ## [1.1.0] - 2025-11-22
+
   ### Added
   - Mobile and tablet responsive design for all screen sizes
   - Touch support for grid resize handles with larger touch targets (20px)
@@ -91,5 +93,6 @@
 
   ---
 
+  [1.1.0]: https://github.com/Knitlings/motif/releases/tag/v1.1.0
   [1.0.0]: https://github.com/Knitlings/motif/releases/tag/v1.0.0
 
