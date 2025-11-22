@@ -1,70 +1,4 @@
 /* ============================================
-   SIDE PANELS
-   ============================================ */
-
-.side-panel {
-    position: fixed;
-    top: 64px;
-    left: 0;
-    height: calc(100vh - 64px);
-    background: var(--color-bg-secondary);
-    border-right: var(--border-width) solid var(--color-border-primary);
-    display: flex;
-    flex-direction: row;
-    overflow-y: auto;
-    width: var(--panel-width);
-    min-width: var(--panel-width);
-    transition: width var(--transition-slow), min-width var(--transition-slow);
-    z-index: 100;
-}
-
-.side-panel.right-panel {
-    left: auto;
-    right: 0;
-    border-right: none;
-    border-left: var(--border-width) solid var(--color-border-primary);
-}
-
-.side-panel.collapsed {
-    /* OPTION 2 VARIANT: Hide collapsed panels completely */
-    /* To restore collapsed panel visibility, comment out display: none and uncomment the width rules below */
-    display: none;
-    /* width: var(--panel-width-collapsed);
-    min-width: var(--panel-width-collapsed); */
-}
-
-.panel-content {
-    flex: 1;
-    padding: var(--space-6);
-    overflow-y: auto;
-    opacity: 1;
-    transition: opacity var(--transition-slow);
-}
-
-.side-panel.collapsed .panel-content {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.panel-content h3 {
-    margin-top: 0;
-    margin-bottom: var(--space-4);
-}
-
-.panel-content h3:first-of-type {
-    margin-top: 0;
-}
-
-/* Section wrappers - add spacing between sections */
-.panel-content > div {
-    padding-top: var(--space-6);
-}
-
-.panel-content > div:first-of-type {
-    padding-top: 0;
-}
-
-/* ============================================
    CANVAS AREA
    ============================================ */
 
@@ -81,7 +15,7 @@
 .canvas-section {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: var(--space-5);
     min-width: 300px;
 }
@@ -94,10 +28,160 @@
     letter-spacing: 0.1em;
 }
 
+/* Grid Control (Inline Dimension Controls) */
+.grid-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-content: center;
+    align-self: center;
+}
+
+.grid-control-label {
+    /* Inherits canvas-heading styles */
+}
+
+.grid-dimension {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    text-transform: none;
+    letter-spacing: normal;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--border-radius-sm);
+    background: transparent;
+    border: var(--border-width) solid transparent;
+    min-width: 2ch;
+    text-align: center;
+    cursor: default;
+    transition: all var(--transition-base);
+}
+
+.grid-dimension:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-border-secondary);
+    cursor: text;
+}
+
+.grid-dimension:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-bg-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+    cursor: text;
+}
+
+.grid-chevron {
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-lg);
+    padding: var(--space-1);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    line-height: 1;
+    border-radius: var(--border-radius-sm);
+}
+
+.grid-chevron:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+}
+
+.grid-chevron:active:not(:disabled) {
+    background: var(--color-bg-tertiary);
+}
+
+.grid-chevron:disabled,
+.grid-chevron.disabled {
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.grid-control-separator {
+    font-size: var(--font-size-base);
+    color: var(--color-text-tertiary);
+    margin: 0 var(--space-1);
+}
+
+/* Cells Control (Aspect Ratio Menu) */
+.cells-control {
+    position: relative;
+    display: inline-flex;
+}
+
+.cells-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-base);
+}
+
+.cells-toggle:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+}
+
+.cells-current {
+    color: var(--color-text-secondary);
+}
+
+.cells-toggle:hover .cells-current {
+    color: var(--color-text-primary);
+}
+
+.cells-arrow {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    transition: transform var(--transition-base);
+}
+
+.cells-toggle[aria-expanded="true"] .cells-arrow {
+    transform: rotate(180deg);
+}
+
+.cells-menu {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    left: 0;
+    z-index: 1000;
+    padding: var(--space-4);
+    padding-bottom: var(--space-5);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 220px;
+    overflow: visible;
+}
+
+.cells-menu h3 {
+    margin-top: 0;
+    margin-bottom: var(--space-4);
+}
+
+.cells-menu .ratio-preset-group {
+    margin-bottom: var(--space-3);
+}
+
+.cells-menu #customRatioControls {
+    margin-top: var(--space-4);
+}
+
 .canvas-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 0; /* Allow canvas to overflow grid control width */
 }
 
 .canvas-resize-container {
@@ -188,6 +272,21 @@ canvas {
     padding: var(--space-5);
 }
 
+/* Show desktop hint by default and on hover-capable devices */
+.touch-hint {
+    display: none;
+}
+
+/* Show touch hint on touch-only devices (no hover capability) */
+@media (hover: none) and (pointer: coarse) {
+    .desktop-hint {
+        display: none;
+    }
+    .touch-hint {
+        display: inline;
+    }
+}
+
 /* ============================================
    FORM ELEMENTS
    ============================================ */
@@ -196,7 +295,9 @@ canvas {
     margin-bottom: var(--space-4);
 }
 
-.input-group label {
+.input-group label,
+/* Special case: div styled as label to avoid focus stealing from contenteditable elements */
+.input-label-style {
     display: block;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
@@ -230,73 +331,6 @@ input[type="range"] {
     width: 100%;
     height: var(--space-2);
     cursor: pointer;
-}
-
-/* Color Picker */
-.color-input-row {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
-    align-items: stretch;
-}
-
-.color-picker-wrapper {
-    position: relative;
-    width: 100%;
-    display: flex;
-}
-
-input[type="color"] {
-    width: 100%;
-    padding: 0;
-    min-height: calc(var(--font-size-base) * var(--line-height-normal) + var(--space-3) * 2);
-    border: none;
-    border-radius: var(--border-radius-md);
-    cursor: pointer;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    overflow: hidden;
-}
-
-input[type="color"]::-webkit-color-swatch-wrapper {
-    padding: 0;
-    border-radius: var(--border-radius-md);
-}
-
-input[type="color"]::-webkit-color-swatch {
-    border: none;
-    border-radius: var(--border-radius-md);
-}
-
-input[type="color"]::-moz-color-swatch {
-    border: none;
-    border-radius: var(--border-radius-md);
-}
-
-.color-picker-label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
-    color: white;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-    pointer-events: none;
-    z-index: 1;
-}
-
-.color-input-row input[type="text"] {
-    flex: 1;
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-xs);
-    min-height: calc(var(--font-size-base) * var(--line-height-normal) + var(--space-3) * 2);
-    box-sizing: border-box;
 }
 
 /* ============================================
@@ -531,11 +565,11 @@ button:disabled {
 
 .pattern-delete-btn {
     position: absolute;
-    top: calc(-1 * var(--space-2));
-    right: calc(-1 * var(--space-2));
-    width: var(--space-5);
-    height: var(--space-5);
-    display: none;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    display: flex; /* Always flex, use opacity for visibility */
     align-items: center;
     justify-content: center;
     font-size: var(--font-size-sm);
@@ -544,19 +578,30 @@ button:disabled {
     color: white;
     background: var(--color-danger);
     border-radius: var(--border-radius-full);
-    border: var(--border-width-thick) solid var(--color-bg-secondary);
+    border: 2px solid var(--color-bg-secondary);
     cursor: pointer;
     box-shadow: var(--shadow-md);
-    transition: all var(--transition-base);
+    opacity: 0; /* Start invisible */
+    pointer-events: none; /* Disable interaction when invisible */
+    transition: opacity 180ms ease, background-color 150ms ease, transform 150ms ease;
+    z-index: 2;
+}
+
+.pattern-delete-btn .delete-icon {
+    width: 10px;
+    height: 10px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    pointer-events: none;
 }
 
 .pattern-btn:hover .pattern-delete-btn {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction when visible */
 }
 
 .pattern-delete-btn:hover {
     background: var(--color-danger-hover);
-    transform: scale(1.1);
+    transform: scale(1.05); /* Subtle scale, not aggressive */
 }
 
 #mergeHint {
@@ -571,9 +616,11 @@ button:disabled {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-2);
+    margin-bottom: var(--space-3);
 }
 
 .palette-color {
+    position: relative;
     aspect-ratio: 1;
     border: var(--border-width-thick) solid var(--color-border-primary);
     border-radius: var(--border-radius-md);
@@ -584,6 +631,83 @@ button:disabled {
 .palette-color:hover {
     border-color: var(--color-border-dark);
     transform: scale(1.05);
+}
+
+.palette-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-tertiary);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.palette-add-btn:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+/* Edit and delete buttons for custom palette colors - subtle, symmetric design */
+.palette-delete-btn,
+.palette-edit-btn {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    display: flex; /* Always flex, use opacity for visibility */
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    color: white;
+    background: var(--color-danger);
+    border-radius: var(--border-radius-full);
+    border: 2px solid var(--color-bg-secondary);
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    opacity: 0; /* Start invisible */
+    pointer-events: none; /* Disable interaction when invisible */
+    transition: opacity 180ms ease, background-color 150ms ease, transform 150ms ease;
+    z-index: 2;
+}
+
+.palette-delete-btn {
+    top: -6px;
+    right: -6px;
+}
+
+.palette-delete-btn .delete-icon {
+    width: 10px;
+    height: 10px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    pointer-events: none;
+}
+
+.palette-edit-btn {
+    top: -6px;
+    left: -6px;
+}
+
+.palette-edit-btn .edit-icon {
+    width: 10px;
+    height: 10px;
+    filter: brightness(0) invert(1); /* Make SVG white */
+    transform: scaleX(-1); /* Flip horizontally */
+    pointer-events: none;
+}
+
+/* Show buttons on hover with smooth fade */
+.palette-color:hover .palette-delete-btn,
+.palette-color:hover .palette-edit-btn {
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction when visible */
+}
+
+.palette-delete-btn:hover,
+.palette-edit-btn:hover {
+    background: var(--color-danger-hover);
+    transform: scale(1.05); /* Subtle scale, not aggressive */
 }
 
 /* ============================================
@@ -718,4 +842,55 @@ button:disabled {
     background: var(--color-primary);
     border-color: var(--color-primary);
     font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   TOUCH DEVICE ADJUSTMENTS
+   ============================================ */
+
+/* For devices without hover capability (touch devices), always show edit/delete buttons */
+@media (hover: none) {
+    /* Always show palette edit/delete buttons on touch devices */
+    .palette-delete-btn,
+    .palette-edit-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Make buttons slightly larger for better touch targets */
+    .palette-delete-btn,
+    .palette-edit-btn {
+        width: 26px;
+        height: 26px;
+        top: -8px;
+    }
+
+    .palette-delete-btn {
+        right: -8px;
+    }
+
+    .palette-edit-btn {
+        left: -8px;
+    }
+
+    .palette-delete-btn .delete-icon,
+    .palette-edit-btn .edit-icon {
+        width: 11px;
+        height: 11px;
+    }
+
+    /* Also apply to pattern delete buttons */
+    .pattern-delete-btn {
+        opacity: 1;
+        pointer-events: auto;
+        width: 26px;
+        height: 26px;
+        top: -8px;
+        right: -8px;
+    }
+
+    .pattern-delete-btn .delete-icon {
+        width: 11px;
+        height: 11px;
+    }
 }

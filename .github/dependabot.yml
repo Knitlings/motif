@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # NPM dependency updates
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    target-branch: "staging"
+    open-pull-requests-limit: 5
+    # Group all patch updates together to reduce PR spam
+    groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+    # Automatically add labels
+    labels:
+      - "dependencies"
+      - "automated"
+    # Add reviewers (optional - uncomment and add your GitHub username)
+    # reviewers:
+    #   - "your-github-username"
+    # Commit message configuration
+    commit-message:
+      prefix: "deps"
+      include: "scope"

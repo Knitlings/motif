@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+# Deploy to Cloudflare Pages production on every push to main
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Set permissions for the GitHub token
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Build the application
+      - name: Build for production
+        run: npm run build
+
+      # Step 5: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: motif
+          directory: dist
+          # Optional: Add a commit message as deployment info
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

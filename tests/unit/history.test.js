@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HistoryManager } from '../../src/managers/history.js';
+import { CONFIG } from '../../src/config.js';
 
 describe('HistoryManager', () => {
   beforeEach(() => {
@@ -171,6 +172,111 @@ describe('HistoryManager', () => {
       HistoryManager.save({ value: 2 });
 
       expect(HistoryManager.canRedo()).toBe(false);
+    });
+  });
+
+  describe('history size limit', () => {
+    it('should enforce MAX_HISTORY_STATES limit', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Add states beyond the limit
+      for (let i = 1; i <= CONFIG.MAX_HISTORY_STATES + 10; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // Should only keep the most recent MAX_HISTORY_STATES
+      expect(HistoryManager.history.length).toBe(CONFIG.MAX_HISTORY_STATES);
+      expect(HistoryManager.index).toBe(CONFIG.MAX_HISTORY_STATES - 1);
+    });
+
+    it('should remove oldest states when exceeding limit', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Add 10 states beyond the limit
+      const totalStates = CONFIG.MAX_HISTORY_STATES + 10;
+      for (let i = 1; i <= totalStates; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // Oldest state should be trimmed (value 0-10 should be gone)
+      // First state in history should be value 11
+      expect(HistoryManager.history[0].value).toBe(11);
+
+      // Most recent state should still be accessible
+      expect(HistoryManager.current().value).toBe(totalStates);
+    });
+
+    it('should preserve most recent states when trimming', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Add states beyond the limit
+      for (let i = 1; i <= CONFIG.MAX_HISTORY_STATES + 5; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // Should still be able to undo within the preserved history
+      const currentValue = HistoryManager.current().value;
+
+      for (let i = 0; i < 10; i++) {
+        expect(HistoryManager.canUndo()).toBe(true);
+        const undoneState = HistoryManager.undo();
+        expect(undoneState.value).toBe(currentValue - i - 1);
+      }
+    });
+
+    it('should not trim when under the limit', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Add states under the limit
+      const statesCount = Math.floor(CONFIG.MAX_HISTORY_STATES / 2);
+      for (let i = 1; i <= statesCount; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // All states should be preserved (init + saves)
+      expect(HistoryManager.history.length).toBe(statesCount + 1);
+
+      // Should be able to undo all the way to the initial state
+      for (let i = 0; i < statesCount; i++) {
+        HistoryManager.undo();
+      }
+      expect(HistoryManager.current().value).toBe(0);
+    });
+
+    it('should handle trimming after undo and new save', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Fill history to the limit
+      for (let i = 1; i <= CONFIG.MAX_HISTORY_STATES; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // Undo a few times
+      HistoryManager.undo();
+      HistoryManager.undo();
+
+      // Save new states beyond the limit
+      HistoryManager.save({ value: 1000 });
+      HistoryManager.save({ value: 1001 });
+
+      // Should still respect the limit
+      expect(HistoryManager.history.length).toBeLessThanOrEqual(CONFIG.MAX_HISTORY_STATES);
+      expect(HistoryManager.current().value).toBe(1001);
+    });
+
+    it('should maintain correct index after trimming', () => {
+      HistoryManager.init({ value: 0 });
+
+      // Add states beyond the limit
+      for (let i = 1; i <= CONFIG.MAX_HISTORY_STATES + 10; i++) {
+        HistoryManager.save({ value: i });
+      }
+
+      // Index should point to the last element
+      expect(HistoryManager.index).toBe(HistoryManager.history.length - 1);
+
+      // Current should return the last saved state
+      expect(HistoryManager.current().value).toBe(CONFIG.MAX_HISTORY_STATES + 10);
     });
   });
 });

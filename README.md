@@ -1,8 +1,8 @@
 # Motif
 
-**Design repeating patterns on a flexible grid with live preview.**
+![Motif Pattern Editor](screenshot1.png)
 
-![Motif Pattern Editor](screenshot.png)
+Draw grid based patterns and see how they look when they repeat. Try Motif at [motif.works](https://motif.works).
 
 ## Features
 
@@ -11,6 +11,18 @@
 - **Custom aspect ratios:** Square cells or custom dimensions for crafts like knitting
 - **Multi-colour support:** Work with up to 20 colours per pattern
 - **Export options:** Save your work as PNG, SVG, or JSON
+
+## More information
+
+See the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html) to learn more about Motif.
+
+<details>
+<summary><strong>More Screenshots</strong> (click to expand)</summary>
+
+![A large pattern is repeated two times vertically](screenshot1.png)
+![A border pattern is repeated three timed horizontally](screenshot2.png)
+
+</details>
 
 ## Technical Overview
 
@@ -23,10 +35,12 @@ Built with vanilla JavaScript, HTML, and CSS using a modular ES6 architecture. T
 **Project structure:**
 ```
 src/
-├── config.js          # Configuration constants
+├── config.js          # Configuration constants and UI constants
 ├── utils.js           # Utility functions
 ├── managers/          # Storage, history, and canvas management
 ├── core/              # Grid operations and export/import
+├── ui/                # UI modules (handlers, menus, palette, etc.)
+├── utils/             # Specialized utilities (validation, error handling)
 └── main.js            # Application initialization
 ```
 
@@ -37,3 +51,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+

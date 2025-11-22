@@ -1,9 +1,9 @@
-name: Deploy to Staging
+name: Deploy Preview (Staging)
 
-# Deploy to Cloudflare Pages staging environment on every push to main
+# Deploy preview to Cloudflare Pages on every push to staging branch
 on:
   push:
-    branches: [main]
+    branches: [staging]
 
 jobs:
   deploy:
@@ -34,13 +34,13 @@ jobs:
       - name: Build for production
         run: npm run build
 
-      # Step 5: Deploy to Cloudflare Pages
-      - name: Deploy to Cloudflare Pages
+      # Step 5: Deploy to Cloudflare Pages (staging branch deployment)
+      - name: Deploy staging to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: motif-staging
+          projectName: motif
           directory: dist
-          # Optional: Add a commit message as deployment info
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: staging

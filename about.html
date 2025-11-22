@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none';">
     <title>About - Motif</title>
     <meta name="description" content="Learn about Motif, a web-based grid pattern editor">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ruda:wght@400..900&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&family=Palanquin:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
@@ -16,9 +15,9 @@
 
         <h1>About</h1>
 
-        <p><strong>Motif: design repeating patterns on a flexible grid with live preview.</strong></p>
+        <p><strong> Motif: create patterns, see them repeat.</strong></p>
 
-        <p>I built Motif because trying to design colourwork knitting patterns in full-featured design software like Photoshop or Inkscape was incredibly frustrating. Those are powerful tools do everything, while Motif aims to do one thing well: let you draw grid-based patterns and see how they tile.</p>
+        <p>I built Motif because trying to design colourwork knitting patterns in full-featured graphic editors like Photoshop or Inkscape was incredibly frustrating. Those powerful tools do everything, while Motif aims to do one thing well: let you draw grid-based patterns and see how they look when they repeat.</p>
 
         <h2>Features</h2>
         <ul>
@@ -31,11 +30,11 @@
 
         <h2>Technical details</h2>
 
-        <p>Motif uses vanilla JavaScript and runs entirely in your browser. Your patterns are saved locally, meaning nothing leaves your device. It's free, open source (MIT license), and available on GitHub.</p>
+        <p>Motif uses vanilla JavaScript and runs entirely in your browser. It's free, open source (MIT licence) and available on GitHub.</p>
 
         <h2>Privacy & Data Storage</h2>
 
-        <p>Motif stores all your work locally in your browser's localStorage. This means:</p>
+        <p>Motif stores all your work locally in your browser's localStorage. That means:</p>
 
         <ul>
             <li>Your patterns are automatically saved as you work</li>
@@ -43,14 +42,14 @@
             <li>Clearing your browser data will delete your saved work</li>
         </ul>
 
-        <p>I don't collect or store any of your pattern data. Motif is hosted on Cloudflare Pages and uses <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener noreferrer">Cloudflare Web Analytics</a> to understand how the site is used. Cloudflare Web Analytics is privacy-first and doesn't use cookies or track individual users. For more details, see <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's Privacy Policy</a>.</p>
+        <p>I don't collect or store any of your pattern data. Motif is hosted on Cloudflare Pages and uses <a href="https://www.cloudflare.com/web-analytics/" target="_blank" rel="noopener noreferrer">Cloudflare Web Analytics</a> to understand how the site is used. Cloudflare Web Analytics is privacy-first and doesn't use cookies or track individual users. For more details, see <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's Privacy Policy</a> (the parts referring to the end user are the relevant ones).</p>
 
         <h2>Connect</h2>
 
         <ul>
-            <li><a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>: View the source code and contribute</li>
+            <li><a href="https://github.com/Knitlings/motif" target="_blank" rel="noopener noreferrer">GitHub</a>: View the source code and contribute</li>
             <li><a href="https://www.ravelry.com/people/Knitlings" target="_blank" rel="noopener noreferrer">Ravelry</a>: Not all projects fit on GitHub</li>
-            <li><a href="https://knitlings.com" target="_blank" rel="noopener noreferrer">Knitlings.com</a>: More from the maker</li>
+            <!-- <li><a href="https://knitlings.com" target="_blank" rel="noopener noreferrer">Knitlings.com</a>: More from the maker</li> -->
         </ul>
 
         <p style="margin-top: 2rem;"><a href="/">← Back to Motif</a></p>

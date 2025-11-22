@@ -10,7 +10,8 @@ src/styles/
 ├── variables.css    # CSS custom properties (design system)
 ├── base.css         # Reset, typography, accessibility
 ├── layout.css       # Main layout, panels, grid structure
-└── components.css   # Buttons, inputs, dialogs, etc.
+├── components.css   # Buttons, inputs, dialogs, etc.
+└── responsive.css   # Mobile and tablet responsive styles
 ```
 
 ## Import Order
@@ -21,6 +22,7 @@ The CSS files are imported in this specific order in `main.css`:
 2. **base.css** - Reset and base styles
 3. **layout.css** - Layout structure
 4. **components.css** - Component styles
+5. **responsive.css** - Responsive overrides for mobile and tablet
 
 ## Design System
 
@@ -52,6 +54,7 @@ To change the app's appearance:
 2. **Base styles**: Edit `base.css`
 3. **Layout**: Edit `layout.css`
 4. **Components**: Edit `components.css`
+5. **Responsive behavior**: Edit `responsive.css`
 
 Changes are automatically picked up by Vite's dev server with hot module replacement.
 

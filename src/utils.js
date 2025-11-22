@@ -1,38 +1,87 @@
 // ============================================
 // UTILITIES
 // ============================================
+
+/**
+ * @typedef {Object} NumberInputConfig
+ * @property {string} input - ID of the input element
+ * @property {string} display - ID of the display element
+ * @property {number} min - Minimum allowed value
+ * @property {number} max - Maximum allowed value
+ * @property {number} defaultVal - Default value if input is invalid
+ * @property {Function} onApply - Callback function when value is applied
+ */
+
+/**
+ * @typedef {Object} ColorInputConfig
+ * @property {string} picker - ID of the color picker element
+ * @property {string} text - ID of the text input element
+ * @property {Function} onChange - Callback function when color changes
+ */
+
 export const Utils = {
-    // Clamp a value between min and max
+    /**
+     * Clamp a value between min and max
+     * @param {number} value - Value to clamp
+     * @param {number} min - Minimum value
+     * @param {number} max - Maximum value
+     * @returns {number} Clamped value
+     */
     clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
     },
 
-    // Validate and clamp an integer input
+    /**
+     * Validate and clamp an integer input
+     * @param {string|number} value - Value to parse and clamp
+     * @param {number} min - Minimum value
+     * @param {number} max - Maximum value
+     * @param {number} defaultValue - Default value if parsing fails
+     * @returns {number} Clamped integer value
+     */
     clampInt(value, min, max, defaultValue) {
         const parsed = parseInt(value);
         if (isNaN(parsed)) return defaultValue;
         return this.clamp(parsed, min, max);
     },
 
-    // Validate and clamp a float input
+    /**
+     * Validate and clamp a float input
+     * @param {string|number} value - Value to parse and clamp
+     * @param {number} min - Minimum value
+     * @param {number} max - Maximum value
+     * @param {number} defaultValue - Default value if parsing fails
+     * @returns {number} Clamped float value
+     */
     clampFloat(value, min, max, defaultValue) {
         const parsed = parseFloat(value);
         if (isNaN(parsed)) return defaultValue;
         return this.clamp(parsed, min, max);
     },
 
-    // Deep clone an object using JSON
+    /**
+     * Deep clone an object using JSON serialization
+     * @param {*} obj - Object to clone
+     * @returns {*} Deep cloned object
+     */
     deepClone(obj) {
         return JSON.parse(JSON.stringify(obj));
     },
 
-    // Check if platform is Mac
+    /**
+     * Check if platform is Mac
+     * @returns {boolean} True if Mac platform
+     */
     isMac() {
         return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     },
 
-    // Create a number input handler with live preview and validation
-    // Reduces duplication for grid width, height, repeat X, repeat Y inputs
+    /**
+     * Create a number input handler with live preview and validation
+     * Reduces duplication for grid width, height, repeat X, repeat Y inputs
+     * @param {NumberInputConfig} config - Configuration object
+     * @returns {HTMLElement} The input element
+     */
     setupNumberInput(config) {
         const { input, display, min, max, defaultVal, onApply } = config;
         const inputEl = document.getElementById(input);
@@ -74,7 +123,11 @@ export const Utils = {
         return inputEl;
     },
 
-    // Create color input handlers (picker + text field sync)
+    /**
+     * Create color input handlers (picker + text field sync)
+     * @param {ColorInputConfig} config - Configuration object
+     * @returns {{pickerEl: HTMLElement, textEl: HTMLElement}} The picker and text input elements
+     */
     setupColorInput(config) {
         const { picker, text, onChange } = config;
         const pickerEl = document.getElementById(picker);
@@ -93,7 +146,12 @@ export const Utils = {
         return { pickerEl, textEl };
     },
 
-    // Convert decimal to simple fraction string (e.g., 1.33 → "4:3")
+    /**
+     * Convert decimal to simple fraction string (e.g., 1.33 → "4:3")
+     * @param {number} decimal - Decimal value to convert
+     * @param {number} [maxDenominator=100] - Maximum denominator to search
+     * @returns {string} Fraction string in format "numerator:denominator"
+     */
     decimalToFraction(decimal, maxDenominator = 100) {
         // Handle exact integers
         if (Math.abs(decimal - Math.round(decimal)) < 0.0001) {
@@ -123,13 +181,21 @@ export const Utils = {
         return `${bestNumerator}:${bestDenominator}`;
     },
 
-    // Convert aspect ratio (height/width) to width:height display format
-    // e.g., aspectRatio 0.75 (height/width) → "4:3" (width:height)
+    /**
+     * Convert aspect ratio (height/width) to width:height display format
+     * Note: aspectRatio is stored as height/width but displayed as width:height
+     * e.g., aspectRatio 0.75 (height/width) → "4:3" (width:height)
+     * @param {number} aspectRatio - Aspect ratio as height/width
+     * @param {number} [maxDenominator=100] - Maximum denominator to search
+     * @returns {string} Aspect ratio string in "width:height" format
+     */
     aspectRatioToDisplay(aspectRatio, maxDenominator = 100) {
-        // If aspectRatio is height/width, then width/height is the inverse
+        // Convert internal representation (height/width) to display representation (width/height)
+        // Example: if cells are 0.75x as tall as wide (height/width = 0.75),
+        // then they are 1.33x as wide as tall (width/height = 1.33)
         const widthHeightRatio = 1 / aspectRatio;
 
-        // Handle exact integers
+        // Handle exact integers (e.g., 2.0 → "2:1")
         if (Math.abs(widthHeightRatio - Math.round(widthHeightRatio)) < 0.0001) {
             return `${Math.round(widthHeightRatio)}:1`;
         }
@@ -138,18 +204,22 @@ export const Utils = {
         let bestDenominator = 1;
         let minError = Math.abs(widthHeightRatio - 1);
 
-        // Search for the simplest fraction within tolerance
+        // Use continued fractions algorithm to find simplest rational approximation
+        // Iterates through denominators from 1 to maxDenominator to find the fraction
+        // that best approximates the target ratio while remaining simple
         for (let denominator = 1; denominator <= maxDenominator; denominator++) {
+            // For each denominator, find the best numerator by rounding
             const numerator = Math.round(widthHeightRatio * denominator);
             const error = Math.abs(widthHeightRatio - numerator / denominator);
 
-            // If this is closer, or equally close but simpler, use it
+            // Prefer fractions that are either more accurate or simpler
+            // This ensures we get "4:3" instead of "400:300"
             if (error < minError || (error === minError && denominator < bestDenominator)) {
                 bestNumerator = numerator;
                 bestDenominator = denominator;
                 minError = error;
 
-                // If we found an exact match, stop searching
+                // Early exit if we found an exact match (within floating point tolerance)
                 if (error < 0.0001) break;
             }
         }
@@ -157,8 +227,12 @@ export const Utils = {
         return `${bestNumerator}:${bestDenominator}`;
     },
 
-    // Parse fraction string to decimal (e.g., "4:3" → 1.33, "16/9" → 1.78)
-    // Also accepts plain decimals (e.g., "1.5" → 1.5)
+    /**
+     * Parse fraction string to decimal (e.g., "4:3" → 1.33, "16/9" → 1.78)
+     * Also accepts plain decimals (e.g., "1.5" → 1.5)
+     * @param {string} str - Fraction string to parse (supports ":", "/", or decimal)
+     * @returns {number|null} Decimal value or null if invalid
+     */
     fractionToDecimal(str) {
         str = str.trim();
 
@@ -195,14 +269,20 @@ export const Utils = {
         return null;
     },
 
-    // Parse width:height format to aspectRatio (height/width)
-    // e.g., "4:3" (width:height) → 0.75 (height/width aspect ratio)
+    /**
+     * Parse width:height format to aspectRatio (height/width)
+     * e.g., "4:3" (width:height) → 0.75 (height/width aspect ratio)
+     * @param {string} str - Width:height ratio string
+     * @returns {number|null} Aspect ratio as height/width or null if invalid
+     */
     displayToAspectRatio(str) {
+        // Parse the user input (e.g., "4:3") into a width/height decimal (e.g., 1.33)
         const widthHeightRatio = this.fractionToDecimal(str);
         if (widthHeightRatio === null || widthHeightRatio === 0) {
             return null;
         }
-        // Convert width:height to height/width
+        // Convert display format (width/height) to internal format (height/width)
+        // Example: "4:3" means width/height = 4/3 = 1.33, so height/width = 1/1.33 = 0.75
         return 1 / widthHeightRatio;
     }
 };
