@@ -1,0 +1,92 @@
+name: Create Update Post
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  create-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout motif repo
+        uses: actions/checkout@v4
+        with:
+          path: motif
+
+      - name: Checkout knitlings repo
+        uses: actions/checkout@v4
+        with:
+          repository: Knitlings/knitlings
+          token: ${{ secrets.KNITLINGS_PAT }}
+          path: knitlings
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          cd motif
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
+
+          # Extract the changelog section for this version
+          CHANGELOG=$(node ../.github/scripts/extract-changelog.cjs "$VERSION_NO_V")
+
+          # Save to file for PR body
+          echo "$CHANGELOG" > /tmp/changelog.txt
+
+          # Set output for use in next steps (escape for multiline)
+          {
+            echo 'content<<EOF'
+            echo "$CHANGELOG"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create update post
+        run: |
+          cd knitlings
+
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION_NO_V="${VERSION#v}"
+          RELEASE_NAME="${{ github.event.release.name }}"
+          RELEASE_DATE=$(date +%Y-%m-%d)
+          RELEASE_URL="https://github.com/Knitlings/motif/releases/tag/${VERSION}"
+
+          # Random lace pattern (1-8)
+          LACE=$((RANDOM % 8 + 1))
+
+          # Create filename: YYYY-MM-DD-motif-vX.Y.Z.md
+          FILENAME="content/updates/${RELEASE_DATE}-motif-${VERSION}.md"
+
+          # Generate Hugo post
+          cat > "$FILENAME" <<EOF
+          +++
+          title = 'Motif ${VERSION_NO_V} Released'
+          date = '${RELEASE_DATE}'
+          draft = false
+          tool = 'motif'
+          version = '${VERSION_NO_V}'
+          release_url = '${RELEASE_URL}'
+          lace = '${LACE}'
+          +++
+
+          ${{ steps.changelog.outputs.content }}
+          EOF
+
+          echo "Created update post: $FILENAME"
+          cat "$FILENAME"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: knitlings
+          token: ${{ secrets.KNITLINGS_PAT }}
+          commit-message: "Add update post for Motif ${{ github.event.release.tag_name }}"
+          branch: update-motif-${{ github.event.release.tag_name }}
+          title: "Update: Motif ${{ github.event.release.tag_name }}"
+          body: |
+            Automated update post from Motif release ${{ github.event.release.tag_name }}
+
+            Release: ${{ github.event.release.html_url }}
+
+            ## Changelog
+
+            ${{ steps.changelog.outputs.content }}
