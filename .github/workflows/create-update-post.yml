@@ -30,13 +30,36 @@ jobs:
           # Extract the changelog section for this version
           CHANGELOG=$(node ../.github/scripts/extract-changelog.cjs "$VERSION_NO_V")
 
-          # Save to file for PR body
-          echo "$CHANGELOG" > /tmp/changelog.txt
+          # Generate summary sentence based on changelog structure
+          SUMMARY=""
+          if echo "$CHANGELOG" | grep -q "### Added"; then
+            ADDED_COUNT=$(echo "$CHANGELOG" | sed -n '/### Added/,/###/p' | grep -c "^  -" || echo 0)
 
-          # Set output for use in next steps (escape for multiline)
+            if [ $ADDED_COUNT -gt 0 ]; then
+              FIRST_FEATURE=$(echo "$CHANGELOG" | sed -n '/### Added/,/###/p' | grep "^  -" | head -1 | sed 's/^  - //')
+              if [ $ADDED_COUNT -eq 1 ]; then
+                SUMMARY="This release adds ${FIRST_FEATURE}"
+              elif [ $ADDED_COUNT -eq 2 ]; then
+                SECOND_FEATURE=$(echo "$CHANGELOG" | sed -n '/### Added/,/###/p' | grep "^  -" | sed -n '2p' | sed 's/^  - //')
+                SUMMARY="This release adds ${FIRST_FEATURE} and ${SECOND_FEATURE}"
+              else
+                SUMMARY="A major update with ${ADDED_COUNT} new features including ${FIRST_FEATURE}"
+              fi
+            fi
+          fi
+
+          # Fallback if no Added section or summary generation failed
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY="See changelog below for details on this release."
+          fi
+
+          # Set outputs
           {
             echo 'content<<EOF'
             echo "$CHANGELOG"
+            echo EOF
+            echo 'summary<<EOF'
+            echo "$SUMMARY"
             echo EOF
           } >> "$GITHUB_OUTPUT"
 
@@ -67,6 +90,8 @@ jobs:
           release_url = '${RELEASE_URL}'
           lace = '${LACE}'
           +++
+
+          ${{ steps.changelog.outputs.summary }}
 
           ${{ steps.changelog.outputs.content }}
           EOF
