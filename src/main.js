@@ -8,7 +8,7 @@ import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
 import { CanvasManager } from './managers/canvas.js';
 import { createEmptyGrid, resizeGrid, resizeGridFromEdge } from './core/grid.js';
-import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportJson, importJson, downloadFile } from './core/export.js';
+import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, exportPatternWithContextPng, exportJson, importJson, downloadFile } from './core/export.js';
 import {
     validateGridDimension,
     validateAspectRatio,
@@ -796,6 +796,19 @@ const downloadModal = document.getElementById('downloadModal');
 const downloadBtn = document.getElementById('downloadBtn');
 const downloadModalCancelBtn = document.getElementById('downloadModalCancelBtn');
 const downloadForm = document.getElementById('downloadForm');
+const contextControls = document.getElementById('contextControls');
+
+// Toggle context controls visibility based on source selection
+const sourceRadios = document.querySelectorAll('input[name="source"]');
+sourceRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (radio.value === 'pattern-with-context' && radio.checked) {
+            contextControls.style.display = 'flex';
+        } else {
+            contextControls.style.display = 'none';
+        }
+    });
+});
 
 // Open download modal
 downloadBtn.onclick = () => {
@@ -847,6 +860,22 @@ downloadForm.onsubmit = async (e) => {
             } else {
                 blob = await exportPng(getState(), includeRowCounts);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
+            }
+        } else if (source === 'pattern-with-context') {
+            // Pattern with context export
+            const context = {
+                left: parseInt(formData.get('contextLeft')) || 0,
+                right: parseInt(formData.get('contextRight')) || 0,
+                top: parseInt(formData.get('contextTop')) || 0,
+                bottom: parseInt(formData.get('contextBottom')) || 0
+            };
+
+            if (format === 'svg') {
+                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+                filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
+            } else {
+                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+                filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
             }
         } else {
             // Preview export

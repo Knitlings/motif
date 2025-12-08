@@ -956,6 +956,40 @@ button:disabled {
     font-weight: var(--font-weight-semibold);
 }
 
+.context-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.context-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.context-input-group label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+.context-input-group input[type="number"] {
+    padding: var(--space-2);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    transition: border-color 0.2s;
+}
+
+.context-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
 .modal-actions {
     display: flex;
     gap: var(--space-3);

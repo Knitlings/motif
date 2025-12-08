@@ -174,9 +174,35 @@
                         <span class="radio-option-label">Pattern</span>
                     </label>
                     <label class="radio-option">
+                        <input type="radio" name="source" value="pattern-with-context">
+                        <span class="radio-option-label">Pattern with context</span>
+                    </label>
+                    <label class="radio-option">
                         <input type="radio" name="source" value="preview">
                         <span class="radio-option-label">Preview</span>
                     </label>
+                </div>
+
+                <div class="form-section" id="contextControls" style="display: none;">
+                    <div class="form-section-label">Context stitches</div>
+                    <div class="context-inputs">
+                        <div class="context-input-group">
+                            <label for="contextLeft">Left</label>
+                            <input type="number" id="contextLeft" name="contextLeft" min="0" value="0">
+                        </div>
+                        <div class="context-input-group">
+                            <label for="contextRight">Right</label>
+                            <input type="number" id="contextRight" name="contextRight" min="0" value="0">
+                        </div>
+                        <div class="context-input-group">
+                            <label for="contextTop">Top</label>
+                            <input type="number" id="contextTop" name="contextTop" min="0" value="0">
+                        </div>
+                        <div class="context-input-group">
+                            <label for="contextBottom">Bottom</label>
+                            <input type="number" id="contextBottom" name="contextBottom" min="0" value="0">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-section">
