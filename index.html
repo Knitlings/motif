@@ -125,16 +125,9 @@
                         <button class="icon-btn" id="undoBtn" aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span></button>
                         <button class="icon-btn" id="redoBtn" aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span></button>
                         <button class="icon-btn icon-btn-danger" id="clearBtn" aria-label="Clear canvas (Delete)"><span aria-hidden="true">✕</span></button>
-                        <div class="dropdown-container">
-                            <button class="dropdown-btn" id="saveBtn" aria-haspopup="true" aria-expanded="false">
-                                Download pattern
-                                <span class="dropdown-arrow" aria-hidden="true">▾</span>
-                            </button>
-                            <div class="dropdown-menu" id="saveMenu" role="menu">
-                                <a href="#" id="exportPngBtn" class="dropdown-item" role="menuitem">Download as PNG</a>
-                                <a href="#" id="exportSvgBtn" class="dropdown-item" role="menuitem">Download as SVG</a>
-                            </div>
-                        </div>
+                        <button class="text-link" id="downloadBtn" aria-label="Download pattern">
+                            Download
+                        </button>
                     </div>
                 </section>
 
@@ -163,6 +156,44 @@
                 <button id="mergeCancelBtn">Cancel</button>
                 <button id="mergeConfirmBtn" class="btn-primary">Merge</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Download Modal -->
+    <div id="downloadModal" role="dialog" aria-modal="true" aria-labelledby="downloadModalTitle" style="display: none;">
+        <div class="modal-content">
+            <h2 id="downloadModalTitle">Download Pattern</h2>
+
+            <form id="downloadForm">
+                <div class="form-section">
+                    <div class="form-section-label">Source</div>
+                    <label class="radio-option">
+                        <input type="radio" name="source" value="pattern" checked>
+                        <span class="radio-option-label">Pattern</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="source" value="preview">
+                        <span class="radio-option-label">Preview</span>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-label">Format</div>
+                    <label class="radio-option">
+                        <input type="radio" name="format" value="png" checked>
+                        <span class="radio-option-label">PNG</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="format" value="svg">
+                        <span class="radio-option-label">SVG</span>
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="downloadModalCancelBtn" class="modal-btn modal-btn-secondary">Cancel</button>
+                    <button type="submit" id="downloadModalSubmitBtn" class="modal-btn modal-btn-primary">Download</button>
+                </div>
+            </form>
         </div>
     </div>
 

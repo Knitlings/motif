@@ -97,6 +97,82 @@ export function exportPng() {
 }
 
 /**
+ * Export preview as PNG
+ * @returns {Promise<Blob>} - PNG blob for download
+ */
+export function exportPreviewPng() {
+    const canvas = document.getElementById('previewCanvas');
+    return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+            resolve(blob);
+        }, 'image/png');
+    });
+}
+
+/**
+ * Export preview as SVG with grid lines
+ * @param {ApplicationState} state - Application state containing grid, colors, dimensions
+ * @returns {Blob} SVG blob for download
+ */
+export function exportPreviewSvg(state) {
+    const { grid, gridWidth, gridHeight, patternColors, backgroundColor, previewRepeatX, previewRepeatY } = state;
+
+    // Calculate cell dimensions from preview canvas
+    const canvas = document.getElementById('previewCanvas');
+    const totalWidth = gridWidth * previewRepeatX;
+    const totalHeight = gridHeight * previewRepeatY;
+    const cellWidth = canvas.width / totalWidth;
+    const cellHeight = canvas.height / totalHeight;
+
+    // Create SVG
+    const svgWidth = totalWidth * cellWidth;
+    const svgHeight = totalHeight * cellHeight;
+
+    let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${svgWidth}" height="${svgHeight}" fill="${backgroundColor}"/>
+`;
+
+    // Draw tiled pattern
+    for (let repeatY = 0; repeatY < previewRepeatY; repeatY++) {
+        for (let repeatX = 0; repeatX < previewRepeatX; repeatX++) {
+            const offsetX = repeatX * gridWidth;
+            const offsetY = repeatY * gridHeight;
+
+            // Draw each cell in this tile
+            for (let row = 0; row < gridHeight; row++) {
+                for (let col = 0; col < gridWidth; col++) {
+                    const cellValue = grid[row][col];
+                    if (cellValue !== 0) {
+                        const color = patternColors[cellValue - 1];
+                        const x = (offsetX + col) * cellWidth;
+                        const y = (offsetY + row) * cellHeight;
+                        svgContent += `  <rect x="${x}" y="${y}" width="${cellWidth}" height="${cellHeight}" fill="${color}"/>\n`;
+                    }
+                }
+            }
+        }
+    }
+
+    // Draw grid lines
+    svgContent += `  <!-- Grid lines -->\n`;
+    // Vertical lines
+    for (let col = 0; col <= totalWidth; col++) {
+        const x = col * cellWidth;
+        svgContent += `  <line x1="${x}" y1="0" x2="${x}" y2="${svgHeight}" stroke="#ddd" stroke-width="1"/>\n`;
+    }
+    // Horizontal lines
+    for (let row = 0; row <= totalHeight; row++) {
+        const y = row * cellHeight;
+        svgContent += `  <line x1="0" y1="${y}" x2="${svgWidth}" y2="${y}" stroke="#ddd" stroke-width="1"/>\n`;
+    }
+
+    svgContent += `</svg>`;
+
+    return new Blob([svgContent], { type: 'image/svg+xml' });
+}
+
+/**
  * Export pattern as JSON
  * @param {ApplicationState} state - Application state
  * @returns {Blob} JSON blob for download

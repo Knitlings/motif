@@ -772,6 +772,174 @@ button:disabled {
 }
 
 /* ============================================
+   DOWNLOAD MODAL
+   ============================================ */
+
+#downloadModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+#downloadModal .modal-content {
+    max-width: 380px;
+    width: 90%;
+    padding: var(--space-10);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+#downloadModalTitle {
+    margin: 0 0 var(--space-6) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+#downloadForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.form-section-label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-1);
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-1);
+    transition: background 0.2s;
+    border-radius: var(--border-radius-sm);
+}
+
+.radio-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.radio-option input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    opacity: 0;
+}
+
+.radio-option::before {
+    content: '○';
+    font-size: var(--font-size-lg);
+    color: var(--color-text-tertiary);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.radio-option:has(input[type="radio"]:checked)::before {
+    content: '●';
+    color: var(--color-primary);
+}
+
+.radio-option-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.radio-option:has(input[type="radio"]:checked) .radio-option-label {
+    color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    margin-top: var(--space-4);
+    padding-top: var(--space-5);
+    border-top: var(--border-width) solid var(--color-border-primary);
+}
+
+.modal-btn {
+    padding: var(--space-2) var(--space-5);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border: var(--border-width) solid transparent;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn-secondary {
+    color: var(--color-text-secondary);
+    background: transparent;
+}
+
+.modal-btn-secondary:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+}
+
+.modal-btn-primary {
+    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.modal-btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+/* Download Button in Header */
+.header-actions .text-link {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-decoration: none;
+}
+
+.header-actions .text-link:hover {
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+    text-decoration: none;
+}
+
+/* ============================================
    LOADING OVERLAY
    ============================================ */
 

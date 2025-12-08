@@ -8,7 +8,7 @@ import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
 import { CanvasManager } from './managers/canvas.js';
 import { createEmptyGrid, resizeGrid, resizeGridFromEdge } from './core/grid.js';
-import { exportSvg, exportPng, exportJson, importJson, downloadFile } from './core/export.js';
+import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportJson, importJson, downloadFile } from './core/export.js';
 import {
     validateGridDimension,
     validateAspectRatio,
@@ -637,28 +637,77 @@ document.querySelectorAll('.palette-option').forEach(option => {
 });
 
 
-document.getElementById('exportSvgBtn').onclick = (e) => {
-    e.preventDefault();
-    try {
-        const blob = exportSvg(getState());
-        downloadFile(blob, `motif-${gridWidth}x${gridHeight}.svg`);
-        announceToScreenReader('Pattern exported as SVG');
-    } catch (error) {
-        handleFileError(error, 'SVG export');
+// Download modal controls
+const downloadModal = document.getElementById('downloadModal');
+const downloadBtn = document.getElementById('downloadBtn');
+const downloadModalCancelBtn = document.getElementById('downloadModalCancelBtn');
+const downloadForm = document.getElementById('downloadForm');
+
+// Open download modal
+downloadBtn.onclick = () => {
+    downloadModal.style.display = 'flex';
+};
+
+// Close download modal
+downloadModalCancelBtn.onclick = () => {
+    downloadModal.style.display = 'none';
+};
+
+// Close modal on backdrop click
+downloadModal.onclick = (e) => {
+    if (e.target === downloadModal) {
+        downloadModal.style.display = 'none';
     }
 };
 
-document.getElementById('exportPngBtn').onclick = async (e) => {
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && downloadModal.style.display === 'flex') {
+        downloadModal.style.display = 'none';
+    }
+});
+
+// Handle download form submission
+downloadForm.onsubmit = async (e) => {
     e.preventDefault();
+
+    const formData = new FormData(downloadForm);
+    const source = formData.get('source');
+    const format = formData.get('format');
+
+    // Close modal
+    downloadModal.style.display = 'none';
+
     try {
-        showLoading('Exporting PNG...');
-        // Give UI time to update
+        showLoading(`Exporting ${format.toUpperCase()}...`);
         await new Promise(resolve => setTimeout(resolve, 50));
-        const blob = await exportPng();
-        downloadFile(blob, `motif-${gridWidth}x${gridHeight}.png`);
-        announceToScreenReader('Pattern exported as PNG');
+
+        let blob;
+        let filename;
+
+        if (source === 'pattern') {
+            if (format === 'svg') {
+                blob = exportSvg(getState());
+                filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
+            } else {
+                blob = await exportPng();
+                filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
+            }
+        } else {
+            // Preview export
+            if (format === 'svg') {
+                blob = exportPreviewSvg(getState());
+                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
+            } else {
+                blob = await exportPreviewPng();
+                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
+            }
+        }
+
+        downloadFile(blob, filename);
+        announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
     } catch (error) {
-        handleFileError(error, 'PNG export');
+        handleFileError(error, `${format.toUpperCase()} export`);
     } finally {
         hideLoading();
     }
