@@ -378,6 +378,32 @@ describe('Grid Operations', () => {
             document.body.removeChild(mockContainer);
         });
 
+        it('should preserve content on right when shrinking from left (via shifting)', () => {
+            // Bug scenario: content in rightmost column, shrink from left
+            // This should be ALLOWED because content can shift left to fit
+            const grid = [
+                [0, 0, 1],
+                [0, 0, 2]
+            ];
+
+            const result = resizeGridFromEdge({
+                grid,
+                gridWidth: 3,
+                gridHeight: 2,
+                direction: 'left',
+                delta: -1
+            });
+
+            // Should succeed - content from old column 2 shifts to new column 1
+            expect(result).toBeTruthy();
+            expect(result.width).toBe(2);
+            expect(result.height).toBe(2);
+            expect(result.grid[0][0]).toBe(0);
+            expect(result.grid[0][1]).toBe(1); // Content shifted from old col 2
+            expect(result.grid[1][0]).toBe(0);
+            expect(result.grid[1][1]).toBe(2); // Content shifted from old col 2
+        });
+
         it('should return null if no change in size', () => {
             // Mock DOM elements for showResizeBlocked (might be called during clamping)
             const mockCanvas = document.createElement('canvas');
