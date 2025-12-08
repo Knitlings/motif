@@ -177,6 +177,8 @@ function saveToLocalStorage() {
 function saveToHistory() {
     HistoryManager.save({
         grid: grid,
+        gridWidth: gridWidth,
+        gridHeight: gridHeight,
         colors: patternColors,
         backgroundColor: backgroundColor
     });
@@ -434,18 +436,24 @@ function initGrid() {
         const emptyGrid = createEmptyGrid(gridWidth, gridHeight);
         HistoryManager.init({
             grid: emptyGrid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
         // Add the current loaded state as second history entry
         HistoryManager.save({
             grid: grid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
     } else {
         HistoryManager.init({
             grid: grid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
@@ -563,8 +571,16 @@ document.getElementById('undoBtn').onclick = () => {
     const state = HistoryManager.undo();
     if (state) {
         grid = state.grid;
+        gridWidth = state.gridWidth;
+        gridHeight = state.gridHeight;
         patternColors = state.colors;
         backgroundColor = state.backgroundColor;
+
+        // Update grid dimension displays
+        const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+        const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
         updateActiveColorUI();
             createNavbarColorButtons();
@@ -577,8 +593,16 @@ document.getElementById('redoBtn').onclick = () => {
     const state = HistoryManager.redo();
     if (state) {
         grid = state.grid;
+        gridWidth = state.gridWidth;
+        gridHeight = state.gridHeight;
         patternColors = state.colors;
         backgroundColor = state.backgroundColor;
+
+        // Update grid dimension displays
+        const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+        const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
         updateActiveColorUI();
             createNavbarColorButtons();
