@@ -203,48 +203,159 @@ test.describe('Export Functions', () => {
     await page.waitForSelector('#editCanvas');
   });
 
-  test('should export SVG', async ({ page }) => {
-    const canvas = page.locator('#editCanvas');
+  test('should open download modal', async ({ page }) => {
+    const downloadBtn = page.locator('#downloadBtn');
+    const downloadModal = page.locator('#downloadModal');
 
-    // Paint something first
-    await canvas.click({ position: { x: 50, y: 50 } });
+    // Click download button
+    await downloadBtn.click();
 
-    // Open the Save dropdown menu
-    await page.locator('#saveBtn').click();
-
-    // Set up download listener
-    const downloadPromise = page.waitForEvent('download');
-
-    // Click export SVG
-    await page.locator('#exportSvgBtn').click();
-
-    // Wait for download
-    const download = await downloadPromise;
-
-    // Verify download occurred
-    expect(download.suggestedFilename()).toMatch(/motif-.*\.svg/);
+    // Modal should be visible
+    await expect(downloadModal).toBeVisible();
   });
 
-  test('should export PNG', async ({ page }) => {
+  test('should close download modal on cancel', async ({ page }) => {
+    const downloadBtn = page.locator('#downloadBtn');
+    const downloadModal = page.locator('#downloadModal');
+    const cancelBtn = page.locator('#downloadModalCancelBtn');
+
+    // Open modal
+    await downloadBtn.click();
+    await expect(downloadModal).toBeVisible();
+
+    // Click cancel
+    await cancelBtn.click();
+
+    // Modal should close
+    await expect(downloadModal).not.toBeVisible();
+  });
+
+  test('should close download modal on escape key', async ({ page }) => {
+    const downloadBtn = page.locator('#downloadBtn');
+    const downloadModal = page.locator('#downloadModal');
+
+    // Open modal
+    await downloadBtn.click();
+    await expect(downloadModal).toBeVisible();
+
+    // Press escape
+    await page.keyboard.press('Escape');
+
+    // Modal should close
+    await expect(downloadModal).not.toBeVisible();
+  });
+
+  test('should export pattern as SVG', async ({ page }) => {
     const canvas = page.locator('#editCanvas');
 
     // Paint something first
     await canvas.click({ position: { x: 50, y: 50 } });
 
-    // Open the Save dropdown menu
-    await page.locator('#saveBtn').click();
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Select pattern and SVG (should be selected by default)
+    const patternRadio = page.locator('input[name="source"][value="pattern"]');
+    const svgRadio = page.locator('input[name="format"][value="svg"]');
+
+    await expect(patternRadio).toBeChecked();
+    await svgRadio.click();
 
     // Set up download listener
     const downloadPromise = page.waitForEvent('download');
 
-    // Click export PNG
-    await page.locator('#exportPngBtn').click();
+    // Click download button
+    await page.locator('#downloadModalSubmitBtn').click();
 
     // Wait for download
     const download = await downloadPromise;
 
     // Verify download occurred
-    expect(download.suggestedFilename()).toMatch(/motif-.*\.png/);
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-.*\.svg/);
+  });
+
+  test('should export pattern as PNG', async ({ page }) => {
+    const canvas = page.locator('#editCanvas');
+
+    // Paint something first
+    await canvas.click({ position: { x: 50, y: 50 } });
+
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Select pattern and PNG (both should be selected by default)
+    const patternRadio = page.locator('input[name="source"][value="pattern"]');
+    const pngRadio = page.locator('input[name="format"][value="png"]');
+
+    await expect(patternRadio).toBeChecked();
+    await expect(pngRadio).toBeChecked();
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Click download button
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Wait for download
+    const download = await downloadPromise;
+
+    // Verify download occurred
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-.*\.png/);
+  });
+
+  test('should export preview as SVG', async ({ page }) => {
+    const canvas = page.locator('#editCanvas');
+
+    // Paint something first
+    await canvas.click({ position: { x: 50, y: 50 } });
+
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Select preview and SVG
+    const previewRadio = page.locator('input[name="source"][value="preview"]');
+    const svgRadio = page.locator('input[name="format"][value="svg"]');
+
+    await previewRadio.click();
+    await svgRadio.click();
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Click download button
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Wait for download
+    const download = await downloadPromise;
+
+    // Verify download occurred with preview in filename
+    expect(download.suggestedFilename()).toMatch(/motif-preview-.*\.svg/);
+  });
+
+  test('should export preview as PNG', async ({ page }) => {
+    const canvas = page.locator('#editCanvas');
+
+    // Paint something first
+    await canvas.click({ position: { x: 50, y: 50 } });
+
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Select preview (PNG is default format)
+    const previewRadio = page.locator('input[name="source"][value="preview"]');
+    await previewRadio.click();
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Click download button
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Wait for download
+    const download = await downloadPromise;
+
+    // Verify download occurred with preview in filename
+    expect(download.suggestedFilename()).toMatch(/motif-preview-.*\.png/);
   });
 
   test('should export JSON', async ({ page }) => {

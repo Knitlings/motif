@@ -877,6 +877,56 @@ button:disabled {
     font-weight: var(--font-weight-semibold);
 }
 
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-1);
+    transition: background 0.2s;
+    border-radius: var(--border-radius-sm);
+}
+
+.checkbox-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.checkbox-option input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    opacity: 0;
+}
+
+.checkbox-option::before {
+    content: '☐';
+    font-size: var(--font-size-lg);
+    color: var(--color-text-tertiary);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked)::before {
+    content: '☑';
+    color: var(--color-primary);
+}
+
+.checkbox-option-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked) .checkbox-option-label {
+    color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
 .modal-actions {
     display: flex;
     gap: var(--space-3);
@@ -937,6 +987,55 @@ button:disabled {
     color: var(--color-primary);
     background: var(--color-bg-secondary);
     text-decoration: none;
+}
+
+/* Mobile/Touch Adjustments for Download Modal */
+@media (max-width: 1024px) {
+    /* Larger touch targets for radio options */
+    .radio-option {
+        padding: var(--space-3) var(--space-2);
+        min-height: 44px;
+    }
+
+    /* Larger touch targets for checkbox options */
+    .checkbox-option {
+        padding: var(--space-3) var(--space-2);
+        min-height: 44px;
+    }
+
+    /* Larger modal buttons for touch */
+    .modal-btn {
+        padding: var(--space-3) var(--space-6);
+        min-height: 44px;
+    }
+
+    /* More padding in modal on smaller screens */
+    #downloadModal .modal-content {
+        padding: var(--space-8);
+    }
+}
+
+/* For touch devices without hover */
+@media (hover: none) {
+    /* Remove hover styles that won't work on touch */
+    .radio-option:hover {
+        background: transparent;
+    }
+
+    /* But show background on active/selected */
+    .radio-option:active {
+        background: var(--color-bg-secondary);
+    }
+
+    /* Remove hover styles for checkbox options */
+    .checkbox-option:hover {
+        background: transparent;
+    }
+
+    /* But show background on active/selected */
+    .checkbox-option:active {
+        background: var(--color-bg-secondary);
+    }
 }
 
 /* ============================================

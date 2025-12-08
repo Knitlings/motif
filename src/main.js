@@ -674,6 +674,7 @@ downloadForm.onsubmit = async (e) => {
     const formData = new FormData(downloadForm);
     const source = formData.get('source');
     const format = formData.get('format');
+    const includeRowCounts = formData.get('rowCounts') === 'on';
 
     // Close modal
     downloadModal.style.display = 'none';
@@ -687,19 +688,19 @@ downloadForm.onsubmit = async (e) => {
 
         if (source === 'pattern') {
             if (format === 'svg') {
-                blob = exportSvg(getState());
+                blob = exportSvg(getState(), includeRowCounts);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
             } else {
-                blob = await exportPng();
+                blob = await exportPng(getState(), includeRowCounts);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
             }
         } else {
             // Preview export
             if (format === 'svg') {
-                blob = exportPreviewSvg(getState());
+                blob = exportPreviewSvg(getState(), includeRowCounts);
                 filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
             } else {
-                blob = await exportPreviewPng();
+                blob = await exportPreviewPng(getState(), includeRowCounts);
                 filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
             }
         }
