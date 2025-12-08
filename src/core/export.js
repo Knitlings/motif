@@ -10,6 +10,27 @@ import { Utils } from '../utils.js';
  */
 
 /**
+ * Sanitize imported grid data by converting null/undefined values to 0
+ * @param {Array} grid - Grid data from imported file
+ * @returns {Array} Sanitized grid with all null/undefined converted to 0
+ */
+function sanitizeGrid(grid) {
+    if (!Array.isArray(grid)) {
+        return grid;
+    }
+
+    return grid.map(row => {
+        if (!Array.isArray(row)) {
+            return row;
+        }
+        return row.map(cell => {
+            // Convert null, undefined, or any non-numeric value to 0
+            return (typeof cell === 'number' && cell >= 0) ? cell : 0;
+        });
+    });
+}
+
+/**
  * Export grid as SVG with grid lines
  * @param {ApplicationState} state - Application state containing grid, colors, dimensions
  * @returns {Blob} SVG blob for download
@@ -165,7 +186,7 @@ export function importJson(file, onSuccess, onError) {
                     CONFIG.MAX_ASPECT_RATIO,
                     CONFIG.DEFAULT_ASPECT_RATIO
                 ),
-                grid: patternData.grid.cells,
+                grid: sanitizeGrid(patternData.grid.cells),
                 backgroundColor: patternData.colors.background || CONFIG.DEFAULT_BACKGROUND_COLOR,
                 patternColors: patternData.colors.pattern || [CONFIG.DEFAULT_PATTERN_COLOR]
             };

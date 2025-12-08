@@ -20,7 +20,10 @@ export function getContentBounds(grid, gridWidth, gridHeight) {
 
     for (let row = 0; row < gridHeight; row++) {
         for (let col = 0; col < gridWidth; col++) {
-            if (grid[row][col] !== 0) {
+            // Check for painted cells (positive values)
+            // This handles both 0 (empty) and null (corrupted data) correctly
+            const cellValue = grid[row][col];
+            if (cellValue && cellValue > 0) {
                 minRow = Math.min(minRow, row);
                 maxRow = Math.max(maxRow, row);
                 minCol = Math.min(minCol, col);
