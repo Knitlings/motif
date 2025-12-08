@@ -28,6 +28,11 @@
     letter-spacing: 0.1em;
 }
 
+.preview-repeat-status {
+    font-size: var(--font-size-xs);
+    margin-left: var(--space-3);
+}
+
 /* Grid Control (Inline Dimension Controls) */
 .grid-control {
     display: flex;
@@ -178,6 +183,7 @@
 }
 
 .canvas-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -195,6 +201,29 @@ canvas {
     border: var(--border-width-thick) solid var(--color-border-dark);
     border-radius: var(--border-radius-sm);
     cursor: crosshair;
+}
+
+/* Preview Toast Notification */
+.preview-toast {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.preview-toast.show {
+    opacity: 1;
 }
 
 /* Resize Handles */

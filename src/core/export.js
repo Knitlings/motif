@@ -87,7 +87,7 @@ export function exportSvg(state, includeRowCounts = false) {
     // Draw row counts if enabled
     if (includeRowCounts) {
         svgContent += `  <!-- Row counts -->\n`;
-        const fontSize = Math.min(cellHeight * 0.6, 14);
+        const fontSize = Math.min(cellHeight * 0.6, 20);
         for (let row = 0; row < gridHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = gridHeight - row;
@@ -140,7 +140,7 @@ export function exportPng(state, includeRowCounts = false) {
 
     // Draw row counts
     ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 14)}px "Libre Franklin", sans-serif`;
+    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px "Libre Franklin", sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
@@ -199,7 +199,7 @@ export function exportPreviewPng(state, includeRowCounts = false) {
 
     // Draw row counts
     ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 14)}px "Libre Franklin", sans-serif`;
+    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px "Libre Franklin", sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
@@ -286,7 +286,7 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
     // Draw row counts if enabled
     if (includeRowCounts) {
         svgContent += `  <!-- Row counts -->\n`;
-        const fontSize = Math.min(cellHeight * 0.6, 14);
+        const fontSize = Math.min(cellHeight * 0.6, 20);
         for (let row = 0; row < totalHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = totalHeight - row;

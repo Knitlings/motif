@@ -459,6 +459,63 @@ function initGrid() {
         });
     }
     updateCanvas();
+    updatePreviewRepeatStatus();
+}
+
+/**
+ * Calculate maximum allowed preview repeats based on pattern size
+ * Keeps total cells under ~25,000 for smooth performance
+ * @param {number} width - Pattern width
+ * @param {number} height - Pattern height
+ * @returns {number} Maximum allowed repeats in either dimension
+ */
+function getMaxPreviewRepeat(width, height) {
+    const maxDimension = Math.max(width, height);
+
+    if (maxDimension >= 80) return 1;
+    if (maxDimension >= 53) return 2;
+    if (maxDimension >= 40) return 3;
+    if (maxDimension >= 32) return 4;
+    if (maxDimension >= 27) return 5;
+    if (maxDimension >= 20) return 6;
+    if (maxDimension >= 16) return 8;
+    return 10; // 15×15 and smaller
+}
+
+/**
+ * Show toast notification over preview canvas
+ * @param {string} message - Message to display
+ */
+function showPreviewToast(message) {
+    const toast = document.getElementById('previewToast');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.add('show');
+
+    // Hide after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+/**
+ * Update the preview repeat status indicator
+ * Shows a message when near or at maximum allowed repeats
+ */
+function updatePreviewRepeatStatus() {
+    const statusElement = document.getElementById('previewRepeatStatus');
+    if (!statusElement) return;
+
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    const nearMaxX = previewRepeatX >= maxRepeat - 1;
+    const nearMaxY = previewRepeatY >= maxRepeat - 1;
+
+    if (nearMaxX || nearMaxY) {
+        statusElement.textContent = `Max preview for pattern size is ${maxRepeat}×${maxRepeat}`;
+    } else {
+        statusElement.textContent = '';
+    }
 }
 
 function applyGridResize(newWidth, newHeight) {
@@ -477,8 +534,33 @@ function applyGridResize(newWidth, newHeight) {
     grid = result.grid;
     gridWidth = result.width;
     gridHeight = result.height;
+
+    // Check if preview repeats need to be reduced due to larger pattern
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    let repeatReduced = false;
+
+    if (previewRepeatX > maxRepeat) {
+        previewRepeatX = maxRepeat;
+        const display = document.getElementById('previewRepeatXDisplay');
+        if (display) display.textContent = previewRepeatX;
+        repeatReduced = true;
+    }
+
+    if (previewRepeatY > maxRepeat) {
+        previewRepeatY = maxRepeat;
+        const display = document.getElementById('previewRepeatYDisplay');
+        if (display) display.textContent = previewRepeatY;
+        repeatReduced = true;
+    }
+
+    if (repeatReduced) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+        saveToLocalStorage();
+    }
+
     saveToHistory();
     updateCanvas();
+    updatePreviewRepeatStatus();
     return true;
 }
 
@@ -504,8 +586,32 @@ function applyGridResizeFromEdge(direction, delta) {
     if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
     if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
+    // Check if preview repeats need to be reduced due to larger pattern
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    let repeatReduced = false;
+
+    if (previewRepeatX > maxRepeat) {
+        previewRepeatX = maxRepeat;
+        const display = document.getElementById('previewRepeatXDisplay');
+        if (display) display.textContent = previewRepeatX;
+        repeatReduced = true;
+    }
+
+    if (previewRepeatY > maxRepeat) {
+        previewRepeatY = maxRepeat;
+        const display = document.getElementById('previewRepeatYDisplay');
+        if (display) display.textContent = previewRepeatY;
+        repeatReduced = true;
+    }
+
+    if (repeatReduced) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+        saveToLocalStorage();
+    }
+
     saveToHistory();
     updateCanvas();
+    updatePreviewRepeatStatus();
     if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
@@ -582,9 +688,33 @@ document.getElementById('undoBtn').onclick = () => {
         if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
         if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
+        // Check if preview repeats need to be reduced due to larger pattern
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        let repeatReduced = false;
+
+        if (previewRepeatX > maxRepeat) {
+            previewRepeatX = maxRepeat;
+            const display = document.getElementById('previewRepeatXDisplay');
+            if (display) display.textContent = previewRepeatX;
+            repeatReduced = true;
+        }
+
+        if (previewRepeatY > maxRepeat) {
+            previewRepeatY = maxRepeat;
+            const display = document.getElementById('previewRepeatYDisplay');
+            if (display) display.textContent = previewRepeatY;
+            repeatReduced = true;
+        }
+
+        if (repeatReduced) {
+            showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+            saveToLocalStorage();
+        }
+
         updateActiveColorUI();
             createNavbarColorButtons();
         updateCanvas();
+        updatePreviewRepeatStatus();
         announceToScreenReader('Undo successful');
     }
 };
@@ -604,9 +734,33 @@ document.getElementById('redoBtn').onclick = () => {
         if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
         if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
+        // Check if preview repeats need to be reduced due to larger pattern
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        let repeatReduced = false;
+
+        if (previewRepeatX > maxRepeat) {
+            previewRepeatX = maxRepeat;
+            const display = document.getElementById('previewRepeatXDisplay');
+            if (display) display.textContent = previewRepeatX;
+            repeatReduced = true;
+        }
+
+        if (previewRepeatY > maxRepeat) {
+            previewRepeatY = maxRepeat;
+            const display = document.getElementById('previewRepeatYDisplay');
+            if (display) display.textContent = previewRepeatY;
+            repeatReduced = true;
+        }
+
+        if (repeatReduced) {
+            showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+            saveToLocalStorage();
+        }
+
         updateActiveColorUI();
             createNavbarColorButtons();
         updateCanvas();
+        updatePreviewRepeatStatus();
         announceToScreenReader('Redo successful');
     }
 };
@@ -786,6 +940,15 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                         activePatternIndex = 0;
                     }
 
+                    // Ensure preview repeats don't exceed max for imported pattern size
+                    const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
+                    if (previewRepeatX > maxRepeatImport) {
+                        previewRepeatX = maxRepeatImport;
+                    }
+                    if (previewRepeatY > maxRepeatImport) {
+                        previewRepeatY = maxRepeatImport;
+                    }
+
                     // Update all UI elements
                     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
                     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
@@ -804,6 +967,7 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 
                     saveToHistory();
                     updateCanvas();
+                    updatePreviewRepeatStatus();
                     announceToScreenReader('Pattern imported successfully');
                 } finally {
                     hideLoading();
@@ -850,15 +1014,17 @@ function applyGridHeight(value) {
 }
 
 function applyPreviewRepeatX(value) {
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
     applyDimensionInput({
         value,
         min: CONFIG.MIN_PREVIEW_REPEAT,
-        max: CONFIG.MAX_PREVIEW_REPEAT,
+        max: maxRepeat,
         defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
         displayElementId: 'previewRepeatXDisplay',
         applyFunction: (val) => {
             previewRepeatX = val;
             updateCanvas();
+            updatePreviewRepeatStatus();
             saveToLocalStorage();
         },
         updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
@@ -866,15 +1032,17 @@ function applyPreviewRepeatX(value) {
 }
 
 function applyPreviewRepeatY(value) {
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
     applyDimensionInput({
         value,
         min: CONFIG.MIN_PREVIEW_REPEAT,
-        max: CONFIG.MAX_PREVIEW_REPEAT,
+        max: maxRepeat,
         defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
         displayElementId: 'previewRepeatYDisplay',
         applyFunction: (val) => {
             previewRepeatY = val;
             updateCanvas();
+            updatePreviewRepeatStatus();
             saveToLocalStorage();
         },
         updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
@@ -934,6 +1102,16 @@ if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
 const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+
+// Ensure preview repeats don't exceed max for current pattern size
+const maxRepeatOnLoad = getMaxPreviewRepeat(gridWidth, gridHeight);
+if (previewRepeatX > maxRepeatOnLoad) {
+    previewRepeatX = maxRepeatOnLoad;
+}
+if (previewRepeatY > maxRepeatOnLoad) {
+    previewRepeatY = maxRepeatOnLoad;
+}
+
 if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
 if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 
