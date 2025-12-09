@@ -86,6 +86,21 @@ export function exportSvg(state, includeRowCounts = false) {
 
     // Draw row counts if enabled
     if (includeRowCounts) {
+        // Add white background for row count area
+        svgContent += `  <!-- Row count area background -->\n`;
+        svgContent += `  <rect x="${gridSvgWidth}" y="0" width="${rowCountMargin}" height="${svgHeight}" fill="#ffffff"/>\n`;
+
+        // Add black border around pattern
+        svgContent += `  <!-- Pattern border -->\n`;
+        svgContent += `  <rect x="0" y="0" width="${gridSvgWidth}" height="${gridSvgHeight}" fill="none" stroke="#000000" stroke-width="2"/>\n`;
+
+        // Extend horizontal lines into row count area with dark color
+        svgContent += `  <!-- Row count area grid lines -->\n`;
+        for (let row = 0; row <= gridHeight; row++) {
+            const y = row * cellHeight;
+            svgContent += `  <line x1="${gridSvgWidth}" y1="${y}" x2="${svgWidth}" y2="${y}" stroke="#666" stroke-width="1"/>\n`;
+        }
+
         svgContent += `  <!-- Row counts -->\n`;
         const fontSize = Math.min(cellHeight * 0.6, 20);
         for (let row = 0; row < gridHeight; row++) {
@@ -93,7 +108,7 @@ export function exportSvg(state, includeRowCounts = false) {
             const rowNumber = gridHeight - row;
             const x = gridSvgWidth + 10;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="Libre Franklin, sans-serif" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
     }
 
@@ -138,9 +153,29 @@ export function exportPng(state, includeRowCounts = false) {
 
     const cellHeight = canvas.height / gridHeight;
 
+    // Add white background for row count area
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(canvas.width, 0, rowCountMargin, tempCanvas.height);
+
+    // Add black border around pattern
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    // Extend horizontal lines into row count area with dark color
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    for (let row = 0; row <= gridHeight; row++) {
+        const y = row * cellHeight;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width, y);
+        ctx.lineTo(tempCanvas.width, y);
+        ctx.stroke();
+    }
+
     // Draw row counts
     ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px "Libre Franklin", sans-serif`;
+    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
@@ -241,10 +276,25 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
     const boxWidth = gridWidth * cellWidth;
     const boxHeight = gridHeight * cellHeight;
     svgContent += `  <!-- Pattern repeat box -->\n`;
-    svgContent += `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" fill="none" stroke="#d32f2f" stroke-width="2"/>\n`;
+    svgContent += `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" fill="none" stroke="#d32f2f" stroke-width="4"/>\n`;
 
     // Draw row counts if enabled
     if (includeRowCounts) {
+        // Add white background for row count area
+        svgContent += `  <!-- Row count area background -->\n`;
+        svgContent += `  <rect x="${gridSvgWidth}" y="0" width="${rowCountMargin}" height="${svgHeight}" fill="#ffffff"/>\n`;
+
+        // Add black border around pattern
+        svgContent += `  <!-- Pattern border -->\n`;
+        svgContent += `  <rect x="0" y="0" width="${gridSvgWidth}" height="${gridSvgHeight}" fill="none" stroke="#000000" stroke-width="2"/>\n`;
+
+        // Extend horizontal lines into row count area with dark color
+        svgContent += `  <!-- Row count area grid lines -->\n`;
+        for (let row = 0; row <= totalHeight; row++) {
+            const y = row * cellHeight;
+            svgContent += `  <line x1="${gridSvgWidth}" y1="${y}" x2="${svgWidth}" y2="${y}" stroke="#666" stroke-width="1"/>\n`;
+        }
+
         svgContent += `  <!-- Row counts -->\n`;
         const fontSize = Math.min(cellHeight * 0.6, 20);
         for (let row = 0; row < totalHeight; row++) {
@@ -252,7 +302,7 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
             const rowNumber = totalHeight - row;
             const x = gridSvgWidth + 10;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="Libre Franklin, sans-serif" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
     }
 
@@ -333,13 +383,33 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
     const boxWidth = gridWidth * cellWidth;
     const boxHeight = gridHeight * cellHeight;
     ctx.strokeStyle = '#d32f2f';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 4;
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
     // Draw row counts if enabled
     if (includeRowCounts) {
+        // Add white background for row count area
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(totalWidth * cellWidth, 0, rowCountMargin, tempCanvas.height);
+
+        // Add black border around pattern
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, totalWidth * cellWidth, totalHeight * cellHeight);
+
+        // Extend horizontal lines into row count area with dark color
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        for (let row = 0; row <= totalHeight; row++) {
+            const y = row * cellHeight;
+            ctx.beginPath();
+            ctx.moveTo(totalWidth * cellWidth, y);
+            ctx.lineTo(tempCanvas.width, y);
+            ctx.stroke();
+        }
+
         ctx.fillStyle = '#666';
-        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px "Libre Franklin", sans-serif`;
+        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
@@ -396,9 +466,29 @@ export function exportPreviewPng(state, includeRowCounts = false) {
 
     const cellHeight = canvas.height / totalHeight;
 
+    // Add white background for row count area
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(canvas.width, 0, rowCountMargin, tempCanvas.height);
+
+    // Add black border around pattern
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    // Extend horizontal lines into row count area with dark color
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    for (let row = 0; row <= totalHeight; row++) {
+        const y = row * cellHeight;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width, y);
+        ctx.lineTo(tempCanvas.width, y);
+        ctx.stroke();
+    }
+
     // Draw row counts
     ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px "Libre Franklin", sans-serif`;
+    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
@@ -484,6 +574,21 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
 
     // Draw row counts if enabled
     if (includeRowCounts) {
+        // Add white background for row count area
+        svgContent += `  <!-- Row count area background -->\n`;
+        svgContent += `  <rect x="${gridSvgWidth}" y="0" width="${rowCountMargin}" height="${svgHeight}" fill="#ffffff"/>\n`;
+
+        // Add black border around pattern
+        svgContent += `  <!-- Pattern border -->\n`;
+        svgContent += `  <rect x="0" y="0" width="${gridSvgWidth}" height="${gridSvgHeight}" fill="none" stroke="#000000" stroke-width="2"/>\n`;
+
+        // Extend horizontal lines into row count area with dark color
+        svgContent += `  <!-- Row count area grid lines -->\n`;
+        for (let row = 0; row <= totalHeight; row++) {
+            const y = row * cellHeight;
+            svgContent += `  <line x1="${gridSvgWidth}" y1="${y}" x2="${svgWidth}" y2="${y}" stroke="#666" stroke-width="1"/>\n`;
+        }
+
         svgContent += `  <!-- Row counts -->\n`;
         const fontSize = Math.min(cellHeight * 0.6, 20);
         for (let row = 0; row < totalHeight; row++) {
@@ -491,7 +596,7 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
             const rowNumber = totalHeight - row;
             const x = gridSvgWidth + 10;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="Libre Franklin, sans-serif" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
     }
 
