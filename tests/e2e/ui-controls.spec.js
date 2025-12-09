@@ -380,3 +380,186 @@ test.describe('Export Functions', () => {
     expect(download.suggestedFilename()).toMatch(/motif-.*\.json/);
   });
 });
+
+test.describe('Pattern with Context Visual Selection', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('#editCanvas');
+  });
+
+  test('should show visual selection mode for small patterns', async ({ page }) => {
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+
+    // Context controls should be hidden for small pattern (default 5x5 supports 3x3)
+    const contextControls = page.locator('#contextControls');
+    await expect(contextControls).not.toBeVisible();
+
+    // Submit to enter visual selection mode
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Visual selection controls should appear
+    const visualControls = page.locator('#visualSelectionControls');
+    await expect(visualControls).toBeVisible();
+
+    // Preview should show 3x3
+    const repeatXDisplay = page.locator('#previewRepeatXDisplay');
+    await expect(repeatXDisplay).toHaveText('3');
+  });
+
+  test('should show form inputs for large patterns', async ({ page }) => {
+    // Change grid to large size (>= 53 would force max repeat < 3)
+    const widthDisplay = page.locator('#gridWidthDisplay');
+    await widthDisplay.click();
+    await widthDisplay.fill('60');
+    await widthDisplay.press('Enter');
+
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+
+    // Context form controls should be visible for large pattern
+    const contextControls = page.locator('#contextControls');
+    await expect(contextControls).toBeVisible();
+
+    // Check that max values are set correctly (gridWidth - 1 = 59)
+    const leftInput = page.locator('#contextLeft');
+    await expect(leftInput).toHaveAttribute('max', '59');
+  });
+
+  test('should exit visual selection on cancel', async ({ page }) => {
+    // Enter visual selection mode
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Visual controls should be visible
+    const visualControls = page.locator('#visualSelectionControls');
+    await expect(visualControls).toBeVisible();
+
+    // Click cancel
+    await page.locator('#visualSelectionCancelBtn').click();
+
+    // Visual controls should disappear
+    await expect(visualControls).not.toBeVisible();
+
+    // Preview should restore original repeat (default 3x3)
+    const repeatXDisplay = page.locator('#previewRepeatXDisplay');
+    await expect(repeatXDisplay).toHaveText('3');
+  });
+
+  test('should exit visual selection on escape key', async ({ page }) => {
+    // Enter visual selection mode
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Visual controls should be visible
+    const visualControls = page.locator('#visualSelectionControls');
+    await expect(visualControls).toBeVisible();
+
+    // Press escape
+    await page.keyboard.press('Escape');
+
+    // Visual controls should disappear
+    await expect(visualControls).not.toBeVisible();
+  });
+
+  test('should download with visual context selection', async ({ page }) => {
+    // Paint something first
+    const canvas = page.locator('#editCanvas');
+    await canvas.click({ position: { x: 50, y: 50 } });
+
+    // Enter visual selection mode
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Click download
+    await page.locator('#visualSelectionDownloadBtn').click();
+
+    // Wait for download
+    const download = await downloadPromise;
+
+    // Verify download occurred with context in filename
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-context-.*\.png/);
+  });
+
+  test('should download with form context values for large patterns', async ({ page }) => {
+    // Paint something first
+    const canvas = page.locator('#editCanvas');
+    await canvas.click({ position: { x: 50, y: 50 } });
+
+    // Change grid to large size
+    const widthDisplay = page.locator('#gridWidthDisplay');
+    await widthDisplay.click();
+    await widthDisplay.fill('60');
+    await widthDisplay.press('Enter');
+
+    // Open download modal
+    await page.locator('#downloadBtn').click();
+
+    // Wait for modal to be fully visible
+    const downloadModal = page.locator('#downloadModal');
+    await expect(downloadModal).toBeVisible();
+
+    // Select pattern-with-context (click on label wrapper)
+    // Use force: true to bypass pointer event interception on mobile
+    await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
+
+    // Fill in context values
+    await page.locator('#contextLeft').fill('2');
+    await page.locator('#contextRight').fill('2');
+
+    // Set up download listener
+    const downloadPromise = page.waitForEvent('download');
+
+    // Submit (force: true to bypass pointer interception on mobile)
+    await page.locator('#downloadModalSubmitBtn').click({ force: true });
+
+    // Wait for download
+    const download = await downloadPromise;
+
+    // Verify download occurred
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-context-.*\.png/);
+  });
+});
