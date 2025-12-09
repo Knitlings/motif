@@ -31,15 +31,15 @@ See the [Help page](https://motif.works/help.html) and [About page](https://moti
 
 **Drawing a pattern**
 
-https://github.com/user-attachments/assets/motif_basics.mp4
+![Drawing a pattern](.github/media/motif_basics.gif)
 
 **Adding to a pattern**
 
-https://github.com/user-attachments/assets/motif_adding.mp4
+![Adding to a pattern](.github/media/motif_adding.gif)
 
 **Working with colour palettes**
 
-https://github.com/user-attachments/assets/motif_colours.mp4
+![Working with colour palettes](.github/media/motif_colours.gif)
 
 </details>
 
