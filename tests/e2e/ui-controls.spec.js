@@ -253,10 +253,11 @@ test.describe('Export Functions', () => {
 
     // Open download modal
     await page.locator('#downloadBtn').click();
+    await expect(page.locator('#downloadModal')).toBeVisible();
 
     // Select pattern and SVG (should be selected by default)
     const patternRadio = page.locator('input[name="source"][value="pattern"]');
-    const svgRadio = page.locator('input[name="format"][value="svg"]');
+    const svgRadio = page.locator('label:has(input[name="format"][value="svg"])');
 
     await expect(patternRadio).toBeChecked();
     await svgRadio.click();
@@ -282,6 +283,7 @@ test.describe('Export Functions', () => {
 
     // Open download modal
     await page.locator('#downloadBtn').click();
+    await expect(page.locator('#downloadModal')).toBeVisible();
 
     // Select pattern and PNG (both should be selected by default)
     const patternRadio = page.locator('input[name="source"][value="pattern"]');
@@ -311,10 +313,11 @@ test.describe('Export Functions', () => {
 
     // Open download modal
     await page.locator('#downloadBtn').click();
+    await expect(page.locator('#downloadModal')).toBeVisible();
 
     // Select preview and SVG
-    const previewRadio = page.locator('input[name="source"][value="preview"]');
-    const svgRadio = page.locator('input[name="format"][value="svg"]');
+    const previewRadio = page.locator('label:has(input[name="source"][value="preview"])');
+    const svgRadio = page.locator('label:has(input[name="format"][value="svg"])');
 
     await previewRadio.click();
     await svgRadio.click();
@@ -340,9 +343,10 @@ test.describe('Export Functions', () => {
 
     // Open download modal
     await page.locator('#downloadBtn').click();
+    await expect(page.locator('#downloadModal')).toBeVisible();
 
     // Select preview (PNG is default format)
-    const previewRadio = page.locator('input[name="source"][value="preview"]');
+    const previewRadio = page.locator('label:has(input[name="source"][value="preview"])');
     await previewRadio.click();
 
     // Set up download listener
