@@ -136,7 +136,7 @@
                 <li><a href="#preview">Preview</a></li>
                 <li><a href="#colours">Colours</a></li>
                 <li><a href="#undo">Undo and redo</a></li>
-                <li><a href="#download">Download pattern</a></li>
+                <li><a href="#download">Download</a></li>
                 <li><a href="#settings">Settings</a></li>
                 <li class="desktop-only"><a href="#shortcuts">Keyboard shortcuts</a></li>
             </ul>
@@ -276,19 +276,28 @@
         <p class="touch-only">Tap the curved arrow buttons below the canvas to undo and redo your changes.</p>
 
 
-        <h2 id="download">Download pattern <a href="#" class="back-to-contents">↑</a></h2>
+        <h2 id="download">Download<a href="#" class="back-to-contents">↑</a></h2>
 
-        <p class="desktop-only">Click the <span class="ui-element">Download</span> button below the pattern to open the download dialog.</p>
-        <p class="touch-only">Tap the <span class="ui-element">Download</span> button below the pattern to open the download dialog.</p>
+        <p class="desktop-only">Click the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
+        <p class="touch-only">Tap the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
 
         <h3>Download options</h3>
-        <p class="both">The download dialog lets you customize your export:</p>
         <ul class="both">
-            <li><strong>Source:</strong> Choose between <span class="ui-element">Pattern</span> (single repeat) or <span class="ui-element">Preview</span> (tiled repeats).</li>
-            <li><strong>Format:</strong> Choose between <span class="ui-element">PNG</span> (raster image) or <span class="ui-element">SVG</span> (vector image with grid lines).</li>
-            <li><strong>Include row counts:</strong> Optionally add row count numbers to the right side of your pattern for easier counting. Row numbers start at 1 from the bottom.</li>
+            <li><strong>Source:</strong>
+                <ul>
+                    <li><span class="ui-element">Pattern</span>: Single repeat of the pattern as shown in the pattern grid.</li>
+                    <li><span class="ui-element">Pattern repeat with surroundings</span>: One repeat plus your selection of neighbouring rows or columns.</li>
+                    <li><span class="ui-element">Preview</span>: Multiple tiled repeats as shown in the preview grid.</li>
+                </ul>
+            </li>
+            <li><strong>Format:</strong> Choose between <span class="ui-element">PNG</span> or <span class="ui-element">SVG</span>.</li>
+            <li><strong>Include row counts:</strong> Add row count numbers to the right side of your downloaded image.</li>
         </ul>
-        <p class="both">Downloads use the same cell size as displayed on screen, ensuring your pattern maintains proper proportions.</p>
+
+        <h3>Pattern repeat with surroundings</h3>
+        <p class="both">When you select <span class="ui-element">Pattern repeat with surroundings</span>, you can specify how many neighbouring rows and columns to include.</p>
+        <p class="both">For smaller patterns you'll see a visual selection mode where you can drag the edges on the preview to choose your surrounding area.</p>
+        <p class="both">For larger patterns, use the form inputs to enter the number of row/columns you want to include next to the pattern repeat.</p>
 
         <h2 id="settings">Settings <a href="#" class="back-to-contents">↑</a></h2>
         <p class="both">Access these options in the settings menu (☰):</p>

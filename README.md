@@ -1,6 +1,6 @@
 # Motif
 
-![Motif Pattern Editor](screenshot1.png)
+![Motif Pattern Editor](.github/media/screenshot1.png)
 
 Draw grid based patterns and see how they look when they repeat. Try Motif at [motif.works](https://motif.works).
 
@@ -17,10 +17,29 @@ Draw grid based patterns and see how they look when they repeat. Try Motif at [m
 See the [Help page](https://motif.works/help.html) and [About page](https://motif.works/about.html) to learn more about Motif.
 
 <details>
-<summary><strong>More Screenshots</strong> (click to expand)</summary>
+<summary><strong>Screenshots & Demos</strong> (click to expand)</summary>
 
-![A large pattern is repeated two times vertically](screenshot1.png)
-![A border pattern is repeated three timed horizontally](screenshot2.png)
+### Screenshots
+
+![A large pattern is repeated two times vertically](.github/media/screenshot1.png)
+
+![A border pattern is repeated three times horizontally](.github/media/screenshot2.png)
+
+![Motif showcase](.github/media/motif_showcase.png)
+
+### Videos
+
+**Drawing a pattern**
+
+https://github.com/user-attachments/assets/motif_basics.mp4
+
+**Adding to a pattern**
+
+https://github.com/user-attachments/assets/motif_adding.mp4
+
+**Working with colour palettes**
+
+https://github.com/user-attachments/assets/motif_colours.mp4
 
 </details>
 
