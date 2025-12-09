@@ -1176,8 +1176,8 @@ function handleSelectionMouseDown(e) {
     const centerEndX = centerStartX + gridWidth * cellWidth;
     const centerEndY = centerStartY + gridHeight * cellHeight;
 
-    // Check if clicking near an edge (within 10px threshold)
-    const threshold = 10;
+    // Use larger touch target for touch events (30px) vs mouse (10px)
+    const threshold = e.touches ? 30 : 10;
 
     // Check edges with context
     const leftEdge = centerStartX - (contextSelection.left * cellWidth);
