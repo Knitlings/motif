@@ -521,7 +521,7 @@ test.describe('Pattern with Context Visual Selection', () => {
     const download = await downloadPromise;
 
     // Verify download occurred with context in filename
-    expect(download.suggestedFilename()).toMatch(/motif-pattern-context-.*\.png/);
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-surroundings-.*\.png/);
   });
 
   test('should download with form context values for large patterns', async ({ page }) => {
@@ -560,6 +560,6 @@ test.describe('Pattern with Context Visual Selection', () => {
     const download = await downloadPromise;
 
     // Verify download occurred
-    expect(download.suggestedFilename()).toMatch(/motif-pattern-context-.*\.png/);
+    expect(download.suggestedFilename()).toMatch(/motif-pattern-surroundings-.*\.png/);
   });
 });

@@ -898,10 +898,10 @@ downloadForm.onsubmit = async (e) => {
                 let blob, filename;
                 if (format === 'svg') {
                     blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-                    filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
+                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
                 } else {
                     blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
-                    filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
+                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
                 }
 
                 downloadFile(blob, filename);
@@ -1141,10 +1141,10 @@ async function downloadWithContext() {
 
         if (format === 'svg') {
             blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-            filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
         } else {
             blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
-            filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
         }
 
         downloadFile(blob, filename);
