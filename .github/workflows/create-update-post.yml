@@ -16,7 +16,7 @@ jobs:
       - name: Checkout knitlings repo
         uses: actions/checkout@v4
         with:
-          repository: Knitlings/knitlings
+          repository: Knitlings/knitlings.com
           token: ${{ secrets.KNITLINGS_PAT }}
           path: knitlings
 
