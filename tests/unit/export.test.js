@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { exportJson, importJson, downloadFile } from '../../src/core/export.js';
+import { exportJson, importJson, downloadFile, exportSvg, exportPng, exportPreviewSvg, exportPreviewPng } from '../../src/core/export.js';
 
 describe('Export/Import Functions', () => {
     describe('exportJson()', () => {
@@ -328,6 +328,158 @@ describe('Export/Import Functions', () => {
             removeChildSpy.mockRestore();
             createObjectURLSpy.mockRestore();
             revokeObjectURLSpy.mockRestore();
+        });
+    });
+
+    describe('exportSvg()', () => {
+        beforeEach(() => {
+            // Mock canvas element
+            const mockCanvas = document.createElement('canvas');
+            mockCanvas.id = 'editCanvas';
+            mockCanvas.width = 200;
+            mockCanvas.height = 200;
+            document.body.appendChild(mockCanvas);
+        });
+
+        it('should export pattern as SVG blob', () => {
+            const state = {
+                grid: [[0, 1], [2, 0]],
+                gridWidth: 2,
+                gridHeight: 2,
+                patternColors: ['#FF0000', '#00FF00', '#0000FF'],
+                backgroundColor: '#FFFFFF'
+            };
+
+            const blob = exportSvg(state);
+
+            expect(blob).toBeInstanceOf(Blob);
+            expect(blob.type).toBe('image/svg+xml');
+        });
+
+        it('should include grid dimensions in SVG', async () => {
+            const state = {
+                grid: [[0]],
+                gridWidth: 1,
+                gridHeight: 1,
+                patternColors: ['#FF0000'],
+                backgroundColor: '#FFFFFF'
+            };
+
+            const blob = exportSvg(state);
+            const text = await blob.text();
+
+            expect(text).toContain('<svg');
+            expect(text).toContain('width=');
+            expect(text).toContain('height=');
+        });
+    });
+
+    describe('exportPng()', () => {
+        it('should call canvas toBlob method', async () => {
+            // Mock document.getElementById to return a canvas with toBlob
+            const mockCanvas = {
+                toBlob: vi.fn((callback) => {
+                    callback(new Blob(['test'], { type: 'image/png' }));
+                })
+            };
+
+            const getElementByIdSpy = vi.spyOn(document, 'getElementById').mockReturnValue(mockCanvas);
+
+            const blob = await exportPng();
+
+            expect(getElementByIdSpy).toHaveBeenCalledWith('editCanvas');
+            expect(mockCanvas.toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/png');
+            expect(blob).toBeInstanceOf(Blob);
+
+            getElementByIdSpy.mockRestore();
+        });
+    });
+
+    describe('exportPreviewSvg()', () => {
+        beforeEach(() => {
+            // Mock canvas element
+            const mockCanvas = document.createElement('canvas');
+            mockCanvas.id = 'previewCanvas';
+            mockCanvas.width = 300;
+            mockCanvas.height = 300;
+            document.body.appendChild(mockCanvas);
+        });
+
+        it('should export preview as SVG blob', () => {
+            const state = {
+                grid: [[0, 1], [2, 0]],
+                gridWidth: 2,
+                gridHeight: 2,
+                previewRepeatX: 3,
+                previewRepeatY: 3,
+                patternColors: ['#FF0000', '#00FF00', '#0000FF'],
+                backgroundColor: '#FFFFFF'
+            };
+
+            const blob = exportPreviewSvg(state);
+
+            expect(blob).toBeInstanceOf(Blob);
+            expect(blob.type).toBe('image/svg+xml');
+        });
+
+        it('should tile pattern according to repeat settings', async () => {
+            const state = {
+                grid: [[1]],
+                gridWidth: 1,
+                gridHeight: 1,
+                previewRepeatX: 2,
+                previewRepeatY: 2,
+                patternColors: ['#FF0000'],
+                backgroundColor: '#FFFFFF'
+            };
+
+            const blob = exportPreviewSvg(state);
+            const text = await blob.text();
+
+            // Should contain SVG markup
+            expect(text).toContain('<svg');
+            // Should contain grid lines
+            expect(text).toContain('Grid lines');
+        });
+
+        it('should use preview canvas dimensions', async () => {
+            const state = {
+                grid: [[0]],
+                gridWidth: 1,
+                gridHeight: 1,
+                previewRepeatX: 3,
+                previewRepeatY: 3,
+                patternColors: ['#FF0000'],
+                backgroundColor: '#FFFFFF'
+            };
+
+            const blob = exportPreviewSvg(state);
+            const text = await blob.text();
+
+            // SVG should have width and height attributes
+            expect(text).toContain('width=');
+            expect(text).toContain('height=');
+        });
+    });
+
+    describe('exportPreviewPng()', () => {
+        it('should call preview canvas toBlob method', async () => {
+            // Mock document.getElementById to return a canvas with toBlob
+            const mockCanvas = {
+                toBlob: vi.fn((callback) => {
+                    callback(new Blob(['test'], { type: 'image/png' }));
+                })
+            };
+
+            const getElementByIdSpy = vi.spyOn(document, 'getElementById').mockReturnValue(mockCanvas);
+
+            const blob = await exportPreviewPng();
+
+            expect(getElementByIdSpy).toHaveBeenCalledWith('previewCanvas');
+            expect(mockCanvas.toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/png');
+            expect(blob).toBeInstanceOf(Blob);
+
+            getElementByIdSpy.mockRestore();
         });
     });
 });

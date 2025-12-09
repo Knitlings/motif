@@ -8,6 +8,37 @@
 
   ## [Unreleased]
 
+  ## [1.2.0] - 2025-12-09
+
+  ### Added
+  - Pattern with surroundings download option - allows exporting patterns with configurable context stitches from neighboring repeats
+  - Row count option in download modal for all export types
+  - Download modal dialog replacing previous dropdown for better organization
+  - Visual selection interface for adjusting pattern surroundings in downloads (for patterns with 3×3 preview)
+  - Dynamic preview repeat limits based on pattern size to prevent performance issues
+  - Automated update post creation workflow for Knitlings website
+
+  ### Changed
+  - Renamed "context" to "surroundings" in user-facing text for clarity
+  - Improved download image styling with thicker red border (2px → 4px) on pattern repeat box for better visibility
+  - Enhanced row count readability with white background, black separator border, extended grid lines, and monospace font
+
+  ### Fixed
+  - Grid resize operations are now properly undoable
+  - Null values in grid cells are handled correctly
+  - Content is preserved when shrinking grid from left/top edges
+  - Export E2E tests updated to interact with visible elements
+
+  ### Documentation
+  - Added video demos with inline GIF display in README
+  - Auto-cropped black borders from demo videos
+
+  ### Dependencies
+  - Updated @playwright/test from 1.56.1 to 1.57.0
+  - Updated happy-dom from 20.0.10 to 20.0.11
+  - Updated vite from 7.2.4 to 7.2.7
+  - Updated vitest from 4.0.13 to 4.0.15
+
   ## [1.1.0] - 2025-11-22
 
   ### Added
@@ -93,6 +124,7 @@
 
   ---
 
+  [1.2.0]: https://github.com/Knitlings/motif/releases/tag/v1.2.0
   [1.1.0]: https://github.com/Knitlings/motif/releases/tag/v1.1.0
   [1.0.0]: https://github.com/Knitlings/motif/releases/tag/v1.0.0
 

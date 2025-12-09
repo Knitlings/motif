@@ -136,7 +136,7 @@
                 <li><a href="#preview">Preview</a></li>
                 <li><a href="#colours">Colours</a></li>
                 <li><a href="#undo">Undo and redo</a></li>
-                <li><a href="#download">Download pattern</a></li>
+                <li><a href="#download">Download</a></li>
                 <li><a href="#settings">Settings</a></li>
                 <li class="desktop-only"><a href="#shortcuts">Keyboard shortcuts</a></li>
             </ul>
@@ -183,6 +183,57 @@
 
         <p class="both">The preview shows several repeats of your pattern, so you can see how your it connects when repeating and catch problems that only appear when the pattern is tiled.</p>
 
+        <h3>Adjusting preview repeats</h3>
+        <p class="both">You can change how many times the pattern repeats horizontally and vertically by entering the desired number of repeats.</p>
+        <p class="both">The maximum number of repeats depends on your pattern's largest dimension to keep the preview running smoothly:</p>
+
+        <table class="both">
+            <thead>
+                <tr>
+                    <th>Largest Dimension</th>
+                    <th>Maximum Repeats</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>15 and smaller</td>
+                    <td>10×10</td>
+                </tr>
+                <tr>
+                    <td>16 to 19</td>
+                    <td>8×8</td>
+                </tr>
+                <tr>
+                    <td>20 to 26</td>
+                    <td>6×6</td>
+                </tr>
+                <tr>
+                    <td>27 to 31</td>
+                    <td>5×5</td>
+                </tr>
+                <tr>
+                    <td>32 to 39</td>
+                    <td>4×4</td>
+                </tr>
+                <tr>
+                    <td>40 to 52</td>
+                    <td>3×3</td>
+                </tr>
+                <tr>
+                    <td>53 to 79</td>
+                    <td>2×2</td>
+                </tr>
+                <tr>
+                    <td>80 and larger</td>
+                    <td>1×1</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="both">For example, a 2×20 pattern has a largest dimension of 20, so it allows up to 6×6 repeats.</p>
+
+        <p class="both">When you resize your pattern larger, the preview repeats will automatically reduce if needed. A status message appears when you're near or at the maximum for your pattern size.</p>
+
         <h2 id="colours">Colours <a href="#" class="back-to-contents">↑</a></h2>
 
         <p class="both">The pattern colours are displayed in circles at the top of the screen. The active pattern colour is indicated by a larger circle. Motif keeps track of what cells use what pattern colour, so you can easily change them all at once and try new combinations.</p>
@@ -225,10 +276,28 @@
         <p class="touch-only">Tap the curved arrow buttons below the canvas to undo and redo your changes.</p>
 
 
-        <h2 id="download">Download pattern <a href="#" class="back-to-contents">↑</a></h2>
+        <h2 id="download">Download<a href="#" class="back-to-contents">↑</a></h2>
 
-        <p class="desktop-only">Click the <span class="ui-element">Download pattern</span> dropdown below the pattern to export your current pattern as an image file.</p>
-        <p class="touch-only">Tap the <span class="ui-element">Download pattern</span> dropdown below the pattern to export your current pattern as an image file.</p>
+        <p class="desktop-only">Click the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
+        <p class="touch-only">Tap the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
+
+        <h3>Download options</h3>
+        <ul class="both">
+            <li><strong>Source:</strong>
+                <ul>
+                    <li><span class="ui-element">Pattern</span>: Single repeat of the pattern as shown in the pattern grid.</li>
+                    <li><span class="ui-element">Pattern repeat with surroundings</span>: One repeat plus your selection of neighbouring rows or columns.</li>
+                    <li><span class="ui-element">Preview</span>: Multiple tiled repeats as shown in the preview grid.</li>
+                </ul>
+            </li>
+            <li><strong>Format:</strong> Choose between <span class="ui-element">PNG</span> or <span class="ui-element">SVG</span>.</li>
+            <li><strong>Include row counts:</strong> Add row count numbers to the right side of your downloaded image.</li>
+        </ul>
+
+        <h3>Pattern repeat with surroundings</h3>
+        <p class="both">When you select <span class="ui-element">Pattern repeat with surroundings</span>, you can specify how many neighbouring rows and columns to include.</p>
+        <p class="both">For smaller patterns you'll see a visual selection mode where you can drag the edges on the preview to choose your surrounding area.</p>
+        <p class="both">For larger patterns, use the form inputs to enter the number of row/columns you want to include next to the pattern repeat.</p>
 
         <h2 id="settings">Settings <a href="#" class="back-to-contents">↑</a></h2>
         <p class="both">Access these options in the settings menu (☰):</p>

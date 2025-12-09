@@ -8,7 +8,7 @@ import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
 import { CanvasManager } from './managers/canvas.js';
 import { createEmptyGrid, resizeGrid, resizeGridFromEdge } from './core/grid.js';
-import { exportSvg, exportPng, exportJson, importJson, downloadFile } from './core/export.js';
+import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, exportPatternWithContextPng, exportJson, importJson, downloadFile } from './core/export.js';
 import {
     validateGridDimension,
     validateAspectRatio,
@@ -177,6 +177,8 @@ function saveToLocalStorage() {
 function saveToHistory() {
     HistoryManager.save({
         grid: grid,
+        gridWidth: gridWidth,
+        gridHeight: gridHeight,
         colors: patternColors,
         backgroundColor: backgroundColor
     });
@@ -434,23 +436,86 @@ function initGrid() {
         const emptyGrid = createEmptyGrid(gridWidth, gridHeight);
         HistoryManager.init({
             grid: emptyGrid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
         // Add the current loaded state as second history entry
         HistoryManager.save({
             grid: grid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
     } else {
         HistoryManager.init({
             grid: grid,
+            gridWidth: gridWidth,
+            gridHeight: gridHeight,
             colors: patternColors,
             backgroundColor: backgroundColor
         });
     }
     updateCanvas();
+    updatePreviewRepeatStatus();
+}
+
+/**
+ * Calculate maximum allowed preview repeats based on pattern size
+ * Keeps total cells under ~25,000 for smooth performance
+ * @param {number} width - Pattern width
+ * @param {number} height - Pattern height
+ * @returns {number} Maximum allowed repeats in either dimension
+ */
+function getMaxPreviewRepeat(width, height) {
+    const maxDimension = Math.max(width, height);
+
+    if (maxDimension >= 80) return 1;
+    if (maxDimension >= 53) return 2;
+    if (maxDimension >= 40) return 3;
+    if (maxDimension >= 32) return 4;
+    if (maxDimension >= 27) return 5;
+    if (maxDimension >= 20) return 6;
+    if (maxDimension >= 16) return 8;
+    return 10; // 15×15 and smaller
+}
+
+/**
+ * Show toast notification over preview canvas
+ * @param {string} message - Message to display
+ */
+function showPreviewToast(message) {
+    const toast = document.getElementById('previewToast');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.add('show');
+
+    // Hide after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+/**
+ * Update the preview repeat status indicator
+ * Shows a message when near or at maximum allowed repeats
+ */
+function updatePreviewRepeatStatus() {
+    const statusElement = document.getElementById('previewRepeatStatus');
+    if (!statusElement) return;
+
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    const nearMaxX = previewRepeatX >= maxRepeat - 1;
+    const nearMaxY = previewRepeatY >= maxRepeat - 1;
+
+    if (nearMaxX || nearMaxY) {
+        statusElement.textContent = `Max preview for pattern size is ${maxRepeat}×${maxRepeat}`;
+    } else {
+        statusElement.textContent = '';
+    }
 }
 
 function applyGridResize(newWidth, newHeight) {
@@ -469,8 +534,33 @@ function applyGridResize(newWidth, newHeight) {
     grid = result.grid;
     gridWidth = result.width;
     gridHeight = result.height;
+
+    // Check if preview repeats need to be reduced due to larger pattern
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    let repeatReduced = false;
+
+    if (previewRepeatX > maxRepeat) {
+        previewRepeatX = maxRepeat;
+        const display = document.getElementById('previewRepeatXDisplay');
+        if (display) display.textContent = previewRepeatX;
+        repeatReduced = true;
+    }
+
+    if (previewRepeatY > maxRepeat) {
+        previewRepeatY = maxRepeat;
+        const display = document.getElementById('previewRepeatYDisplay');
+        if (display) display.textContent = previewRepeatY;
+        repeatReduced = true;
+    }
+
+    if (repeatReduced) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+        saveToLocalStorage();
+    }
+
     saveToHistory();
     updateCanvas();
+    updatePreviewRepeatStatus();
     return true;
 }
 
@@ -496,8 +586,32 @@ function applyGridResizeFromEdge(direction, delta) {
     if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
     if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
+    // Check if preview repeats need to be reduced due to larger pattern
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    let repeatReduced = false;
+
+    if (previewRepeatX > maxRepeat) {
+        previewRepeatX = maxRepeat;
+        const display = document.getElementById('previewRepeatXDisplay');
+        if (display) display.textContent = previewRepeatX;
+        repeatReduced = true;
+    }
+
+    if (previewRepeatY > maxRepeat) {
+        previewRepeatY = maxRepeat;
+        const display = document.getElementById('previewRepeatYDisplay');
+        if (display) display.textContent = previewRepeatY;
+        repeatReduced = true;
+    }
+
+    if (repeatReduced) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+        saveToLocalStorage();
+    }
+
     saveToHistory();
     updateCanvas();
+    updatePreviewRepeatStatus();
     if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
@@ -563,12 +677,44 @@ document.getElementById('undoBtn').onclick = () => {
     const state = HistoryManager.undo();
     if (state) {
         grid = state.grid;
+        gridWidth = state.gridWidth;
+        gridHeight = state.gridHeight;
         patternColors = state.colors;
         backgroundColor = state.backgroundColor;
+
+        // Update grid dimension displays
+        const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+        const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
+        // Check if preview repeats need to be reduced due to larger pattern
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        let repeatReduced = false;
+
+        if (previewRepeatX > maxRepeat) {
+            previewRepeatX = maxRepeat;
+            const display = document.getElementById('previewRepeatXDisplay');
+            if (display) display.textContent = previewRepeatX;
+            repeatReduced = true;
+        }
+
+        if (previewRepeatY > maxRepeat) {
+            previewRepeatY = maxRepeat;
+            const display = document.getElementById('previewRepeatYDisplay');
+            if (display) display.textContent = previewRepeatY;
+            repeatReduced = true;
+        }
+
+        if (repeatReduced) {
+            showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+            saveToLocalStorage();
+        }
 
         updateActiveColorUI();
             createNavbarColorButtons();
         updateCanvas();
+        updatePreviewRepeatStatus();
         announceToScreenReader('Undo successful');
     }
 };
@@ -577,12 +723,44 @@ document.getElementById('redoBtn').onclick = () => {
     const state = HistoryManager.redo();
     if (state) {
         grid = state.grid;
+        gridWidth = state.gridWidth;
+        gridHeight = state.gridHeight;
         patternColors = state.colors;
         backgroundColor = state.backgroundColor;
+
+        // Update grid dimension displays
+        const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+        const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
+        // Check if preview repeats need to be reduced due to larger pattern
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        let repeatReduced = false;
+
+        if (previewRepeatX > maxRepeat) {
+            previewRepeatX = maxRepeat;
+            const display = document.getElementById('previewRepeatXDisplay');
+            if (display) display.textContent = previewRepeatX;
+            repeatReduced = true;
+        }
+
+        if (previewRepeatY > maxRepeat) {
+            previewRepeatY = maxRepeat;
+            const display = document.getElementById('previewRepeatYDisplay');
+            if (display) display.textContent = previewRepeatY;
+            repeatReduced = true;
+        }
+
+        if (repeatReduced) {
+            showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+            saveToLocalStorage();
+        }
 
         updateActiveColorUI();
             createNavbarColorButtons();
         updateCanvas();
+        updatePreviewRepeatStatus();
         announceToScreenReader('Redo successful');
     }
 };
@@ -613,32 +791,509 @@ document.querySelectorAll('.palette-option').forEach(option => {
 });
 
 
-document.getElementById('exportSvgBtn').onclick = (e) => {
-    e.preventDefault();
-    try {
-        const blob = exportSvg(getState());
-        downloadFile(blob, `motif-${gridWidth}x${gridHeight}.svg`);
-        announceToScreenReader('Pattern exported as SVG');
-    } catch (error) {
-        handleFileError(error, 'SVG export');
+// Download modal controls
+const downloadModal = document.getElementById('downloadModal');
+const downloadBtn = document.getElementById('downloadBtn');
+const downloadModalCancelBtn = document.getElementById('downloadModalCancelBtn');
+const downloadForm = document.getElementById('downloadForm');
+const contextControls = document.getElementById('contextControls');
+
+// Toggle context controls visibility based on source selection
+const sourceRadios = document.querySelectorAll('input[name="source"]');
+sourceRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (radio.value === 'pattern-with-context' && radio.checked) {
+            // Only show form controls if pattern is too large for visual selection (3x3 preview)
+            const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+            if (maxRepeat < 3) {
+                contextControls.style.display = 'flex';
+            } else {
+                contextControls.style.display = 'none';
+            }
+        } else {
+            contextControls.style.display = 'none';
+        }
+    });
+});
+
+// Open download modal
+downloadBtn.onclick = () => {
+    downloadModal.style.display = 'flex';
+
+    // Update context input max values based on current pattern size
+    const contextLeftInput = document.getElementById('contextLeft');
+    const contextRightInput = document.getElementById('contextRight');
+    const contextTopInput = document.getElementById('contextTop');
+    const contextBottomInput = document.getElementById('contextBottom');
+
+    if (contextLeftInput) contextLeftInput.max = gridWidth - 1;
+    if (contextRightInput) contextRightInput.max = gridWidth - 1;
+    if (contextTopInput) contextTopInput.max = gridHeight - 1;
+    if (contextBottomInput) contextBottomInput.max = gridHeight - 1;
+
+    // Update context controls visibility based on current pattern size
+    const patternWithContextRadio = document.querySelector('input[name="source"][value="pattern-with-context"]');
+    if (patternWithContextRadio && patternWithContextRadio.checked) {
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        if (maxRepeat < 3) {
+            contextControls.style.display = 'flex';
+        } else {
+            contextControls.style.display = 'none';
+        }
     }
 };
 
-document.getElementById('exportPngBtn').onclick = async (e) => {
+// Close download modal
+downloadModalCancelBtn.onclick = () => {
+    downloadModal.style.display = 'none';
+};
+
+// Close modal on backdrop click
+downloadModal.onclick = (e) => {
+    if (e.target === downloadModal) {
+        downloadModal.style.display = 'none';
+    }
+};
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && downloadModal.style.display === 'flex') {
+        downloadModal.style.display = 'none';
+    }
+});
+
+// Handle download form submission
+downloadForm.onsubmit = async (e) => {
     e.preventDefault();
+
+    const formData = new FormData(downloadForm);
+    const source = formData.get('source');
+    const format = formData.get('format');
+    const includeRowCounts = formData.get('rowCounts') === 'on';
+
+    // Close modal
+    downloadModal.style.display = 'none';
+
+    // If pattern-with-context is selected, check if we can use visual selection
+    if (source === 'pattern-with-context') {
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+
+        // Use visual selection if pattern supports 3x3 preview
+        if (maxRepeat >= 3) {
+            enterVisualContextSelection(format, includeRowCounts);
+            return;
+        } else {
+            // Pattern too large - use form values
+            const context = {
+                left: parseInt(formData.get('contextLeft')) || 0,
+                right: parseInt(formData.get('contextRight')) || 0,
+                top: parseInt(formData.get('contextTop')) || 0,
+                bottom: parseInt(formData.get('contextBottom')) || 0
+            };
+
+            try {
+                showLoading(`Exporting ${format.toUpperCase()}...`);
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                let blob, filename;
+                if (format === 'svg') {
+                    blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
+                } else {
+                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
+                }
+
+                downloadFile(blob, filename);
+                announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+            } catch (error) {
+                handleFileError(error, `${format.toUpperCase()} export`);
+            } finally {
+                hideLoading();
+            }
+            return;
+        }
+    }
+
     try {
-        showLoading('Exporting PNG...');
-        // Give UI time to update
+        showLoading(`Exporting ${format.toUpperCase()}...`);
         await new Promise(resolve => setTimeout(resolve, 50));
-        const blob = await exportPng();
-        downloadFile(blob, `motif-${gridWidth}x${gridHeight}.png`);
-        announceToScreenReader('Pattern exported as PNG');
+
+        let blob;
+        let filename;
+
+        if (source === 'pattern') {
+            if (format === 'svg') {
+                blob = exportSvg(getState(), includeRowCounts);
+                filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
+            } else {
+                blob = await exportPng(getState(), includeRowCounts);
+                filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
+            }
+        } else {
+            // Preview export
+            if (format === 'svg') {
+                blob = exportPreviewSvg(getState(), includeRowCounts);
+                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
+            } else {
+                blob = await exportPreviewPng(getState(), includeRowCounts);
+                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
+            }
+        }
+
+        downloadFile(blob, filename);
+        announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
     } catch (error) {
-        handleFileError(error, 'PNG export');
+        handleFileError(error, `${format.toUpperCase()} export`);
     } finally {
         hideLoading();
     }
 };
+
+// ============================================
+// VISUAL CONTEXT SELECTION
+// ============================================
+
+// Visual context selection state
+let visualContextSelectionActive = false;
+let savedPreviewRepeatX = 3;
+let savedPreviewRepeatY = 3;
+let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
+let selectionFormat = 'png';
+let selectionIncludeRowCounts = false;
+let draggingEdge = null;
+let dragStartPos = { x: 0, y: 0 };
+
+/**
+ * Enter visual context selection mode
+ */
+function enterVisualContextSelection(format, includeRowCounts) {
+    // Save current state
+    savedPreviewRepeatX = previewRepeatX;
+    savedPreviewRepeatY = previewRepeatY;
+    selectionFormat = format;
+    selectionIncludeRowCounts = includeRowCounts;
+    contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
+    visualContextSelectionActive = true;
+
+    // Switch to 3x3 preview
+    previewRepeatX = 3;
+    previewRepeatY = 3;
+
+    // Update preview repeat displays
+    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+
+    // Show visual selection controls
+    const controls = document.getElementById('visualSelectionControls');
+    if (controls) controls.style.display = 'flex';
+
+    // Re-render preview
+    updateCanvas();
+
+    // Add visual selection overlay to preview canvas
+    renderVisualSelection();
+}
+
+/**
+ * Exit visual context selection mode
+ */
+function exitVisualContextSelection() {
+    visualContextSelectionActive = false;
+
+    // Hide visual selection controls
+    const controls = document.getElementById('visualSelectionControls');
+    if (controls) controls.style.display = 'none';
+
+    // Restore original preview repeat values
+    previewRepeatX = savedPreviewRepeatX;
+    previewRepeatY = savedPreviewRepeatY;
+
+    // Update preview repeat displays
+    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+
+    // Re-render preview
+    updateCanvas();
+}
+
+/**
+ * Render visual selection overlay on preview canvas
+ */
+function renderVisualSelection() {
+    if (!visualContextSelectionActive) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const ctx = previewCanvas.getContext('2d');
+
+    // Draw red box around the center repeat
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat is the middle one in the 3x3 grid
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerWidth = gridWidth * cellWidth;
+    const centerHeight = gridHeight * cellHeight;
+
+    // Calculate context box dimensions
+    const contextStartX = centerStartX - (contextSelection.left * cellWidth);
+    const contextStartY = centerStartY - (contextSelection.top * cellHeight);
+    const contextWidth = centerWidth + (contextSelection.left + contextSelection.right) * cellWidth;
+    const contextHeight = centerHeight + (contextSelection.top + contextSelection.bottom) * cellHeight;
+
+    // Draw grey overlay on areas outside the selection (like image crop tools)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+
+    // Top rectangle
+    ctx.fillRect(0, 0, previewCanvas.width, contextStartY);
+
+    // Bottom rectangle
+    ctx.fillRect(0, contextStartY + contextHeight, previewCanvas.width, previewCanvas.height - (contextStartY + contextHeight));
+
+    // Left rectangle (between top and bottom)
+    ctx.fillRect(0, contextStartY, contextStartX, contextHeight);
+
+    // Right rectangle (between top and bottom)
+    ctx.fillRect(contextStartX + contextWidth, contextStartY, previewCanvas.width - (contextStartX + contextWidth), contextHeight);
+
+    // Draw the red box (thicker for visibility)
+    ctx.strokeStyle = '#d32f2f';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(centerStartX, centerStartY, centerWidth, centerHeight);
+
+    // Draw context selection if any
+    if (contextSelection.left > 0 || contextSelection.right > 0 ||
+        contextSelection.top > 0 || contextSelection.bottom > 0) {
+
+        // Draw amber box for context area (thicker for visibility)
+        ctx.strokeStyle = '#FFA726';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(contextStartX, contextStartY, contextWidth, contextHeight);
+    }
+
+    // Draw drag handles (triangles) on the edges
+    const handleSize = 12;
+    ctx.fillStyle = '#FFA726';
+
+    // Left handle
+    const leftX = contextStartX;
+    const leftY = contextStartY + contextHeight / 2;
+    ctx.beginPath();
+    ctx.moveTo(leftX - handleSize, leftY);
+    ctx.lineTo(leftX, leftY - handleSize / 2);
+    ctx.lineTo(leftX, leftY + handleSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right handle
+    const rightX = contextStartX + contextWidth;
+    const rightY = contextStartY + contextHeight / 2;
+    ctx.beginPath();
+    ctx.moveTo(rightX + handleSize, rightY);
+    ctx.lineTo(rightX, rightY - handleSize / 2);
+    ctx.lineTo(rightX, rightY + handleSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top handle
+    const topX = contextStartX + contextWidth / 2;
+    const topY = contextStartY;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY - handleSize);
+    ctx.lineTo(topX - handleSize / 2, topY);
+    ctx.lineTo(topX + handleSize / 2, topY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bottom handle
+    const bottomX = contextStartX + contextWidth / 2;
+    const bottomY = contextStartY + contextHeight;
+    ctx.beginPath();
+    ctx.moveTo(bottomX, bottomY + handleSize);
+    ctx.lineTo(bottomX - handleSize / 2, bottomY);
+    ctx.lineTo(bottomX + handleSize / 2, bottomY);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/**
+ * Handle download with selected context
+ */
+async function downloadWithContext() {
+    const format = selectionFormat;
+    const includeRowCounts = selectionIncludeRowCounts;
+    const context = { ...contextSelection };
+
+    // Exit visual selection mode
+    exitVisualContextSelection();
+
+    try {
+        showLoading(`Exporting ${format.toUpperCase()}...`);
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        let blob;
+        let filename;
+
+        if (format === 'svg') {
+            blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
+        } else {
+            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
+        }
+
+        downloadFile(blob, filename);
+        announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+    } catch (error) {
+        handleFileError(error, `${format.toUpperCase()} export`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Handle mouse/touch events for dragging selection edges
+ */
+function handleSelectionMouseDown(e) {
+    if (!visualContextSelectionActive) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const rect = previewCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
+
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat bounds
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerEndX = centerStartX + gridWidth * cellWidth;
+    const centerEndY = centerStartY + gridHeight * cellHeight;
+
+    // Use larger touch target for touch events (30px) vs mouse (10px)
+    const threshold = e.touches ? 30 : 10;
+
+    // Check edges with context
+    const leftEdge = centerStartX - (contextSelection.left * cellWidth);
+    const rightEdge = centerEndX + (contextSelection.right * cellWidth);
+    const topEdge = centerStartY - (contextSelection.top * cellHeight);
+    const bottomEdge = centerEndY + (contextSelection.bottom * cellHeight);
+
+    if (Math.abs(x - leftEdge) < threshold && y >= topEdge && y <= bottomEdge) {
+        draggingEdge = 'left';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(x - rightEdge) < threshold && y >= topEdge && y <= bottomEdge) {
+        draggingEdge = 'right';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(y - topEdge) < threshold && x >= leftEdge && x <= rightEdge) {
+        draggingEdge = 'top';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(y - bottomEdge) < threshold && x >= leftEdge && x <= rightEdge) {
+        draggingEdge = 'bottom';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    }
+}
+
+function handleSelectionMouseMove(e) {
+    if (!visualContextSelectionActive || !draggingEdge) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const rect = previewCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
+
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat bounds
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerEndX = centerStartX + gridWidth * cellWidth;
+    const centerEndY = centerStartY + gridHeight * cellHeight;
+
+    // Calculate new context values based on drag
+    if (draggingEdge === 'left') {
+        const deltaStitches = Math.round((centerStartX - x) / cellWidth);
+        contextSelection.left = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
+    } else if (draggingEdge === 'right') {
+        const deltaStitches = Math.round((x - centerEndX) / cellWidth);
+        contextSelection.right = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
+    } else if (draggingEdge === 'top') {
+        const deltaStitches = Math.round((centerStartY - y) / cellHeight);
+        contextSelection.top = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
+    } else if (draggingEdge === 'bottom') {
+        const deltaStitches = Math.round((y - centerEndY) / cellHeight);
+        contextSelection.bottom = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
+    }
+
+    // Re-render
+    updateCanvas();
+    renderVisualSelection();
+
+    e.preventDefault();
+}
+
+function handleSelectionMouseUp(e) {
+    draggingEdge = null;
+    dragStartPos = { x: 0, y: 0 };
+}
+
+// Add event listeners for visual selection
+const previewCanvas = document.getElementById('previewCanvas');
+previewCanvas.addEventListener('mousedown', handleSelectionMouseDown);
+previewCanvas.addEventListener('touchstart', handleSelectionMouseDown, { passive: false });
+document.addEventListener('mousemove', handleSelectionMouseMove);
+document.addEventListener('touchmove', handleSelectionMouseMove, { passive: false });
+document.addEventListener('mouseup', handleSelectionMouseUp);
+document.addEventListener('touchend', handleSelectionMouseUp);
+
+// Modify updateCanvas to call renderVisualSelection after rendering preview
+const originalUpdateCanvas = updateCanvas;
+function updateCanvasWithSelection() {
+    originalUpdateCanvas();
+    if (visualContextSelectionActive) {
+        renderVisualSelection();
+    }
+}
+// Replace updateCanvas reference
+updateCanvas = updateCanvasWithSelection;
+
+// Wire up visual selection control buttons
+const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
+const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
+
+if (visualSelectionCancelBtn) {
+    visualSelectionCancelBtn.onclick = () => {
+        exitVisualContextSelection();
+    };
+}
+
+if (visualSelectionDownloadBtn) {
+    visualSelectionDownloadBtn.onclick = () => {
+        downloadWithContext();
+    };
+}
+
+// Handle Escape key to exit visual selection mode
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && visualContextSelectionActive) {
+        exitVisualContextSelection();
+    }
+});
+
+// ============================================
+// END VISUAL CONTEXT SELECTION
+// ============================================
 
 document.getElementById('navbarExportJsonBtn').onclick = (e) => {
     e.preventDefault();
@@ -712,6 +1367,15 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                         activePatternIndex = 0;
                     }
 
+                    // Ensure preview repeats don't exceed max for imported pattern size
+                    const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
+                    if (previewRepeatX > maxRepeatImport) {
+                        previewRepeatX = maxRepeatImport;
+                    }
+                    if (previewRepeatY > maxRepeatImport) {
+                        previewRepeatY = maxRepeatImport;
+                    }
+
                     // Update all UI elements
                     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
                     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
@@ -730,6 +1394,7 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
 
                     saveToHistory();
                     updateCanvas();
+                    updatePreviewRepeatStatus();
                     announceToScreenReader('Pattern imported successfully');
                 } finally {
                     hideLoading();
@@ -776,15 +1441,17 @@ function applyGridHeight(value) {
 }
 
 function applyPreviewRepeatX(value) {
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
     applyDimensionInput({
         value,
         min: CONFIG.MIN_PREVIEW_REPEAT,
-        max: CONFIG.MAX_PREVIEW_REPEAT,
+        max: maxRepeat,
         defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
         displayElementId: 'previewRepeatXDisplay',
         applyFunction: (val) => {
             previewRepeatX = val;
             updateCanvas();
+            updatePreviewRepeatStatus();
             saveToLocalStorage();
         },
         updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
@@ -792,15 +1459,17 @@ function applyPreviewRepeatX(value) {
 }
 
 function applyPreviewRepeatY(value) {
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
     applyDimensionInput({
         value,
         min: CONFIG.MIN_PREVIEW_REPEAT,
-        max: CONFIG.MAX_PREVIEW_REPEAT,
+        max: maxRepeat,
         defaultValue: CONFIG.MIN_PREVIEW_REPEAT,
         displayElementId: 'previewRepeatYDisplay',
         applyFunction: (val) => {
             previewRepeatY = val;
             updateCanvas();
+            updatePreviewRepeatStatus();
             saveToLocalStorage();
         },
         updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
@@ -860,6 +1529,16 @@ if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
 
 const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+
+// Ensure preview repeats don't exceed max for current pattern size
+const maxRepeatOnLoad = getMaxPreviewRepeat(gridWidth, gridHeight);
+if (previewRepeatX > maxRepeatOnLoad) {
+    previewRepeatX = maxRepeatOnLoad;
+}
+if (previewRepeatY > maxRepeatOnLoad) {
+    previewRepeatY = maxRepeatOnLoad;
+}
+
 if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
 if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
 

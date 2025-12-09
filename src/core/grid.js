@@ -20,7 +20,10 @@ export function getContentBounds(grid, gridWidth, gridHeight) {
 
     for (let row = 0; row < gridHeight; row++) {
         for (let col = 0; col < gridWidth; col++) {
-            if (grid[row][col] !== 0) {
+            // Check for painted cells (positive values)
+            // This handles both 0 (empty) and null (corrupted data) correctly
+            const cellValue = grid[row][col];
+            if (cellValue && cellValue > 0) {
                 minRow = Math.min(minRow, row);
                 maxRow = Math.max(maxRow, row);
                 minCol = Math.min(minCol, col);
@@ -209,8 +212,15 @@ export function resizeGridFromEdge(params) {
     // The copy strategy depends on which edge is being dragged:
     // - right/bottom: content stays anchored to top-left, new cells added on right/bottom
     // - left/top: content shifts right/down, new cells added on left/top
-    for (let row = 0; row < Math.min(gridHeight, newHeight); row++) {
-        for (let col = 0; col < Math.min(gridWidth, newWidth); col++) {
+
+    // When resizing from left/top edges, we need to iterate over ALL source cells
+    // because cells on the far right/bottom may need to shift into the new grid.
+    // For right/bottom edges, we only iterate cells that fit in the new grid.
+    const maxRow = (direction === 'top') ? gridHeight : Math.min(gridHeight, newHeight);
+    const maxCol = (direction === 'left') ? gridWidth : Math.min(gridWidth, newWidth);
+
+    for (let row = 0; row < maxRow; row++) {
+        for (let col = 0; col < maxCol; col++) {
             let sourceRow = row;
             let sourceCol = col;
             let targetRow = row;

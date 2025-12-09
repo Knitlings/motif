@@ -28,6 +28,11 @@
     letter-spacing: 0.1em;
 }
 
+.preview-repeat-status {
+    font-size: var(--font-size-xs);
+    margin-left: var(--space-3);
+}
+
 /* Grid Control (Inline Dimension Controls) */
 .grid-control {
     display: flex;
@@ -178,6 +183,7 @@
 }
 
 .canvas-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -195,6 +201,29 @@ canvas {
     border: var(--border-width-thick) solid var(--color-border-dark);
     border-radius: var(--border-radius-sm);
     cursor: crosshair;
+}
+
+/* Preview Toast Notification */
+.preview-toast {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.preview-toast.show {
+    opacity: 1;
 }
 
 /* Resize Handles */
@@ -772,6 +801,307 @@ button:disabled {
 }
 
 /* ============================================
+   DOWNLOAD MODAL
+   ============================================ */
+
+#downloadModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+#downloadModal .modal-content {
+    max-width: 380px;
+    width: 90%;
+    padding: var(--space-10);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+#downloadModalTitle {
+    margin: 0 0 var(--space-6) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+#downloadForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.form-section-label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-1);
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-1);
+    transition: background 0.2s;
+    border-radius: var(--border-radius-sm);
+}
+
+.radio-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.radio-option input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    opacity: 0;
+}
+
+.radio-option::before {
+    content: '○';
+    font-size: var(--font-size-lg);
+    color: var(--color-text-tertiary);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.radio-option:has(input[type="radio"]:checked)::before {
+    content: '●';
+    color: var(--color-primary);
+}
+
+.radio-option-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.radio-option:has(input[type="radio"]:checked) .radio-option-label {
+    color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-1);
+    transition: background 0.2s;
+    border-radius: var(--border-radius-sm);
+}
+
+.checkbox-option:hover {
+    background: var(--color-bg-secondary);
+}
+
+.checkbox-option input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    opacity: 0;
+}
+
+.checkbox-option::before {
+    content: '☐';
+    font-size: var(--font-size-lg);
+    color: var(--color-text-tertiary);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked)::before {
+    content: '☑';
+    color: var(--color-primary);
+}
+
+.checkbox-option-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked) .checkbox-option-label {
+    color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.context-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.context-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.context-input-group label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+}
+
+.context-input-group input[type="number"] {
+    padding: var(--space-2);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    transition: border-color 0.2s;
+}
+
+.context-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    margin-top: var(--space-4);
+    padding-top: var(--space-5);
+    border-top: var(--border-width) solid var(--color-border-primary);
+}
+
+.modal-btn {
+    padding: var(--space-2) var(--space-5);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border: var(--border-width) solid transparent;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn-secondary {
+    color: var(--color-text-secondary);
+    background: transparent;
+}
+
+.modal-btn-secondary:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+}
+
+.modal-btn-primary {
+    color: white;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.modal-btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+/* Download Button in Header */
+.header-actions .text-link {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-decoration: none;
+}
+
+.header-actions .text-link:hover {
+    color: var(--color-primary);
+    background: var(--color-bg-secondary);
+    text-decoration: none;
+}
+
+/* Mobile/Touch Adjustments for Download Modal */
+@media (max-width: 1024px) {
+    /* Larger touch targets for radio options */
+    .radio-option {
+        padding: var(--space-3) var(--space-2);
+        min-height: 44px;
+    }
+
+    /* Larger touch targets for checkbox options */
+    .checkbox-option {
+        padding: var(--space-3) var(--space-2);
+        min-height: 44px;
+    }
+
+    /* Larger modal buttons for touch */
+    .modal-btn {
+        padding: var(--space-3) var(--space-6);
+        min-height: 44px;
+    }
+
+    /* More padding in modal on smaller screens */
+    #downloadModal .modal-content {
+        padding: var(--space-8);
+    }
+}
+
+/* For touch devices without hover */
+@media (hover: none) {
+    /* Remove hover styles that won't work on touch */
+    .radio-option:hover {
+        background: transparent;
+    }
+
+    /* But show background on active/selected */
+    .radio-option:active {
+        background: var(--color-bg-secondary);
+    }
+
+    /* Remove hover styles for checkbox options */
+    .checkbox-option:hover {
+        background: transparent;
+    }
+
+    /* But show background on active/selected */
+    .checkbox-option:active {
+        background: var(--color-bg-secondary);
+    }
+}
+
+/* ============================================
    LOADING OVERLAY
    ============================================ */
 
@@ -893,4 +1223,23 @@ button:disabled {
         width: 11px;
         height: 11px;
     }
+}
+
+/* ============================================
+   VISUAL CONTEXT SELECTION CONTROLS
+   ============================================ */
+
+.visual-selection-controls {
+    position: absolute;
+    bottom: var(--space-5);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--space-3);
+    z-index: 100;
+    padding: var(--space-3);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
 }
