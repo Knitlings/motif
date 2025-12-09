@@ -803,7 +803,13 @@ const sourceRadios = document.querySelectorAll('input[name="source"]');
 sourceRadios.forEach(radio => {
     radio.addEventListener('change', () => {
         if (radio.value === 'pattern-with-context' && radio.checked) {
-            contextControls.style.display = 'flex';
+            // Only show form controls if pattern is too large for visual selection (3x3 preview)
+            const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+            if (maxRepeat < 3) {
+                contextControls.style.display = 'flex';
+            } else {
+                contextControls.style.display = 'none';
+            }
         } else {
             contextControls.style.display = 'none';
         }
@@ -813,6 +819,28 @@ sourceRadios.forEach(radio => {
 // Open download modal
 downloadBtn.onclick = () => {
     downloadModal.style.display = 'flex';
+
+    // Update context input max values based on current pattern size
+    const contextLeftInput = document.getElementById('contextLeft');
+    const contextRightInput = document.getElementById('contextRight');
+    const contextTopInput = document.getElementById('contextTop');
+    const contextBottomInput = document.getElementById('contextBottom');
+
+    if (contextLeftInput) contextLeftInput.max = gridWidth - 1;
+    if (contextRightInput) contextRightInput.max = gridWidth - 1;
+    if (contextTopInput) contextTopInput.max = gridHeight - 1;
+    if (contextBottomInput) contextBottomInput.max = gridHeight - 1;
+
+    // Update context controls visibility based on current pattern size
+    const patternWithContextRadio = document.querySelector('input[name="source"][value="pattern-with-context"]');
+    if (patternWithContextRadio && patternWithContextRadio.checked) {
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+        if (maxRepeat < 3) {
+            contextControls.style.display = 'flex';
+        } else {
+            contextControls.style.display = 'none';
+        }
+    }
 };
 
 // Close download modal
@@ -846,6 +874,47 @@ downloadForm.onsubmit = async (e) => {
     // Close modal
     downloadModal.style.display = 'none';
 
+    // If pattern-with-context is selected, check if we can use visual selection
+    if (source === 'pattern-with-context') {
+        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+
+        // Use visual selection if pattern supports 3x3 preview
+        if (maxRepeat >= 3) {
+            enterVisualContextSelection(format, includeRowCounts);
+            return;
+        } else {
+            // Pattern too large - use form values
+            const context = {
+                left: parseInt(formData.get('contextLeft')) || 0,
+                right: parseInt(formData.get('contextRight')) || 0,
+                top: parseInt(formData.get('contextTop')) || 0,
+                bottom: parseInt(formData.get('contextBottom')) || 0
+            };
+
+            try {
+                showLoading(`Exporting ${format.toUpperCase()}...`);
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                let blob, filename;
+                if (format === 'svg') {
+                    blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+                    filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
+                } else {
+                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+                    filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
+                }
+
+                downloadFile(blob, filename);
+                announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+            } catch (error) {
+                handleFileError(error, `${format.toUpperCase()} export`);
+            } finally {
+                hideLoading();
+            }
+            return;
+        }
+    }
+
     try {
         showLoading(`Exporting ${format.toUpperCase()}...`);
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -860,22 +929,6 @@ downloadForm.onsubmit = async (e) => {
             } else {
                 blob = await exportPng(getState(), includeRowCounts);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
-            }
-        } else if (source === 'pattern-with-context') {
-            // Pattern with context export
-            const context = {
-                left: parseInt(formData.get('contextLeft')) || 0,
-                right: parseInt(formData.get('contextRight')) || 0,
-                top: parseInt(formData.get('contextTop')) || 0,
-                bottom: parseInt(formData.get('contextBottom')) || 0
-            };
-
-            if (format === 'svg') {
-                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-                filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
-            } else {
-                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
-                filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
             }
         } else {
             // Preview export
@@ -896,6 +949,351 @@ downloadForm.onsubmit = async (e) => {
         hideLoading();
     }
 };
+
+// ============================================
+// VISUAL CONTEXT SELECTION
+// ============================================
+
+// Visual context selection state
+let visualContextSelectionActive = false;
+let savedPreviewRepeatX = 3;
+let savedPreviewRepeatY = 3;
+let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
+let selectionFormat = 'png';
+let selectionIncludeRowCounts = false;
+let draggingEdge = null;
+let dragStartPos = { x: 0, y: 0 };
+
+/**
+ * Enter visual context selection mode
+ */
+function enterVisualContextSelection(format, includeRowCounts) {
+    // Save current state
+    savedPreviewRepeatX = previewRepeatX;
+    savedPreviewRepeatY = previewRepeatY;
+    selectionFormat = format;
+    selectionIncludeRowCounts = includeRowCounts;
+    contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
+    visualContextSelectionActive = true;
+
+    // Switch to 3x3 preview
+    previewRepeatX = 3;
+    previewRepeatY = 3;
+
+    // Update preview repeat displays
+    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+
+    // Show visual selection controls
+    const controls = document.getElementById('visualSelectionControls');
+    if (controls) controls.style.display = 'flex';
+
+    // Re-render preview
+    updateCanvas();
+
+    // Add visual selection overlay to preview canvas
+    renderVisualSelection();
+}
+
+/**
+ * Exit visual context selection mode
+ */
+function exitVisualContextSelection() {
+    visualContextSelectionActive = false;
+
+    // Hide visual selection controls
+    const controls = document.getElementById('visualSelectionControls');
+    if (controls) controls.style.display = 'none';
+
+    // Restore original preview repeat values
+    previewRepeatX = savedPreviewRepeatX;
+    previewRepeatY = savedPreviewRepeatY;
+
+    // Update preview repeat displays
+    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+
+    // Re-render preview
+    updateCanvas();
+}
+
+/**
+ * Render visual selection overlay on preview canvas
+ */
+function renderVisualSelection() {
+    if (!visualContextSelectionActive) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const ctx = previewCanvas.getContext('2d');
+
+    // Draw red box around the center repeat
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat is the middle one in the 3x3 grid
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerWidth = gridWidth * cellWidth;
+    const centerHeight = gridHeight * cellHeight;
+
+    // Calculate context box dimensions
+    const contextStartX = centerStartX - (contextSelection.left * cellWidth);
+    const contextStartY = centerStartY - (contextSelection.top * cellHeight);
+    const contextWidth = centerWidth + (contextSelection.left + contextSelection.right) * cellWidth;
+    const contextHeight = centerHeight + (contextSelection.top + contextSelection.bottom) * cellHeight;
+
+    // Draw grey overlay on areas outside the selection (like image crop tools)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+
+    // Top rectangle
+    ctx.fillRect(0, 0, previewCanvas.width, contextStartY);
+
+    // Bottom rectangle
+    ctx.fillRect(0, contextStartY + contextHeight, previewCanvas.width, previewCanvas.height - (contextStartY + contextHeight));
+
+    // Left rectangle (between top and bottom)
+    ctx.fillRect(0, contextStartY, contextStartX, contextHeight);
+
+    // Right rectangle (between top and bottom)
+    ctx.fillRect(contextStartX + contextWidth, contextStartY, previewCanvas.width - (contextStartX + contextWidth), contextHeight);
+
+    // Draw the red box (thicker for visibility)
+    ctx.strokeStyle = '#d32f2f';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(centerStartX, centerStartY, centerWidth, centerHeight);
+
+    // Draw context selection if any
+    if (contextSelection.left > 0 || contextSelection.right > 0 ||
+        contextSelection.top > 0 || contextSelection.bottom > 0) {
+
+        // Draw amber box for context area (thicker for visibility)
+        ctx.strokeStyle = '#FFA726';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(contextStartX, contextStartY, contextWidth, contextHeight);
+    }
+
+    // Draw drag handles (triangles) on the edges
+    const handleSize = 12;
+    ctx.fillStyle = '#FFA726';
+
+    // Left handle
+    const leftX = contextStartX;
+    const leftY = contextStartY + contextHeight / 2;
+    ctx.beginPath();
+    ctx.moveTo(leftX - handleSize, leftY);
+    ctx.lineTo(leftX, leftY - handleSize / 2);
+    ctx.lineTo(leftX, leftY + handleSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right handle
+    const rightX = contextStartX + contextWidth;
+    const rightY = contextStartY + contextHeight / 2;
+    ctx.beginPath();
+    ctx.moveTo(rightX + handleSize, rightY);
+    ctx.lineTo(rightX, rightY - handleSize / 2);
+    ctx.lineTo(rightX, rightY + handleSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top handle
+    const topX = contextStartX + contextWidth / 2;
+    const topY = contextStartY;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY - handleSize);
+    ctx.lineTo(topX - handleSize / 2, topY);
+    ctx.lineTo(topX + handleSize / 2, topY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bottom handle
+    const bottomX = contextStartX + contextWidth / 2;
+    const bottomY = contextStartY + contextHeight;
+    ctx.beginPath();
+    ctx.moveTo(bottomX, bottomY + handleSize);
+    ctx.lineTo(bottomX - handleSize / 2, bottomY);
+    ctx.lineTo(bottomX + handleSize / 2, bottomY);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/**
+ * Handle download with selected context
+ */
+async function downloadWithContext() {
+    const format = selectionFormat;
+    const includeRowCounts = selectionIncludeRowCounts;
+    const context = { ...contextSelection };
+
+    // Exit visual selection mode
+    exitVisualContextSelection();
+
+    try {
+        showLoading(`Exporting ${format.toUpperCase()}...`);
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        let blob;
+        let filename;
+
+        if (format === 'svg') {
+            blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+            filename = `motif-pattern-context-${gridWidth}x${gridHeight}.svg`;
+        } else {
+            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+            filename = `motif-pattern-context-${gridWidth}x${gridHeight}.png`;
+        }
+
+        downloadFile(blob, filename);
+        announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+    } catch (error) {
+        handleFileError(error, `${format.toUpperCase()} export`);
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Handle mouse/touch events for dragging selection edges
+ */
+function handleSelectionMouseDown(e) {
+    if (!visualContextSelectionActive) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const rect = previewCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
+
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat bounds
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerEndX = centerStartX + gridWidth * cellWidth;
+    const centerEndY = centerStartY + gridHeight * cellHeight;
+
+    // Check if clicking near an edge (within 10px threshold)
+    const threshold = 10;
+
+    // Check edges with context
+    const leftEdge = centerStartX - (contextSelection.left * cellWidth);
+    const rightEdge = centerEndX + (contextSelection.right * cellWidth);
+    const topEdge = centerStartY - (contextSelection.top * cellHeight);
+    const bottomEdge = centerEndY + (contextSelection.bottom * cellHeight);
+
+    if (Math.abs(x - leftEdge) < threshold && y >= topEdge && y <= bottomEdge) {
+        draggingEdge = 'left';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(x - rightEdge) < threshold && y >= topEdge && y <= bottomEdge) {
+        draggingEdge = 'right';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(y - topEdge) < threshold && x >= leftEdge && x <= rightEdge) {
+        draggingEdge = 'top';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    } else if (Math.abs(y - bottomEdge) < threshold && x >= leftEdge && x <= rightEdge) {
+        draggingEdge = 'bottom';
+        dragStartPos = { x, y };
+        e.preventDefault();
+    }
+}
+
+function handleSelectionMouseMove(e) {
+    if (!visualContextSelectionActive || !draggingEdge) return;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    const rect = previewCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
+
+    const cellWidth = previewCanvas.width / (gridWidth * 3);
+    const cellHeight = previewCanvas.height / (gridHeight * 3);
+
+    // Center repeat bounds
+    const centerStartX = gridWidth * cellWidth;
+    const centerStartY = gridHeight * cellHeight;
+    const centerEndX = centerStartX + gridWidth * cellWidth;
+    const centerEndY = centerStartY + gridHeight * cellHeight;
+
+    // Calculate new context values based on drag
+    if (draggingEdge === 'left') {
+        const deltaStitches = Math.round((centerStartX - x) / cellWidth);
+        contextSelection.left = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
+    } else if (draggingEdge === 'right') {
+        const deltaStitches = Math.round((x - centerEndX) / cellWidth);
+        contextSelection.right = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
+    } else if (draggingEdge === 'top') {
+        const deltaStitches = Math.round((centerStartY - y) / cellHeight);
+        contextSelection.top = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
+    } else if (draggingEdge === 'bottom') {
+        const deltaStitches = Math.round((y - centerEndY) / cellHeight);
+        contextSelection.bottom = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
+    }
+
+    // Re-render
+    updateCanvas();
+    renderVisualSelection();
+
+    e.preventDefault();
+}
+
+function handleSelectionMouseUp(e) {
+    draggingEdge = null;
+    dragStartPos = { x: 0, y: 0 };
+}
+
+// Add event listeners for visual selection
+const previewCanvas = document.getElementById('previewCanvas');
+previewCanvas.addEventListener('mousedown', handleSelectionMouseDown);
+previewCanvas.addEventListener('touchstart', handleSelectionMouseDown, { passive: false });
+document.addEventListener('mousemove', handleSelectionMouseMove);
+document.addEventListener('touchmove', handleSelectionMouseMove, { passive: false });
+document.addEventListener('mouseup', handleSelectionMouseUp);
+document.addEventListener('touchend', handleSelectionMouseUp);
+
+// Modify updateCanvas to call renderVisualSelection after rendering preview
+const originalUpdateCanvas = updateCanvas;
+function updateCanvasWithSelection() {
+    originalUpdateCanvas();
+    if (visualContextSelectionActive) {
+        renderVisualSelection();
+    }
+}
+// Replace updateCanvas reference
+updateCanvas = updateCanvasWithSelection;
+
+// Wire up visual selection control buttons
+const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
+const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
+
+if (visualSelectionCancelBtn) {
+    visualSelectionCancelBtn.onclick = () => {
+        exitVisualContextSelection();
+    };
+}
+
+if (visualSelectionDownloadBtn) {
+    visualSelectionDownloadBtn.onclick = () => {
+        downloadWithContext();
+    };
+}
+
+// Handle Escape key to exit visual selection mode
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && visualContextSelectionActive) {
+        exitVisualContextSelection();
+    }
+});
+
+// ============================================
+// END VISUAL CONTEXT SELECTION
+// ============================================
 
 document.getElementById('navbarExportJsonBtn').onclick = (e) => {
     e.preventDefault();

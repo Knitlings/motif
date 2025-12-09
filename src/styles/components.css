@@ -1224,3 +1224,22 @@ button:disabled {
         height: 11px;
     }
 }
+
+/* ============================================
+   VISUAL CONTEXT SELECTION CONTROLS
+   ============================================ */
+
+.visual-selection-controls {
+    position: absolute;
+    bottom: var(--space-5);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--space-3);
+    z-index: 100;
+    padding: var(--space-3);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+}
