@@ -28,7 +28,7 @@ jobs:
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
           # Extract the changelog section for this version
-          CHANGELOG=$(node ../.github/scripts/extract-changelog.cjs "$VERSION_NO_V")
+          CHANGELOG=$(node .github/scripts/extract-changelog.cjs "$VERSION_NO_V")
 
           # Generate summary sentence based on changelog structure
           SUMMARY=""
