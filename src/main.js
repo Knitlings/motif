@@ -9,6 +9,7 @@ import { HistoryManager } from './managers/history.js';
 import { CanvasManager } from './managers/canvas.js';
 import { createEmptyGrid, resizeGrid, resizeGridFromEdge } from './core/grid.js';
 import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, exportPatternWithContextPng, exportJson, importJson, downloadFile } from './core/export.js';
+import { generateShareUrl, parseShareUrl, copyToClipboard, validateShareData } from './utils/sharing.js';
 import {
     validateGridDimension,
     validateAspectRatio,
@@ -791,6 +792,80 @@ document.querySelectorAll('.palette-option').forEach(option => {
 });
 
 
+// Share modal controls
+const shareModal = document.getElementById('shareModal');
+const shareBtn = document.getElementById('shareBtn');
+const shareModalCancelBtn = document.getElementById('shareModalCancelBtn');
+const shareUrlInput = document.getElementById('shareUrlInput');
+const copyShareUrlBtn = document.getElementById('copyShareUrlBtn');
+const shareWarning = document.getElementById('shareWarning');
+
+// Open share modal and generate share URL
+shareBtn.onclick = async () => {
+    showLoading('Generating share link...');
+
+    const result = await generateShareUrl(getState());
+
+    hideLoading();
+
+    if (!result.success) {
+        showError(result.error || 'Failed to generate share URL');
+        return;
+    }
+
+    // Show modal
+    shareModal.style.display = 'flex';
+
+    // Populate URL
+    shareUrlInput.value = result.url;
+
+    // Show warning if present
+    if (result.warning) {
+        shareWarning.textContent = result.warning;
+        shareWarning.style.display = 'block';
+    } else {
+        shareWarning.style.display = 'none';
+    }
+
+    // Select URL for easy copying
+    shareUrlInput.select();
+    shareUrlInput.focus();
+};
+
+// Copy share URL to clipboard
+copyShareUrlBtn.onclick = async () => {
+    const url = shareUrlInput.value;
+    const success = await copyToClipboard(url);
+
+    if (success) {
+        // Visual feedback
+        const originalText = copyShareUrlBtn.textContent;
+        copyShareUrlBtn.textContent = 'Copied!';
+        copyShareUrlBtn.classList.add('btn-success');
+        announceToScreenReader('Share URL copied to clipboard');
+
+        // Reset button after delay
+        setTimeout(() => {
+            copyShareUrlBtn.textContent = originalText;
+            copyShareUrlBtn.classList.remove('btn-success');
+        }, 2000);
+    } else {
+        showError('Failed to copy to clipboard. Please copy manually.');
+    }
+};
+
+// Close share modal
+shareModalCancelBtn.onclick = () => {
+    shareModal.style.display = 'none';
+};
+
+// Close modal on backdrop click
+shareModal.onclick = (e) => {
+    if (e.target === shareModal) {
+        shareModal.style.display = 'none';
+    }
+};
+
 // Download modal controls
 const downloadModal = document.getElementById('downloadModal');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -855,10 +930,15 @@ downloadModal.onclick = (e) => {
     }
 };
 
-// Close modal on Escape key
+// Close modals on Escape key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && downloadModal.style.display === 'flex') {
-        downloadModal.style.display = 'none';
+    if (e.key === 'Escape') {
+        if (shareModal.style.display === 'flex') {
+            shareModal.style.display = 'none';
+        }
+        if (downloadModal.style.display === 'flex') {
+            downloadModal.style.display = 'none';
+        }
     }
 });
 
@@ -1518,6 +1598,41 @@ if (savedState) {
     previewRepeatY = CONFIG.DEFAULT_PREVIEW_REPEAT;
     backgroundColor = CONFIG.DEFAULT_BACKGROUND_COLOR;
     patternColors[0] = CONFIG.DEFAULT_PATTERN_COLOR;
+}
+
+// Check for shared pattern in URL (takes priority over localStorage)
+const sharedPatternData = parseShareUrl();
+if (sharedPatternData && validateShareData(sharedPatternData)) {
+    // Create a temporary blob for importJson validation
+    const jsonString = JSON.stringify(sharedPatternData);
+    const tempBlob = new Blob([jsonString], { type: 'application/json' });
+
+    // Use importJson to validate and apply the shared pattern
+    importJson(
+        tempBlob,
+        (importedData) => {
+            // Apply imported data (overrides savedState/defaults)
+            gridWidth = importedData.gridWidth;
+            gridHeight = importedData.gridHeight;
+            aspectRatio = importedData.aspectRatio;
+            grid = importedData.grid;
+            backgroundColor = importedData.backgroundColor;
+            patternColors = importedData.patternColors;
+            activePatternIndex = 0;
+            previewRepeatX = importedData.previewRepeatX || CONFIG.DEFAULT_PREVIEW_REPEAT;
+            previewRepeatY = importedData.previewRepeatY || CONFIG.DEFAULT_PREVIEW_REPEAT;
+            activePaletteId = importedData.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
+            customPalette = importedData.customPalette || null;
+            hasInteracted = true; // Mark as interacted since pattern was loaded
+
+            announceToScreenReader('Shared pattern loaded successfully');
+        },
+        (errorMessage) => {
+            console.error('Failed to load shared pattern:', errorMessage);
+            showError('Failed to load shared pattern from URL. Loading saved pattern instead.');
+            // Continue with savedState/defaults already loaded above
+        }
+    );
 }
 
 // Update all UI display elements to match loaded/initialized state

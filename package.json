@@ -40,6 +40,9 @@
     "node": ">=16.0.0",
     "npm": ">=7.0.0"
   },
+  "dependencies": {
+    "lz-string": "^1.5.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "happy-dom": "^20.0.11",
