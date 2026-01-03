@@ -58,7 +58,10 @@ export async function generateShareUrl(state) {
 
 /**
  * Parse shared pattern from URL hash
- * @returns {Object|null} - Parsed pattern data or null if no valid share data
+ * @returns {Object} - Result object with success status and data or error details
+ *   Success: { success: true, data: Object }
+ *   No share URL: { success: true, data: null } (not an error - just no share URL)
+ *   Error: { success: false, error: string, userMessage: string }
  */
 export function parseShareUrl() {
 	try {
@@ -66,10 +69,19 @@ export function parseShareUrl() {
 
 		// Check for share URL format
 		if (!hash.startsWith(SHARE_URL_PREFIX)) {
-			return null;
+			return { success: true, data: null };
 		}
 
 		const shareData = hash.substring(SHARE_URL_PREFIX.length);
+
+		// Check if the share data is empty
+		if (!shareData || shareData.trim().length === 0) {
+			return {
+				success: false,
+				error: 'EMPTY_SHARE_DATA',
+				userMessage: 'Unable to load shared pattern. The URL is incomplete.'
+			};
+		}
 
 		// Future: Check if this is a backend short ID (alphanumeric, 6-10 chars)
 		// if (isShortId(shareData)) {
@@ -80,16 +92,33 @@ export function parseShareUrl() {
 		const decompressed = LZString.decompressFromEncodedURIComponent(shareData);
 
 		if (!decompressed) {
-			throw new Error('Failed to decompress share data');
+			return {
+				success: false,
+				error: 'DECOMPRESSION_FAILED',
+				userMessage: 'Unable to load shared pattern. The URL may be corrupted or incomplete.'
+			};
 		}
 
 		// Parse JSON
-		const patternData = JSON.parse(decompressed);
+		let patternData;
+		try {
+			patternData = JSON.parse(decompressed);
+		} catch (parseError) {
+			return {
+				success: false,
+				error: 'JSON_PARSE_FAILED',
+				userMessage: 'Unable to load shared pattern. The URL contains invalid data.'
+			};
+		}
 
-		return patternData;
+		return { success: true, data: patternData };
 	} catch (error) {
 		console.error('Failed to parse share URL:', error);
-		return null;
+		return {
+			success: false,
+			error: 'UNKNOWN_ERROR',
+			userMessage: 'Unable to load shared pattern. An unexpected error occurred.'
+		};
 	}
 }
 

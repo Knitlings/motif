@@ -1154,8 +1154,9 @@ button:disabled {
 }
 
 .btn-success {
-    background-color: var(--color-success) !important;
-    border-color: var(--color-success) !important;
+    background-color: var(--color-text-secondary) !important;
+    border-color: var(--color-text-secondary) !important;
+    color: white !important;
 }
 
 /* Mobile responsiveness for share modal */

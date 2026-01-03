@@ -71,20 +71,32 @@ describe('Sharing Utilities', () => {
 	});
 
 	describe('parseShareUrl()', () => {
-		it('should return null for URLs without share hash', () => {
+		it('should return success with null data for URLs without share hash', () => {
 			window.location.hash = '';
 			const result = parseShareUrl();
-			expect(result).toBeNull();
+			expect(result.success).toBe(true);
+			expect(result.data).toBeNull();
 
 			window.location.hash = '#other';
 			const result2 = parseShareUrl();
-			expect(result2).toBeNull();
+			expect(result2.success).toBe(true);
+			expect(result2.data).toBeNull();
 		});
 
-		it('should return null for corrupted share data', () => {
+		it('should return error for corrupted share data', () => {
 			window.location.hash = '#p=corrupted!!data';
 			const result = parseShareUrl();
-			expect(result).toBeNull();
+			expect(result.success).toBe(false);
+			expect(result.error).toBe('DECOMPRESSION_FAILED');
+			expect(result.userMessage).toBeDefined();
+		});
+
+		it('should return error for empty share data', () => {
+			window.location.hash = '#p=';
+			const result = parseShareUrl();
+			expect(result.success).toBe(false);
+			expect(result.error).toBe('EMPTY_SHARE_DATA');
+			expect(result.userMessage).toBeDefined();
 		});
 
 		it('should parse valid share URL correctly', async () => {
@@ -112,16 +124,17 @@ describe('Sharing Utilities', () => {
 			window.location.hash = url.hash;
 
 			// Parse back
-			const parsed = parseShareUrl();
+			const result = parseShareUrl();
 
-			expect(parsed).not.toBeNull();
-			expect(parsed.version).toBe(1);
-			expect(parsed.grid).toBeDefined();
-			expect(parsed.grid.cells).toEqual(originalState.grid);
-			expect(parsed.grid.width).toBe(originalState.gridWidth);
-			expect(parsed.grid.height).toBe(originalState.gridHeight);
-			expect(parsed.colors.pattern).toEqual(originalState.patternColors);
-			expect(parsed.colors.background).toBe(originalState.backgroundColor);
+			expect(result.success).toBe(true);
+			expect(result.data).not.toBeNull();
+			expect(result.data.version).toBe(1);
+			expect(result.data.grid).toBeDefined();
+			expect(result.data.grid.cells).toEqual(originalState.grid);
+			expect(result.data.grid.width).toBe(originalState.gridWidth);
+			expect(result.data.grid.height).toBe(originalState.gridHeight);
+			expect(result.data.colors.pattern).toEqual(originalState.patternColors);
+			expect(result.data.colors.background).toBe(originalState.backgroundColor);
 		});
 	});
 
@@ -258,22 +271,26 @@ describe('Sharing Utilities', () => {
 			// Parse back
 			const url = new URL(generated.url);
 			window.location.hash = url.hash;
-			const parsed = parseShareUrl();
+			const result = parseShareUrl();
+
+			// Validate result
+			expect(result.success).toBe(true);
+			expect(result.data).not.toBeNull();
 
 			// Validate structure
-			expect(validateShareData(parsed)).toBe(true);
+			expect(validateShareData(result.data)).toBe(true);
 
 			// Verify all data preserved
-			expect(parsed.grid.cells).toEqual(state.grid);
-			expect(parsed.grid.width).toBe(state.gridWidth);
-			expect(parsed.grid.height).toBe(state.gridHeight);
-			expect(parsed.grid.aspectRatio).toBe(state.aspectRatio);
-			expect(parsed.colors.pattern).toEqual(state.patternColors);
-			expect(parsed.colors.background).toBe(state.backgroundColor);
-			expect(parsed.preview.repeatX).toBe(state.previewRepeatX);
-			expect(parsed.preview.repeatY).toBe(state.previewRepeatY);
-			expect(parsed.palette.active).toBe(state.activePaletteId);
-			expect(parsed.palette.custom).toEqual(state.customPalette);
+			expect(result.data.grid.cells).toEqual(state.grid);
+			expect(result.data.grid.width).toBe(state.gridWidth);
+			expect(result.data.grid.height).toBe(state.gridHeight);
+			expect(result.data.grid.aspectRatio).toBe(state.aspectRatio);
+			expect(result.data.colors.pattern).toEqual(state.patternColors);
+			expect(result.data.colors.background).toBe(state.backgroundColor);
+			expect(result.data.preview.repeatX).toBe(state.previewRepeatX);
+			expect(result.data.preview.repeatY).toBe(state.previewRepeatY);
+			expect(result.data.palette.active).toBe(state.activePaletteId);
+			expect(result.data.palette.custom).toEqual(state.customPalette);
 		});
 	});
 });

@@ -839,14 +839,13 @@ copyShareUrlBtn.onclick = async () => {
 
     if (success) {
         // Visual feedback
-        const originalText = copyShareUrlBtn.textContent;
         copyShareUrlBtn.textContent = 'Copied!';
         copyShareUrlBtn.classList.add('btn-success');
         announceToScreenReader('Share URL copied to clipboard');
 
         // Reset button after delay
         setTimeout(() => {
-            copyShareUrlBtn.textContent = originalText;
+            copyShareUrlBtn.textContent = 'Copy to clipboard';
             copyShareUrlBtn.classList.remove('btn-success');
         }, 2000);
     } else {
@@ -1600,39 +1599,103 @@ if (savedState) {
     patternColors[0] = CONFIG.DEFAULT_PATTERN_COLOR;
 }
 
+// Helper function to update UI displays after data changes
+function updateUIDisplaysForSharedPattern() {
+    // Update inline displays
+    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+
+    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+
+    // Re-render UI with shared pattern data
+    updatePaletteUI();
+    createNavbarColorButtons();
+    updateActiveColorUI();
+    updateColorIndicators();
+    updateNavbarPaletteName();
+    updateNavbarPalettePreview();
+
+    // Re-initialize grid with shared data
+    initGrid();
+
+    // Hide instructions if pattern was shared with interaction
+    if (hasInteracted) {
+        const instructions = document.getElementById('canvasInstructions');
+        if (instructions) instructions.style.display = 'none';
+    }
+}
+
 // Check for shared pattern in URL (takes priority over localStorage)
-const sharedPatternData = parseShareUrl();
-if (sharedPatternData && validateShareData(sharedPatternData)) {
-    // Create a temporary blob for importJson validation
-    const jsonString = JSON.stringify(sharedPatternData);
-    const tempBlob = new Blob([jsonString], { type: 'application/json' });
+const shareUrlResult = parseShareUrl();
+if (!shareUrlResult.success) {
+    // Show error to user if parsing failed
+    showError(shareUrlResult.userMessage);
+} else if (shareUrlResult.data && validateShareData(shareUrlResult.data)) {
+    try {
+        // Apply shared pattern data directly (we already have the parsed JSON)
+        const patternData = shareUrlResult.data;
 
-    // Use importJson to validate and apply the shared pattern
-    importJson(
-        tempBlob,
-        (importedData) => {
-            // Apply imported data (overrides savedState/defaults)
-            gridWidth = importedData.gridWidth;
-            gridHeight = importedData.gridHeight;
-            aspectRatio = importedData.aspectRatio;
-            grid = importedData.grid;
-            backgroundColor = importedData.backgroundColor;
-            patternColors = importedData.patternColors;
+        // Validate and apply the data
+        if (patternData.grid && patternData.colors) {
+            gridWidth = Utils.clampInt(
+                patternData.grid.width,
+                CONFIG.MIN_GRID_SIZE,
+                CONFIG.MAX_GRID_SIZE,
+                CONFIG.DEFAULT_GRID_WIDTH
+            );
+            gridHeight = Utils.clampInt(
+                patternData.grid.height,
+                CONFIG.MIN_GRID_SIZE,
+                CONFIG.MAX_GRID_SIZE,
+                CONFIG.DEFAULT_GRID_HEIGHT
+            );
+            aspectRatio = Utils.clampFloat(
+                patternData.grid.aspectRatio,
+                CONFIG.MIN_ASPECT_RATIO,
+                CONFIG.MAX_ASPECT_RATIO,
+                CONFIG.DEFAULT_ASPECT_RATIO
+            );
+            grid = patternData.grid.cells || createEmptyGrid(gridWidth, gridHeight);
+            backgroundColor = patternData.colors.background || CONFIG.DEFAULT_BACKGROUND_COLOR;
+            patternColors = patternData.colors.pattern || [CONFIG.DEFAULT_PATTERN_COLOR];
             activePatternIndex = 0;
-            previewRepeatX = importedData.previewRepeatX || CONFIG.DEFAULT_PREVIEW_REPEAT;
-            previewRepeatY = importedData.previewRepeatY || CONFIG.DEFAULT_PREVIEW_REPEAT;
-            activePaletteId = importedData.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
-            customPalette = importedData.customPalette || null;
-            hasInteracted = true; // Mark as interacted since pattern was loaded
 
-            announceToScreenReader('Shared pattern loaded successfully');
-        },
-        (errorMessage) => {
-            console.error('Failed to load shared pattern:', errorMessage);
-            showError('Failed to load shared pattern from URL. Loading saved pattern instead.');
-            // Continue with savedState/defaults already loaded above
+            // Import preview settings if available
+            if (patternData.preview) {
+                previewRepeatX = Utils.clampInt(
+                    patternData.preview.repeatX,
+                    CONFIG.MIN_PREVIEW_REPEAT,
+                    CONFIG.MAX_PREVIEW_REPEAT,
+                    CONFIG.DEFAULT_PREVIEW_REPEAT
+                );
+                previewRepeatY = Utils.clampInt(
+                    patternData.preview.repeatY,
+                    CONFIG.MIN_PREVIEW_REPEAT,
+                    CONFIG.MAX_PREVIEW_REPEAT,
+                    CONFIG.DEFAULT_PREVIEW_REPEAT
+                );
+            }
+
+            // Import palette settings if available
+            if (patternData.palette) {
+                activePaletteId = patternData.palette.active || CONFIG.DEFAULT_ACTIVE_PALETTE;
+                customPalette = patternData.palette.custom || null;
+            }
+
+            hasInteracted = true; // Mark as interacted since pattern was loaded
         }
-    );
+    } catch (error) {
+        console.error('Failed to load shared pattern:', error);
+        showError('Failed to load shared pattern from URL. Loading saved pattern instead.');
+    }
+} else if (shareUrlResult.data && !validateShareData(shareUrlResult.data)) {
+    // Data parsed successfully but failed validation
+    showError('Unable to load shared pattern. The pattern data is invalid or incompatible with this version.');
 }
 
 // Update all UI display elements to match loaded/initialized state
@@ -3481,6 +3544,81 @@ function updateNavbarPalettePreview() {
         previewContainer.appendChild(colorDiv);
     });
 }
+
+// ============================================
+// URL HASH CHANGE HANDLING
+// ============================================
+
+// Listen for hash changes to support dynamic share URL loading
+// Track if we're currently loading a shared pattern to avoid duplicate error messages
+let isLoadingSharedPattern = false;
+
+window.addEventListener('hashchange', () => {
+    const shareUrlResult = parseShareUrl();
+
+    // Handle parse errors
+    if (!shareUrlResult.success) {
+        showError(shareUrlResult.userMessage);
+        return;
+    }
+
+    // If no share data, nothing to do
+    if (!shareUrlResult.data) {
+        return;
+    }
+
+    // Validate the share data
+    if (!validateShareData(shareUrlResult.data)) {
+        showError('Unable to load shared pattern. The pattern data is invalid or incompatible with this version.');
+        return;
+    }
+
+    isLoadingSharedPattern = true;
+
+    // Create a temporary blob for importJson validation
+    const jsonString = JSON.stringify(shareUrlResult.data);
+    const tempBlob = new Blob([jsonString], { type: 'application/json' });
+
+    // Use importJson to validate and apply the shared pattern
+    importJson(
+        tempBlob,
+        (importedData) => {
+            // Apply imported data
+            gridWidth = importedData.gridWidth;
+            gridHeight = importedData.gridHeight;
+            aspectRatio = importedData.aspectRatio;
+            grid = importedData.grid;
+            backgroundColor = importedData.backgroundColor;
+            patternColors = importedData.patternColors;
+            activePatternIndex = 0;
+            previewRepeatX = importedData.previewRepeatX || CONFIG.DEFAULT_PREVIEW_REPEAT;
+            previewRepeatY = importedData.previewRepeatY || CONFIG.DEFAULT_PREVIEW_REPEAT;
+            activePaletteId = importedData.activePaletteId || CONFIG.DEFAULT_ACTIVE_PALETTE;
+            customPalette = importedData.customPalette || null;
+            hasInteracted = true;
+
+            // Update UI displays after loading shared data
+            updateUIDisplaysForSharedPattern();
+
+            // Re-initialize history with new pattern
+            HistoryManager.init({
+                grid: grid,
+                gridWidth: gridWidth,
+                gridHeight: gridHeight,
+                colors: patternColors,
+                backgroundColor: backgroundColor
+            });
+
+            isLoadingSharedPattern = false;
+            announceToScreenReader('Shared pattern loaded successfully');
+        },
+        (errorMessage) => {
+            isLoadingSharedPattern = false;
+            console.error('Failed to load shared pattern from hash change:', errorMessage);
+            showError('Failed to load shared pattern from URL.');
+        }
+    );
+});
 
 // ============================================
 // GLOBAL ERROR HANDLING
