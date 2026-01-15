@@ -125,6 +125,9 @@
                         <button class="icon-btn" id="undoBtn" aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span></button>
                         <button class="icon-btn" id="redoBtn" aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span></button>
                         <button class="icon-btn icon-btn-danger" id="clearBtn" aria-label="Clear canvas (Delete)"><span aria-hidden="true">✕</span></button>
+                        <button class="text-link" id="shareBtn" aria-label="Share pattern">
+                            Share
+                        </button>
                         <button class="text-link" id="downloadBtn" aria-label="Download pattern">
                             Download
                         </button>
@@ -234,6 +237,40 @@
                     <button type="submit" id="downloadModalSubmitBtn" class="modal-btn modal-btn-primary">Download</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle" style="display: none;">
+        <div class="modal-content">
+            <h2 id="shareModalTitle">Share Pattern</h2>
+
+            <p class="modal-description">
+                Copy this link to share your pattern. Anyone with this link can view and edit the pattern.
+            </p>
+
+            <div class="share-url-container">
+                <input
+                    type="text"
+                    id="shareUrlInput"
+                    class="share-url-input"
+                    readonly
+                    aria-label="Shareable URL"
+                >
+                <button
+                    type="button"
+                    id="copyShareUrlBtn"
+                    class="modal-btn modal-btn-primary"
+                >
+                    Copy to clipboard
+                </button>
+            </div>
+
+            <div id="shareWarning" class="share-warning" style="display: none;" role="alert"></div>
+
+            <div class="modal-actions">
+                <button type="button" id="shareModalCancelBtn" class="modal-btn modal-btn-secondary">Close</button>
+            </div>
         </div>
     </div>
 

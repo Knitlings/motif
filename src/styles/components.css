@@ -1076,6 +1076,94 @@ button:disabled {
     #downloadModal .modal-content {
         padding: var(--space-8);
     }
+
+    #shareModal .modal-content {
+        padding: var(--space-8);
+    }
+}
+
+/* ============================================
+   SHARE MODAL
+   ============================================ */
+
+#shareModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+#shareModal .modal-content {
+    max-width: 480px;
+    width: 90%;
+    padding: var(--space-10);
+    background: var(--color-bg-primary);
+    border: var(--border-width) solid var(--color-border-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+#shareModalTitle {
+    margin: 0 0 var(--space-4) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.share-url-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+}
+
+.share-url-input {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    font-family: monospace;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: var(--border-width) solid var(--color-border-secondary);
+    border-radius: var(--border-radius-sm);
+    outline: none;
+    cursor: text;
+}
+
+.share-url-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.share-warning {
+    padding: var(--space-3);
+    margin-bottom: var(--space-5);
+    background: var(--color-warning-light);
+    border: var(--border-width) solid var(--color-warning);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--color-warning-dark);
+    line-height: 1.4;
+}
+
+.btn-success {
+    background-color: var(--color-text-secondary) !important;
+    border-color: var(--color-text-secondary) !important;
+    color: white !important;
+}
+
+/* Mobile responsiveness for share modal */
+@media (max-width: 480px) {
+    .share-url-input {
+        font-size: var(--font-size-xs);
+    }
 }
 
 /* For touch devices without hover */
