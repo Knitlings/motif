@@ -887,7 +887,177 @@ sourceRadios.forEach(radio => {
         } else {
             contextControls.style.display = 'none';
         }
+        updateSizePreview();
     });
+});
+
+// Size controls
+const sizeControls = document.getElementById('sizeControls');
+const customSizeControls = document.getElementById('customSizeControls');
+const cellSizeSlider = document.getElementById('cellSizeSlider');
+const cellSizeInput = document.getElementById('cellSizeInput');
+const sizePreview = document.getElementById('sizePreview');
+const currentSizeLabel = document.getElementById('currentSizeLabel');
+
+// Toggle size controls visibility based on format selection
+const formatRadios = document.querySelectorAll('input[name="format"]');
+formatRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (radio.value === 'png' && radio.checked) {
+            sizeControls.style.display = 'block';
+        } else {
+            sizeControls.style.display = 'none';
+        }
+    });
+});
+
+// Toggle custom size controls based on size selection
+const sizeRadios = document.querySelectorAll('input[name="size"]');
+sizeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (radio.value === 'custom' && radio.checked) {
+            customSizeControls.style.display = 'block';
+            updateSizePreview();
+        } else {
+            customSizeControls.style.display = 'none';
+        }
+    });
+});
+
+// Sync slider and input
+cellSizeSlider.addEventListener('input', () => {
+    cellSizeInput.value = cellSizeSlider.value;
+    updateSizePreview();
+});
+
+cellSizeInput.addEventListener('input', () => {
+    const value = parseInt(cellSizeInput.value);
+    if (!isNaN(value)) {
+        cellSizeSlider.value = value;
+        updateSizePreview();
+    }
+});
+
+// Row counts checkbox changes affect dimensions
+const rowCountsCheckbox = document.getElementById('rowCountsCheckbox');
+rowCountsCheckbox.addEventListener('change', updateSizePreview);
+
+// Calculate and display dimension preview
+function updateSizePreview() {
+    const source = document.querySelector('input[name="source"]:checked')?.value;
+    const sizeMode = document.querySelector('input[name="size"]:checked')?.value;
+    const includeRowCounts = rowCountsCheckbox.checked;
+
+    if (sizeMode === 'custom') {
+        const cellSize = parseInt(cellSizeInput.value);
+        const dims = calculateExportDimensions(source, cellSize, includeRowCounts);
+        if (dims === null) {
+            sizePreview.textContent = 'Preview: Depends on selected surroundings';
+        } else {
+            sizePreview.textContent = `Preview: ${dims.width}×${dims.height}px`;
+        }
+    }
+}
+
+// Calculate export dimensions based on source, cell size, and options
+function calculateExportDimensions(source, cellSize, includeRowCounts) {
+    const rowCountMargin = includeRowCounts ? 40 : 0;
+    const cellWidth = cellSize;
+    const cellHeight = cellSize * aspectRatio;
+    let width, height;
+
+    if (source === 'pattern') {
+        width = Math.round(gridWidth * cellWidth) + rowCountMargin;
+        height = Math.round(gridHeight * cellHeight);
+    } else if (source === 'pattern-with-context') {
+        const contextLeft = parseInt(document.getElementById('contextLeft')?.value) || 0;
+        const contextRight = parseInt(document.getElementById('contextRight')?.value) || 0;
+        const contextTop = parseInt(document.getElementById('contextTop')?.value) || 0;
+        const contextBottom = parseInt(document.getElementById('contextBottom')?.value) || 0;
+
+        // Only show dimensions if context values are set
+        if (contextLeft === 0 && contextRight === 0 && contextTop === 0 && contextBottom === 0) {
+            return null; // Signal that dimensions can't be determined yet
+        }
+
+        const totalWidth = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
+        const totalHeight = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
+
+        width = Math.round(totalWidth * cellWidth) + rowCountMargin;
+        height = Math.round(totalHeight * cellHeight);
+    } else if (source === 'preview') {
+        const totalWidth = gridWidth * previewRepeatX;
+        const totalHeight = gridHeight * previewRepeatY;
+
+        width = Math.round(totalWidth * cellWidth) + rowCountMargin;
+        height = Math.round(totalHeight * cellHeight);
+    }
+
+    return { width, height };
+}
+
+// Update cell size constraints based on current pattern
+function updateCellSizeConstraints() {
+    const source = document.querySelector('input[name="source"]:checked')?.value;
+    let gridDimension;
+
+    if (source === 'pattern') {
+        gridDimension = Math.max(gridWidth, gridHeight);
+    } else if (source === 'pattern-with-context') {
+        const contextLeft = parseInt(document.getElementById('contextLeft')?.value) || 0;
+        const contextRight = parseInt(document.getElementById('contextRight')?.value) || 0;
+        const contextTop = parseInt(document.getElementById('contextTop')?.value) || 0;
+        const contextBottom = parseInt(document.getElementById('contextBottom')?.value) || 0;
+
+        const totalWidth = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
+        const totalHeight = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
+
+        gridDimension = Math.max(totalWidth, totalHeight);
+    } else if (source === 'preview') {
+        gridDimension = Math.max(gridWidth * previewRepeatX, gridHeight * previewRepeatY);
+    }
+
+    const maxCellSize = Math.min(100, Math.floor(4000 / gridDimension));
+    cellSizeSlider.max = maxCellSize;
+    cellSizeInput.max = maxCellSize;
+
+    // Adjust current value if it exceeds new max
+    if (parseInt(cellSizeInput.value) > maxCellSize) {
+        cellSizeInput.value = maxCellSize;
+        cellSizeSlider.value = maxCellSize;
+    }
+
+    updateSizePreview();
+}
+
+// Update current display label with actual dimensions
+function updateCurrentDisplayLabel() {
+    const source = document.querySelector('input[name="source"]:checked')?.value;
+    let canvas;
+
+    if (source === 'preview') {
+        canvas = document.getElementById('previewCanvas');
+    } else {
+        // For both 'pattern' and 'pattern-with-context', show editCanvas dimensions
+        // (pattern-with-context will be different after visual/form selection, but we show base pattern size here)
+        canvas = document.getElementById('editCanvas');
+    }
+
+    const displayWidth = Math.round(canvas.width);
+    const displayHeight = Math.round(canvas.height);
+
+    currentSizeLabel.textContent = `Current display (${displayWidth}×${displayHeight}px)`;
+}
+
+// Context input event listeners for updating size constraints
+const contextInputs = ['contextLeft', 'contextRight', 'contextTop', 'contextBottom'];
+contextInputs.forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+        input.addEventListener('input', () => {
+            updateCellSizeConstraints();
+        });
+    }
 });
 
 // Open download modal
@@ -915,6 +1085,10 @@ downloadBtn.onclick = () => {
             contextControls.style.display = 'none';
         }
     }
+
+    // Update size controls
+    updateCellSizeConstraints();
+    updateCurrentDisplayLabel();
 };
 
 // Close download modal
@@ -949,6 +1123,8 @@ downloadForm.onsubmit = async (e) => {
     const source = formData.get('source');
     const format = formData.get('format');
     const includeRowCounts = formData.get('rowCounts') === 'on';
+    const sizeMode = formData.get('size');
+    const customCellSize = sizeMode === 'custom' ? parseInt(cellSizeInput.value) : null;
 
     // Close modal
     downloadModal.style.display = 'none';
@@ -959,7 +1135,7 @@ downloadForm.onsubmit = async (e) => {
 
         // Use visual selection if pattern supports 3x3 preview
         if (maxRepeat >= 3) {
-            enterVisualContextSelection(format, includeRowCounts);
+            enterVisualContextSelection(format, includeRowCounts, customCellSize);
             return;
         } else {
             // Pattern too large - use form values
@@ -979,7 +1155,7 @@ downloadForm.onsubmit = async (e) => {
                     blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
                     filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
                 } else {
-                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
                     filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
                 }
 
@@ -1006,7 +1182,7 @@ downloadForm.onsubmit = async (e) => {
                 blob = exportSvg(getState(), includeRowCounts);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
             } else {
-                blob = await exportPng(getState(), includeRowCounts);
+                blob = await exportPng(getState(), includeRowCounts, customCellSize);
                 filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
             }
         } else {
@@ -1015,7 +1191,7 @@ downloadForm.onsubmit = async (e) => {
                 blob = exportPreviewSvg(getState(), includeRowCounts);
                 filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
             } else {
-                blob = await exportPreviewPng(getState(), includeRowCounts);
+                blob = await exportPreviewPng(getState(), includeRowCounts, customCellSize);
                 filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
             }
         }
@@ -1040,18 +1216,20 @@ let savedPreviewRepeatY = 3;
 let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
 let selectionFormat = 'png';
 let selectionIncludeRowCounts = false;
+let selectionCustomCellSize = null;
 let draggingEdge = null;
 let dragStartPos = { x: 0, y: 0 };
 
 /**
  * Enter visual context selection mode
  */
-function enterVisualContextSelection(format, includeRowCounts) {
+function enterVisualContextSelection(format, includeRowCounts, customCellSize = null) {
     // Save current state
     savedPreviewRepeatX = previewRepeatX;
     savedPreviewRepeatY = previewRepeatY;
     selectionFormat = format;
     selectionIncludeRowCounts = includeRowCounts;
+    selectionCustomCellSize = customCellSize;
     contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
     visualContextSelectionActive = true;
 
@@ -1206,6 +1384,7 @@ function renderVisualSelection() {
 async function downloadWithContext() {
     const format = selectionFormat;
     const includeRowCounts = selectionIncludeRowCounts;
+    const customCellSize = selectionCustomCellSize;
     const context = { ...contextSelection };
 
     // Exit visual selection mode
@@ -1222,7 +1401,7 @@ async function downloadWithContext() {
             blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
             filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
         } else {
-            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts);
+            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
             filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
         }
 

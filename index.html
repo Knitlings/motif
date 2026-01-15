@@ -225,6 +225,26 @@
                     </label>
                 </div>
 
+                <div class="form-section" id="sizeControls">
+                    <div class="form-section-label">Size</div>
+                    <label class="radio-option">
+                        <input type="radio" name="size" value="current" checked>
+                        <span class="radio-option-label" id="currentSizeLabel">Current display</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="size" value="custom">
+                        <span class="radio-option-label">Custom cell size</span>
+                    </label>
+                    <div id="customSizeControls" style="display: none; margin-top: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="cellSizeSlider" min="20" max="100" value="60" step="1" style="flex: 1;">
+                            <input type="number" id="cellSizeInput" min="20" max="100" value="60" style="width: 60px;">
+                            <span style="color: #666;">px</span>
+                        </div>
+                        <div id="sizePreview" style="margin-top: 8px; font-size: 14px; color: #666;"></div>
+                    </div>
+                </div>
+
                 <div class="form-section">
                     <label class="checkbox-option">
                         <input type="checkbox" name="rowCounts" id="rowCountsCheckbox">
