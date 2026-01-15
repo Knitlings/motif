@@ -121,13 +121,30 @@ export function exportSvg(state, includeRowCounts = false) {
  * Export grid as PNG
  * @param {ApplicationState} state - Application state containing grid dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export function exportPng(state, includeRowCounts = false) {
+export function exportPng(state, includeRowCounts = false, customCellSize = null) {
     const canvas = document.getElementById('editCanvas');
+    const { grid, gridWidth, gridHeight, patternColors, backgroundColor, aspectRatio } = state;
 
-    if (!includeRowCounts) {
-        // Simple export without row counts
+    // Determine cell dimensions
+    let cellWidth, cellHeight, sourceCanvas;
+
+    if (customCellSize !== null) {
+        // Use custom cell size
+        cellWidth = customCellSize;
+        cellHeight = customCellSize * aspectRatio;
+        sourceCanvas = null; // Will render manually
+    } else {
+        // Use current canvas dimensions
+        cellWidth = canvas.width / gridWidth;
+        cellHeight = canvas.height / gridHeight;
+        sourceCanvas = canvas;
+    }
+
+    if (!includeRowCounts && sourceCanvas) {
+        // Simple export without row counts using existing canvas
         return new Promise((resolve) => {
             canvas.toBlob((blob) => {
                 resolve(blob);
@@ -135,56 +152,80 @@ export function exportPng(state, includeRowCounts = false) {
         });
     }
 
-    const { gridHeight, backgroundColor } = state;
-
-    // Create a temporary canvas with extra width for row counts
-    const rowCountMargin = 40;
+    // Create a temporary canvas with extra width for row counts if needed
+    const rowCountMargin = includeRowCounts ? 40 : 0;
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width + rowCountMargin;
-    tempCanvas.height = canvas.height;
+    tempCanvas.width = gridWidth * cellWidth + rowCountMargin;
+    tempCanvas.height = gridHeight * cellHeight;
     const ctx = tempCanvas.getContext('2d');
 
     // Fill background color
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw the original canvas
-    ctx.drawImage(canvas, 0, 0);
+    // Draw the grid
+    if (sourceCanvas) {
+        // Use existing canvas
+        ctx.drawImage(sourceCanvas, 0, 0);
+    } else {
+        // Render grid manually at custom size
+        for (let row = 0; row < gridHeight; row++) {
+            for (let col = 0; col < gridWidth; col++) {
+                const cellValue = grid[row][col];
+                // 0 = background, 1-N = pattern colors
+                if (cellValue === 0) {
+                    ctx.fillStyle = backgroundColor;
+                } else {
+                    const color = patternColors[cellValue - 1];
+                    ctx.fillStyle = color || backgroundColor;
+                }
+                ctx.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
 
-    const cellHeight = canvas.height / gridHeight;
-
-    // Add white background for row count area
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(canvas.width, 0, rowCountMargin, tempCanvas.height);
-
-    // Add black border around pattern
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-    // Extend horizontal lines into row count area with dark color
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
-    for (let row = 0; row <= gridHeight; row++) {
-        const y = row * cellHeight;
-        ctx.beginPath();
-        ctx.moveTo(canvas.width, y);
-        ctx.lineTo(tempCanvas.width, y);
-        ctx.stroke();
+                // Draw grid lines
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+            }
+        }
     }
 
-    // Draw row counts
-    ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    if (includeRowCounts) {
+        const gridPixelWidth = gridWidth * cellWidth;
+        const gridPixelHeight = gridHeight * cellHeight;
 
-    for (let row = 0; row < gridHeight; row++) {
-        // Row numbers start at 1 from the bottom
-        const rowNumber = gridHeight - row;
-        const x = canvas.width + 10;
-        const y = row * cellHeight + cellHeight / 2;
-        ctx.fillText(rowNumber.toString(), x, y);
+        // Add white background for row count area
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(gridPixelWidth, 0, rowCountMargin, tempCanvas.height);
+
+        // Add black border around pattern
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, gridPixelWidth, gridPixelHeight);
+
+        // Extend horizontal lines into row count area with dark color
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        for (let row = 0; row <= gridHeight; row++) {
+            const y = row * cellHeight;
+            ctx.beginPath();
+            ctx.moveTo(gridPixelWidth, y);
+            ctx.lineTo(tempCanvas.width, y);
+            ctx.stroke();
+        }
+
+        // Draw row counts
+        ctx.fillStyle = '#666';
+        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        for (let row = 0; row < gridHeight; row++) {
+            // Row numbers start at 1 from the bottom
+            const rowNumber = gridHeight - row;
+            const x = gridPixelWidth + 10;
+            const y = row * cellHeight + cellHeight / 2;
+            ctx.fillText(rowNumber.toString(), x, y);
+        }
     }
 
     // Export the temporary canvas
@@ -317,10 +358,11 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
  * @param {ApplicationState} state - Application state
  * @param {Object} context - Context stitches {left, right, top, bottom}
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export async function exportPatternWithContextPng(state, context, includeRowCounts = false) {
-    const { grid, gridWidth, gridHeight, patternColors, backgroundColor } = state;
+export async function exportPatternWithContextPng(state, context, includeRowCounts = false, customCellSize = null) {
+    const { grid, gridWidth, gridHeight, patternColors, backgroundColor, aspectRatio } = state;
     const { left = 0, right = 0, top = 0, bottom = 0 } = context;
 
     // Clamp context values to pattern dimensions
@@ -333,10 +375,16 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
     const totalWidth = leftContext + gridWidth + rightContext;
     const totalHeight = topContext + gridHeight + bottomContext;
 
-    // Get cell dimensions from canvas
-    const sourceCanvas = document.getElementById('editCanvas');
-    const cellWidth = sourceCanvas.width / gridWidth;
-    const cellHeight = sourceCanvas.height / gridHeight;
+    // Get cell dimensions
+    let cellWidth, cellHeight;
+    if (customCellSize !== null) {
+        cellWidth = customCellSize;
+        cellHeight = customCellSize * aspectRatio;
+    } else {
+        const sourceCanvas = document.getElementById('editCanvas');
+        cellWidth = sourceCanvas.width / gridWidth;
+        cellHeight = sourceCanvas.height / gridHeight;
+    }
 
     // Create temporary canvas
     const rowCountMargin = includeRowCounts ? 40 : 0;
@@ -433,13 +481,33 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
  * Export preview as PNG
  * @param {ApplicationState} state - Application state containing grid dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export function exportPreviewPng(state, includeRowCounts = false) {
+export function exportPreviewPng(state, includeRowCounts = false, customCellSize = null) {
     const canvas = document.getElementById('previewCanvas');
+    const { grid, gridWidth, gridHeight, previewRepeatX, previewRepeatY, patternColors, backgroundColor, aspectRatio } = state;
 
-    if (!includeRowCounts) {
-        // Simple export without row counts
+    const totalWidth = gridWidth * previewRepeatX;
+    const totalHeight = gridHeight * previewRepeatY;
+
+    // Determine cell dimensions
+    let cellWidth, cellHeight, sourceCanvas;
+
+    if (customCellSize !== null) {
+        // Use custom cell size
+        cellWidth = customCellSize;
+        cellHeight = customCellSize * aspectRatio;
+        sourceCanvas = null; // Will render manually
+    } else {
+        // Use current canvas dimensions
+        cellWidth = canvas.width / totalWidth;
+        cellHeight = canvas.height / totalHeight;
+        sourceCanvas = canvas;
+    }
+
+    if (!includeRowCounts && sourceCanvas) {
+        // Simple export without row counts using existing canvas
         return new Promise((resolve) => {
             canvas.toBlob((blob) => {
                 resolve(blob);
@@ -447,57 +515,89 @@ export function exportPreviewPng(state, includeRowCounts = false) {
         });
     }
 
-    const { gridHeight, previewRepeatX, previewRepeatY, backgroundColor } = state;
-    const totalHeight = gridHeight * previewRepeatY;
-
-    // Create a temporary canvas with extra width for row counts
-    const rowCountMargin = 40;
+    // Create a temporary canvas with extra width for row counts if needed
+    const rowCountMargin = includeRowCounts ? 40 : 0;
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width + rowCountMargin;
-    tempCanvas.height = canvas.height;
+    tempCanvas.width = totalWidth * cellWidth + rowCountMargin;
+    tempCanvas.height = totalHeight * cellHeight;
     const ctx = tempCanvas.getContext('2d');
 
     // Fill background color
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw the original canvas
-    ctx.drawImage(canvas, 0, 0);
+    // Draw the preview
+    if (sourceCanvas) {
+        // Use existing canvas
+        ctx.drawImage(sourceCanvas, 0, 0);
+    } else {
+        // Render tiled preview manually at custom size
+        for (let repeatY = 0; repeatY < previewRepeatY; repeatY++) {
+            for (let repeatX = 0; repeatX < previewRepeatX; repeatX++) {
+                const offsetX = repeatX * gridWidth;
+                const offsetY = repeatY * gridHeight;
 
-    const cellHeight = canvas.height / totalHeight;
+                for (let row = 0; row < gridHeight; row++) {
+                    for (let col = 0; col < gridWidth; col++) {
+                        const x = (offsetX + col) * cellWidth;
+                        const y = (offsetY + row) * cellHeight;
 
-    // Add white background for row count area
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(canvas.width, 0, rowCountMargin, tempCanvas.height);
+                        const cellValue = grid[row][col];
+                        if (cellValue === 0) {
+                            ctx.fillStyle = backgroundColor;
+                        } else {
+                            const color = patternColors[cellValue - 1];
+                            ctx.fillStyle = color || backgroundColor;
+                        }
+                        ctx.fillRect(x, y, cellWidth, cellHeight);
 
-    // Add black border around pattern
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-    // Extend horizontal lines into row count area with dark color
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
-    for (let row = 0; row <= totalHeight; row++) {
-        const y = row * cellHeight;
-        ctx.beginPath();
-        ctx.moveTo(canvas.width, y);
-        ctx.lineTo(tempCanvas.width, y);
-        ctx.stroke();
+                        // Draw grid lines
+                        ctx.strokeStyle = '#eee';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x, y, cellWidth, cellHeight);
+                    }
+                }
+            }
+        }
     }
 
-    // Draw row counts
-    ctx.fillStyle = '#666';
-    ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    if (includeRowCounts) {
+        const gridPixelWidth = totalWidth * cellWidth;
+        const gridPixelHeight = totalHeight * cellHeight;
 
-    for (let row = 0; row < totalHeight; row++) {
-        // Row numbers start at 1 from the bottom
-        const rowNumber = totalHeight - row;
-        const x = canvas.width + 10;
-        const y = row * cellHeight + cellHeight / 2;
-        ctx.fillText(rowNumber.toString(), x, y);
+        // Add white background for row count area
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(gridPixelWidth, 0, rowCountMargin, tempCanvas.height);
+
+        // Add black border around pattern
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, gridPixelWidth, gridPixelHeight);
+
+        // Extend horizontal lines into row count area with dark color
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        for (let row = 0; row <= totalHeight; row++) {
+            const y = row * cellHeight;
+            ctx.beginPath();
+            ctx.moveTo(gridPixelWidth, y);
+            ctx.lineTo(tempCanvas.width, y);
+            ctx.stroke();
+        }
+
+        // Draw row counts
+        ctx.fillStyle = '#666';
+        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        for (let row = 0; row < totalHeight; row++) {
+            // Row numbers start at 1 from the bottom
+            const rowNumber = totalHeight - row;
+            const x = gridPixelWidth + 10;
+            const y = row * cellHeight + cellHeight / 2;
+            ctx.fillText(rowNumber.toString(), x, y);
+        }
     }
 
     // Export the temporary canvas
