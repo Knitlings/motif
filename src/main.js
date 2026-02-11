@@ -952,9 +952,13 @@ function updateSizePreview() {
         const cellSize = parseInt(cellSizeInput.value);
         const dims = calculateExportDimensions(source, cellSize, includeRowCounts);
         if (dims === null) {
-            sizePreview.textContent = 'Preview: Depends on selected surroundings';
+            sizePreview.textContent = 'Export size depends on selected surroundings';
         } else {
-            sizePreview.textContent = `Preview: ${dims.width}×${dims.height}px`;
+            const cellH = Math.round(cellSize * aspectRatio);
+            const breakdown = cellSize === cellH
+                ? `${dims.cols} × ${dims.rows} cells at ${cellSize}px`
+                : `${dims.cols} × ${dims.rows} cells at ${cellSize}×${cellH}px`;
+            sizePreview.textContent = `Export: ${dims.width}×${dims.height}px (${breakdown})`;
         }
     }
 }
@@ -964,11 +968,13 @@ function calculateExportDimensions(source, cellSize, includeRowCounts) {
     const rowCountMargin = includeRowCounts ? 40 : 0;
     const cellWidth = cellSize;
     const cellHeight = cellSize * aspectRatio;
-    let width, height;
+    let width, height, cols, rows;
 
     if (source === 'pattern') {
-        width = Math.round(gridWidth * cellWidth) + rowCountMargin;
-        height = Math.round(gridHeight * cellHeight);
+        cols = gridWidth;
+        rows = gridHeight;
+        width = Math.round(cols * cellWidth) + rowCountMargin;
+        height = Math.round(rows * cellHeight);
     } else if (source === 'pattern-with-context') {
         const contextLeft = parseInt(document.getElementById('contextLeft')?.value) || 0;
         const contextRight = parseInt(document.getElementById('contextRight')?.value) || 0;
@@ -980,20 +986,20 @@ function calculateExportDimensions(source, cellSize, includeRowCounts) {
             return null; // Signal that dimensions can't be determined yet
         }
 
-        const totalWidth = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
-        const totalHeight = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
+        cols = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
+        rows = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
 
-        width = Math.round(totalWidth * cellWidth) + rowCountMargin;
-        height = Math.round(totalHeight * cellHeight);
+        width = Math.round(cols * cellWidth) + rowCountMargin;
+        height = Math.round(rows * cellHeight);
     } else if (source === 'preview') {
-        const totalWidth = gridWidth * previewRepeatX;
-        const totalHeight = gridHeight * previewRepeatY;
+        cols = gridWidth * previewRepeatX;
+        rows = gridHeight * previewRepeatY;
 
-        width = Math.round(totalWidth * cellWidth) + rowCountMargin;
-        height = Math.round(totalHeight * cellHeight);
+        width = Math.round(cols * cellWidth) + rowCountMargin;
+        height = Math.round(rows * cellHeight);
     }
 
-    return { width, height };
+    return { width, height, cols, rows };
 }
 
 // Update cell size constraints based on current pattern
@@ -1017,7 +1023,7 @@ function updateCellSizeConstraints() {
         gridDimension = Math.max(gridWidth * previewRepeatX, gridHeight * previewRepeatY);
     }
 
-    const maxCellSize = Math.min(100, Math.floor(4000 / gridDimension));
+    const maxCellSize = Math.floor(4000 / gridDimension);
     cellSizeSlider.max = maxCellSize;
     cellSizeInput.max = maxCellSize;
 
