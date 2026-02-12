@@ -48,8 +48,9 @@ export function exportSvg(state, includeRowCounts = false) {
     const gridSvgWidth = gridWidth * cellWidth;
     const gridSvgHeight = gridHeight * cellHeight;
 
-    // Add extra width for row counts if needed
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Add extra width for row counts if needed (scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
@@ -102,11 +103,11 @@ export function exportSvg(state, includeRowCounts = false) {
         }
 
         svgContent += `  <!-- Row counts -->\n`;
-        const fontSize = Math.min(cellHeight * 0.6, 20);
+        const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < gridHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = gridHeight - row;
-            const x = gridSvgWidth + 10;
+            const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
@@ -152,8 +153,9 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
         });
     }
 
-    // Create a temporary canvas with extra width for row counts if needed
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = gridWidth * cellWidth + rowCountMargin;
     tempCanvas.height = gridHeight * cellHeight;
@@ -214,15 +216,16 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
         }
 
         // Draw row counts
+        const textPadding = Math.round(fontSize * 0.4);
         ctx.fillStyle = '#666';
-        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
+        ctx.font = `500 ${fontSize}px monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < gridHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = gridHeight - row;
-            const x = gridPixelWidth + 10;
+            const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
@@ -267,8 +270,9 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
     const gridSvgWidth = totalWidth * cellWidth;
     const gridSvgHeight = totalHeight * cellHeight;
 
-    // Add extra width for row counts if needed
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Add extra width for row counts if needed (scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
@@ -337,11 +341,11 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
         }
 
         svgContent += `  <!-- Row counts -->\n`;
-        const fontSize = Math.min(cellHeight * 0.6, 20);
+        const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = totalHeight - row;
-            const x = gridSvgWidth + 10;
+            const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
@@ -386,8 +390,9 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
         cellHeight = sourceCanvas.height / gridHeight;
     }
 
-    // Create temporary canvas
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Create temporary canvas (row count margin scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = totalWidth * cellWidth + rowCountMargin;
     tempCanvas.height = totalHeight * cellHeight;
@@ -456,14 +461,15 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
             ctx.stroke();
         }
 
+        const textPadding = Math.round(fontSize * 0.4);
         ctx.fillStyle = '#666';
-        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
+        ctx.font = `500 ${fontSize}px monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
             const rowNumber = totalHeight - row;
-            const x = totalWidth * cellWidth + 10;
+            const x = totalWidth * cellWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
@@ -515,8 +521,9 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
         });
     }
 
-    // Create a temporary canvas with extra width for row counts if needed
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = totalWidth * cellWidth + rowCountMargin;
     tempCanvas.height = totalHeight * cellHeight;
@@ -586,15 +593,16 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
         }
 
         // Draw row counts
+        const textPadding = Math.round(fontSize * 0.4);
         ctx.fillStyle = '#666';
-        ctx.font = `500 ${Math.min(cellHeight * 0.6, 20)}px monospace`;
+        ctx.font = `500 ${fontSize}px monospace`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = totalHeight - row;
-            const x = gridPixelWidth + 10;
+            const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
@@ -628,8 +636,9 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
     const gridSvgWidth = totalWidth * cellWidth;
     const gridSvgHeight = totalHeight * cellHeight;
 
-    // Add extra width for row counts if needed
-    const rowCountMargin = includeRowCounts ? 40 : 0;
+    // Add extra width for row counts if needed (scales with cell size)
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
@@ -690,11 +699,11 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
         }
 
         svgContent += `  <!-- Row counts -->\n`;
-        const fontSize = Math.min(cellHeight * 0.6, 20);
+        const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
             // Row numbers start at 1 from the bottom
             const rowNumber = totalHeight - row;
-            const x = gridSvgWidth + 10;
+            const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }

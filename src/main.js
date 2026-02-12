@@ -965,9 +965,10 @@ function updateSizePreview() {
 
 // Calculate export dimensions based on source, cell size, and options
 function calculateExportDimensions(source, cellSize, includeRowCounts) {
-    const rowCountMargin = includeRowCounts ? 40 : 0;
-    const cellWidth = cellSize;
     const cellHeight = cellSize * aspectRatio;
+    const fontSize = cellHeight * 0.6;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const cellWidth = cellSize;
     let width, height, cols, rows;
 
     if (source === 'pattern') {
