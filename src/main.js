@@ -1006,25 +1006,28 @@ function calculateExportDimensions(source, cellSize, includeRowCounts) {
 // Update cell size constraints based on current pattern
 function updateCellSizeConstraints() {
     const source = document.querySelector('input[name="source"]:checked')?.value;
-    let gridDimension;
+    let totalCols, totalRows;
 
     if (source === 'pattern') {
-        gridDimension = Math.max(gridWidth, gridHeight);
+        totalCols = gridWidth;
+        totalRows = gridHeight;
     } else if (source === 'pattern-with-context') {
         const contextLeft = parseInt(document.getElementById('contextLeft')?.value) || 0;
         const contextRight = parseInt(document.getElementById('contextRight')?.value) || 0;
         const contextTop = parseInt(document.getElementById('contextTop')?.value) || 0;
         const contextBottom = parseInt(document.getElementById('contextBottom')?.value) || 0;
 
-        const totalWidth = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
-        const totalHeight = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
-
-        gridDimension = Math.max(totalWidth, totalHeight);
+        totalCols = Math.min(contextLeft, gridWidth - 1) + gridWidth + Math.min(contextRight, gridWidth - 1);
+        totalRows = Math.min(contextTop, gridHeight - 1) + gridHeight + Math.min(contextBottom, gridHeight - 1);
     } else if (source === 'preview') {
-        gridDimension = Math.max(gridWidth * previewRepeatX, gridHeight * previewRepeatY);
+        totalCols = gridWidth * previewRepeatX;
+        totalRows = gridHeight * previewRepeatY;
     }
 
-    const maxCellSize = Math.floor(4000 / gridDimension);
+    // Cap so neither pixel dimension exceeds 4000px, accounting for aspect ratio
+    const maxFromWidth = 4000 / totalCols;
+    const maxFromHeight = 4000 / (totalRows * aspectRatio);
+    const maxCellSize = Math.floor(Math.min(maxFromWidth, maxFromHeight));
     cellSizeSlider.max = maxCellSize;
     cellSizeInput.max = maxCellSize;
 
