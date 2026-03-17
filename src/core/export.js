@@ -127,6 +127,16 @@ export function exportSvg(state, includeRowCounts = false) {
  */
 export function exportPng(state, includeRowCounts = false, customCellSize = null) {
     const canvas = document.getElementById('editCanvas');
+
+    // Fast path: no row counts and no custom size — just export the existing canvas
+    if (!includeRowCounts && customCellSize === null) {
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/png');
+        });
+    }
+
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor, aspectRatio } = state;
 
     // Determine cell dimensions
@@ -142,15 +152,6 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
         cellWidth = canvas.width / gridWidth;
         cellHeight = canvas.height / gridHeight;
         sourceCanvas = canvas;
-    }
-
-    if (!includeRowCounts && sourceCanvas) {
-        // Simple export without row counts using existing canvas
-        return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
-                resolve(blob);
-            }, 'image/png');
-        });
     }
 
     // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
@@ -492,6 +493,16 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
  */
 export function exportPreviewPng(state, includeRowCounts = false, customCellSize = null) {
     const canvas = document.getElementById('previewCanvas');
+
+    // Fast path: no row counts and no custom size — just export the existing canvas
+    if (!includeRowCounts && customCellSize === null) {
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/png');
+        });
+    }
+
     const { grid, gridWidth, gridHeight, previewRepeatX, previewRepeatY, patternColors, backgroundColor, aspectRatio } = state;
 
     const totalWidth = gridWidth * previewRepeatX;
@@ -510,15 +521,6 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
         cellWidth = canvas.width / totalWidth;
         cellHeight = canvas.height / totalHeight;
         sourceCanvas = canvas;
-    }
-
-    if (!includeRowCounts && sourceCanvas) {
-        // Simple export without row counts using existing canvas
-        return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
-                resolve(blob);
-            }, 'image/png');
-        });
     }
 
     // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
