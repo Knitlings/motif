@@ -8,6 +8,16 @@
 
   ## [Unreleased]
 
+  ## [1.3.0] - 2026-03-17
+
+  ### Added
+  - Custom cell size option for PNG exports — set a specific pixel size per cell using a slider
+
+  ### Changed
+  - Pattern repeat outline in surroundings export changed from red to black, matching the downloaded image
+  - Row count margin width reduced for a tighter layout
+  - Export size preview label reserves minimum height to prevent layout stutter when adjusting cell size
+
   ## [1.2.0] - 2025-12-09
 
   ### Added
