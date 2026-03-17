@@ -967,7 +967,7 @@ function updateSizePreview() {
 function calculateExportDimensions(source, cellSize, includeRowCounts) {
     const cellHeight = cellSize * aspectRatio;
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const cellWidth = cellSize;
     let width, height, cols, rows;
 
@@ -1328,9 +1328,9 @@ function renderVisualSelection() {
     // Right rectangle (between top and bottom)
     ctx.fillRect(contextStartX + contextWidth, contextStartY, previewCanvas.width - (contextStartX + contextWidth), contextHeight);
 
-    // Draw the red box (thicker for visibility)
-    ctx.strokeStyle = '#d32f2f';
-    ctx.lineWidth = 4;
+    // Draw black box around center repeat
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
     ctx.strokeRect(centerStartX, centerStartY, centerWidth, centerHeight);
 
     // Draw context selection if any

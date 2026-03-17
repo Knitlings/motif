@@ -50,7 +50,7 @@ export function exportSvg(state, includeRowCounts = false) {
 
     // Add extra width for row counts if needed (scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
@@ -155,7 +155,7 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
 
     // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = gridWidth * cellWidth + rowCountMargin;
     tempCanvas.height = gridHeight * cellHeight;
@@ -272,7 +272,7 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
 
     // Add extra width for row counts if needed (scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
@@ -321,7 +321,7 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
     const boxWidth = gridWidth * cellWidth;
     const boxHeight = gridHeight * cellHeight;
     svgContent += `  <!-- Pattern repeat box -->\n`;
-    svgContent += `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" fill="none" stroke="#d32f2f" stroke-width="4"/>\n`;
+    svgContent += `  <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" fill="none" stroke="#000000" stroke-width="6"/>\n`;
 
     // Draw row counts if enabled
     if (includeRowCounts) {
@@ -392,7 +392,7 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
 
     // Create temporary canvas (row count margin scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = totalWidth * cellWidth + rowCountMargin;
     tempCanvas.height = totalHeight * cellHeight;
@@ -435,8 +435,8 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
     const boxY = topContext * cellHeight;
     const boxWidth = gridWidth * cellWidth;
     const boxHeight = gridHeight * cellHeight;
-    ctx.strokeStyle = '#d32f2f';
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6;
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
     // Draw row counts if enabled
@@ -523,7 +523,7 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
 
     // Create a temporary canvas with extra width for row counts if needed (scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = totalWidth * cellWidth + rowCountMargin;
     tempCanvas.height = totalHeight * cellHeight;
@@ -638,7 +638,7 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
 
     // Add extra width for row counts if needed (scales with cell size)
     const fontSize = cellHeight * 0.6;
-    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 3)) : 0;
+    const rowCountMargin = includeRowCounts ? Math.max(40, Math.round(fontSize * 2.2)) : 0;
     const svgWidth = gridSvgWidth + rowCountMargin;
     const svgHeight = gridSvgHeight;
 
