@@ -1,8 +1,7 @@
 name: Deploy Dependabot Updates to Production
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [staging]
 
 permissions:
@@ -12,7 +11,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && github.event.pull_request.user.login == 'dependabot[bot]'
+    if: startsWith(github.event.head_commit.message, 'deps')
     steps:
       - name: Checkout staging
         uses: actions/checkout@v4
@@ -33,7 +32,7 @@ jobs:
             gh pr merge --auto --squash "$PR_URL"
           else
             echo "PR #$EXISTING_PR already exists, enabling auto-merge"
-            gh pr merge --auto --squash "#$EXISTING_PR"
+            gh pr merge --auto --squash "$EXISTING_PR"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
