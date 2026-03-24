@@ -10,6 +10,7 @@ updates:
       timezone: "UTC"
     target-branch: "staging"
     open-pull-requests-limit: 5
+    auto-merge: true
     # Group all patch updates together to reduce PR spam
     groups:
       patch-updates:
