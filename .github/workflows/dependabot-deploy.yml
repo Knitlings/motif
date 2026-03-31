@@ -1,8 +1,9 @@
 name: Deploy Dependabot Updates to Production
 
 on:
-  push:
+  pull_request:
     branches: [staging]
+    types: [closed]
 
 permissions:
   contents: write
@@ -11,7 +12,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.head_commit.message, 'deps')
+    if: >
+      github.event.pull_request.merged == true &&
+      github.actor == 'dependabot[bot]' &&
+      startsWith(github.event.pull_request.title, 'deps')
     steps:
       - name: Checkout staging
         uses: actions/checkout@v4
