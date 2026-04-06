@@ -1,9 +1,9 @@
 name: Deploy Dependabot Updates to Production
 
 on:
-  pull_request:
-    branches: [staging]
-    types: [closed]
+  workflow_run:
+    workflows: ["Dependabot Auto-merge to Staging"]
+    types: [completed]
 
 permissions:
   contents: write
@@ -12,10 +12,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: >
-      github.event.pull_request.merged == true &&
-      github.actor == 'dependabot[bot]' &&
-      startsWith(github.event.pull_request.title, 'deps')
+    if: github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout staging
         uses: actions/checkout@v4
