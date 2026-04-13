@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  deployments: write
 
 jobs:
   deploy:
@@ -20,7 +21,7 @@ jobs:
           ref: staging
           fetch-depth: 0
 
-      - name: Create or update staging → main PR and enable auto-merge
+      - name: Create and merge staging → main PR
         run: |
           EXISTING_PR=$(gh pr list --base main --head staging --state open --json number --jq '.[0].number')
 
@@ -35,5 +36,62 @@ jobs:
             echo "PR #$EXISTING_PR already exists, enabling auto-merge"
             gh pr merge --auto --squash "$EXISTING_PR"
           fi
+
+          # Wait for auto-merge to complete (CI must pass first)
+          echo "Waiting for PR to merge..."
+          for i in $(seq 1 60); do
+            sleep 10
+            STATE=$(gh pr list --base main --head staging --state open --json number --jq '.[0].number')
+            if [ -z "$STATE" ]; then
+              echo "PR merged successfully"
+              break
+            fi
+            echo "Still waiting... (attempt $i/60)"
+          done
+
+          # Verify the merge actually happened
+          if [ -n "$STATE" ]; then
+            echo "PR did not merge within timeout"
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build and deploy directly since GITHUB_TOKEN merges don't trigger
+      # other workflows (deploy-production.yml won't fire)
+      - name: Checkout main (post-merge)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: motif
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      # Sync main back into staging (won't trigger sync-staging.yml
+      # due to GITHUB_TOKEN limitation, so we do it here directly)
+      - name: Sync main into staging
+        run: |
+          git fetch origin staging
+          git checkout staging
+          git merge origin/main --no-edit -X ours
+          git push origin staging
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
