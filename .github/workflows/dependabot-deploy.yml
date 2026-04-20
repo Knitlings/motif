@@ -5,6 +5,10 @@ on:
     workflows: ["Dependabot Auto-merge to Staging"]
     types: [completed]
 
+concurrency:
+  group: dependabot-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -31,10 +35,18 @@ jobs:
               --head staging \
               --title "chore: Dependabot dependency updates" \
               --body "Automated merge of Dependabot dependency updates from staging to main.")
-            gh pr merge --auto --squash "$PR_URL"
           else
-            echo "PR #$EXISTING_PR already exists, enabling auto-merge"
-            gh pr merge --auto --squash "$EXISTING_PR"
+            echo "PR #$EXISTING_PR already exists"
+            PR_URL="$EXISTING_PR"
+          fi
+
+          # Try an immediate merge first; fall back to --auto if the PR isn't
+          # mergeable yet (e.g. CI still running). `gh pr merge --auto` silently
+          # no-ops when no required check is pending, so relying on it alone
+          # can leave the PR stuck open indefinitely.
+          if ! gh pr merge --squash "$PR_URL" 2>/dev/null; then
+            echo "Immediate merge not possible, queueing auto-merge"
+            gh pr merge --auto --squash "$PR_URL"
           fi
 
           # Wait for auto-merge to complete (CI must pass first)
