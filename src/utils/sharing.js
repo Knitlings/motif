@@ -6,6 +6,7 @@
 
 import LZString from 'lz-string';
 import { exportJson } from '../core/export.js';
+import { HEX_COLOR_PATTERN } from './validation.js';
 
 // URL format constants
 const SHARE_URL_PREFIX = '#p=';
@@ -153,15 +154,51 @@ export async function copyToClipboard(text) {
 	}
 }
 
+function isHexArray(arr) {
+	if (!Array.isArray(arr)) return false;
+	for (const c of arr) {
+		if (typeof c !== 'string' || !HEX_COLOR_PATTERN.test(c)) return false;
+	}
+	return true;
+}
+
 /**
- * Validate share URL data against schema
+ * Validate share URL data against schema. Strict: rejects anything whose
+ * shape or types don't match the export format, so attacker-controlled
+ * share URLs can't smuggle non-string values into color sinks (SVG export,
+ * style.backgroundColor) or non-numeric values into the grid.
  * @param {Object} data - Parsed share data
  * @returns {boolean} - Whether data is valid
  */
 export function validateShareData(data) {
-	if (!data || typeof data !== 'object') return false;
-	if (!data.version || data.version !== 1) return false;
-	if (!data.grid || !data.colors) return false;
+	if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+	if (data.version !== 1) return false;
+
+	const { grid, colors } = data;
+	if (!grid || typeof grid !== 'object' || Array.isArray(grid)) return false;
+	if (!colors || typeof colors !== 'object' || Array.isArray(colors)) return false;
+
+	if (typeof grid.width !== 'number' || !Number.isFinite(grid.width)) return false;
+	if (typeof grid.height !== 'number' || !Number.isFinite(grid.height)) return false;
+	if (grid.aspectRatio !== undefined &&
+		(typeof grid.aspectRatio !== 'number' || !Number.isFinite(grid.aspectRatio))) return false;
+	if (grid.cells !== undefined) {
+		if (!Array.isArray(grid.cells)) return false;
+		for (const row of grid.cells) {
+			if (!Array.isArray(row)) return false;
+		}
+	}
+
+	if (typeof colors.background !== 'string' || !HEX_COLOR_PATTERN.test(colors.background)) return false;
+	if (!isHexArray(colors.pattern) || colors.pattern.length === 0) return false;
+
+	// Optional custom palette flows into patternColors (which reach SVG string
+	// concatenation), so each entry must also be a hex string.
+	if (data.palette !== undefined) {
+		if (!data.palette || typeof data.palette !== 'object' || Array.isArray(data.palette)) return false;
+		if (data.palette.custom != null && !isHexArray(data.palette.custom)) return false;
+	}
+
 	return true;
 }
 
