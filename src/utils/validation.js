@@ -125,13 +125,15 @@ export function validatePreviewRepeat(input, fieldName = 'Preview repeat') {
  * @param {string} input - The color value to validate
  * @returns {ValidationResult}
  */
+// Matches #RGB, #RRGGBB, or #RRGGBBAA. Exported so security-sensitive
+// callers (e.g. share-URL validation) can reject non-hex strings at the
+// boundary without re-declaring the regex.
+export const HEX_COLOR_PATTERN = /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/;
+
 export function validateColor(input) {
     const trimmed = input.trim();
 
-    // Match #RGB, #RRGGBB, or #RRGGBBAA
-    const hexPattern = /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/;
-
-    if (!hexPattern.test(trimmed)) {
+    if (!HEX_COLOR_PATTERN.test(trimmed)) {
         return {
             valid: false,
             value: CONFIG.DEFAULT_PATTERN_COLOR,

@@ -172,6 +172,50 @@ describe('Sharing Utilities', () => {
 			expect(validateShareData(123)).toBe(false);
 			expect(validateShareData([])).toBe(false);
 		});
+
+		it('should reject non-hex colors', () => {
+			const base = {
+				version: 1,
+				grid: { width: 5, height: 5, cells: [[0]] },
+				colors: { background: '#ffffff', pattern: ['#000000'] }
+			};
+			expect(validateShareData({ ...base, colors: { background: 'red', pattern: ['#000000'] } })).toBe(false);
+			expect(validateShareData({ ...base, colors: { background: '#ffffff', pattern: ['"/><script>x</script>'] } })).toBe(false);
+			expect(validateShareData({ ...base, colors: { background: '#ffffff', pattern: ['#zzz'] } })).toBe(false);
+			expect(validateShareData({ ...base, colors: { background: '#ffffff', pattern: [] } })).toBe(false);
+		});
+
+		it('should reject non-numeric grid dimensions', () => {
+			const base = {
+				version: 1,
+				grid: { width: 5, height: 5, cells: [[0]] },
+				colors: { background: '#ffffff', pattern: ['#000000'] }
+			};
+			expect(validateShareData({ ...base, grid: { ...base.grid, width: '5' } })).toBe(false);
+			expect(validateShareData({ ...base, grid: { ...base.grid, height: NaN } })).toBe(false);
+			expect(validateShareData({ ...base, grid: { ...base.grid, aspectRatio: 'wide' } })).toBe(false);
+		});
+
+		it('should reject malformed grid cells', () => {
+			const base = {
+				version: 1,
+				grid: { width: 5, height: 5 },
+				colors: { background: '#ffffff', pattern: ['#000000'] }
+			};
+			expect(validateShareData({ ...base, grid: { ...base.grid, cells: 'oops' } })).toBe(false);
+			expect(validateShareData({ ...base, grid: { ...base.grid, cells: [1, 2, 3] } })).toBe(false);
+		});
+
+		it('should reject custom palette with non-hex entries', () => {
+			const base = {
+				version: 1,
+				grid: { width: 5, height: 5, cells: [[0]] },
+				colors: { background: '#ffffff', pattern: ['#000000'] }
+			};
+			expect(validateShareData({ ...base, palette: { custom: ['#abc', 'javascript:alert(1)'] } })).toBe(false);
+			expect(validateShareData({ ...base, palette: { custom: ['#abc', '#def'] } })).toBe(true);
+			expect(validateShareData({ ...base, palette: { custom: null } })).toBe(true);
+		});
 	});
 
 	describe('copyToClipboard()', () => {
