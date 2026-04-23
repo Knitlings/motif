@@ -8,7 +8,7 @@ import { StorageManager } from './managers/storage.js';
 import { HistoryManager } from './managers/history.js';
 import { CanvasManager } from './managers/canvas.js';
 import { createEmptyGrid, resizeGrid, resizeGridFromEdge } from './core/grid.js';
-import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, exportPatternWithContextPng, exportJson, importJson, downloadFile } from './core/export.js';
+import { exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, exportPatternWithContextPng, exportJson, importJson, downloadFile, sanitizeGrid } from './core/export.js';
 import { generateShareUrl, parseShareUrl, copyToClipboard, validateShareData } from './utils/sharing.js';
 import {
     validateGridDimension,
@@ -1849,7 +1849,9 @@ if (!shareUrlResult.success) {
                 CONFIG.MAX_ASPECT_RATIO,
                 CONFIG.DEFAULT_ASPECT_RATIO
             );
-            grid = patternData.grid.cells || createEmptyGrid(gridWidth, gridHeight);
+            grid = patternData.grid.cells
+                ? sanitizeGrid(patternData.grid.cells)
+                : createEmptyGrid(gridWidth, gridHeight);
             backgroundColor = patternData.colors.background || CONFIG.DEFAULT_BACKGROUND_COLOR;
             patternColors = patternData.colors.pattern || [CONFIG.DEFAULT_PATTERN_COLOR];
             activePatternIndex = 0;

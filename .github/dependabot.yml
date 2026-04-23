@@ -11,13 +11,15 @@ updates:
     target-branch: "staging"
     open-pull-requests-limit: 5
     auto-merge: true
-    # Group all patch updates together to reduce PR spam
+    # Group all patch and minor updates together to reduce PR spam
+    # and avoid races between back-to-back auto-merges on staging.
     groups:
-      patch-updates:
+      dev-updates:
         patterns:
           - "*"
         update-types:
           - "patch"
+          - "minor"
     # Automatically add labels
     labels:
       - "dependencies"

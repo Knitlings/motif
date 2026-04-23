@@ -14,7 +14,7 @@ import { Utils } from '../utils.js';
  * @param {Array} grid - Grid data from imported file
  * @returns {Array} Sanitized grid with all null/undefined converted to 0
  */
-function sanitizeGrid(grid) {
+export function sanitizeGrid(grid) {
     if (!Array.isArray(grid)) {
         return grid;
     }
