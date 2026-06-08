@@ -46,7 +46,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "esbuild": "^0.28.0",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^20.10.2",
     "markdown-link-check": "^3.14.1",
     "vite": "^8.0.16",
     "vitest": "^4.1.8"
