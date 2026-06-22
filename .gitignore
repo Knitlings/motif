@@ -1,9 +1,5 @@
-.claude/settings.local.json
-
 # Environment variables and secrets
 .env
-.env.local
-.env.*.local
 *.key
 *.pem
 credentials.json
@@ -11,40 +7,18 @@ secrets.json
 config.local.*
 
 # Personal notes and drafts
+# Docs commit by default; keep personal notes out via these conventions:
+#   - notes/ and drafts/ directories
+#   - *.local.md and *.notes.md suffixes (ignored globally)
 notes/
 drafts/
-scratch.*
-
-# Markdown files (personal notes, todos, etc.)
-*.md
-
-# Exceptions: Allow specific markdown files
-!README.md
-!src/styles/README.md
-!CONTRIBUTING.md
-!RELEASING.md
-!CHANGELOG.md
-!.github/DEPENDABOT.md
 
 # Test files (unless you want to commit them)
 test-*.json
 test-*.html
 test-*.svg
-scratch.*
 temp.*
 tmp.*
-
-# Editor and IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
 
 # Logs
 *.log
@@ -73,4 +47,3 @@ coverage/
 # Backup files
 *.bak
 *.backup
-*~
