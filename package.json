@@ -44,7 +44,7 @@
     "lz-string": "^1.5.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.0",
     "esbuild": "^0.28.1",
     "happy-dom": "^20.11.1",
     "markdown-link-check": "^3.14.1",
