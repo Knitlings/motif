@@ -70,6 +70,13 @@ export const CONFIG = {
     CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
     PREVIEW_COLUMN_PADDING: 48,
     PLATE_PADDING_DESKTOP: 64,
+    CHART_NUMBERS_WIDTH: 32,         // Row numbers to the right of the chart
+    CHART_NUMBERS_HEIGHT: 26,        // Stitch numbers under the chart
+    CHART_FRAME_RESERVE: 320,
+    MIN_FRAME_HEIGHT: 240,
+    PLATE_PADDING_VERTICAL: 24,        // Room left under a framed chart for its caption and key
+    NUMBER_EVERY_UP_TO: 20,          // Number every stitch (or row) up to this many; above it every 5th, with a darker rule every 10th
+    TENTH_RULE_COLOR: '#6b6a63',     // ink-muted
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
     REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
     REPEAT_OUTLINE_HALO: '#ffffff',  // surface
@@ -189,6 +196,13 @@ export const UI_CONSTANTS = {
     CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
     PREVIEW_COLUMN_PADDING: 48,
     PLATE_PADDING_DESKTOP: 64,
+    CHART_NUMBERS_WIDTH: 32,         // Row numbers to the right of the chart
+    CHART_NUMBERS_HEIGHT: 26,        // Stitch numbers under the chart
+    CHART_FRAME_RESERVE: 320,
+    MIN_FRAME_HEIGHT: 240,
+    PLATE_PADDING_VERTICAL: 24,        // Room left under a framed chart for its caption and key
+    NUMBER_EVERY_UP_TO: 20,          // Number every stitch (or row) up to this many; above it every 5th, with a darker rule every 10th
+    TENTH_RULE_COLOR: '#6b6a63',     // ink-muted
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
     REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
     REPEAT_OUTLINE_HALO: '#ffffff',  // surface         // px - Mobile vs desktop threshold

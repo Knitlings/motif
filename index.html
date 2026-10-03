@@ -63,12 +63,19 @@
 
         <section class="plate-chart" aria-label="The pattern">
             <div class="chart-area">
-                <div class="canvas-resize-container">
-                    <canvas id="editCanvas" role="img" aria-label="Grid pattern editor canvas - click to paint, shift-click to erase"></canvas>
-                    <button type="button" class="edge-grip edge-grip-top resize-handle" data-direction="top" aria-label="Drag to add or remove rows at the top" aria-keyshortcuts="ArrowUp ArrowDown"></button>
-                    <button type="button" class="edge-grip edge-grip-right resize-handle" data-direction="right" aria-label="Drag to add or remove stitches on the right" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
-                    <button type="button" class="edge-grip edge-grip-bottom resize-handle" data-direction="bottom" aria-label="Drag to add or remove rows at the bottom" aria-keyshortcuts="ArrowDown ArrowUp"></button>
-                    <button type="button" class="edge-grip edge-grip-left resize-handle" data-direction="left" aria-label="Drag to add or remove stitches on the left" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
+                <div class="chart-frame" id="chartFrame">
+                    <div class="chart-grid">
+                        <div class="canvas-resize-container">
+                            <canvas id="editCanvas" role="img" aria-label="Grid pattern editor canvas - click to paint, shift-click to erase"></canvas>
+                            <button type="button" class="edge-grip edge-grip-top resize-handle" data-direction="top" aria-label="Drag to add or remove rows at the top" aria-keyshortcuts="ArrowUp ArrowDown"></button>
+                            <button type="button" class="edge-grip edge-grip-right resize-handle" data-direction="right" aria-label="Drag to add or remove stitches on the right" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
+                            <button type="button" class="edge-grip edge-grip-bottom resize-handle" data-direction="bottom" aria-label="Drag to add or remove rows at the bottom" aria-keyshortcuts="ArrowDown ArrowUp"></button>
+                            <button type="button" class="edge-grip edge-grip-left resize-handle" data-direction="left" aria-label="Drag to add or remove stitches on the left" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
+                        </div>
+                        <div class="chart-row-numbers" id="chartRowNumbers" aria-hidden="true"></div>
+                        <div class="chart-stitch-numbers" id="chartStitchNumbers" aria-hidden="true"></div>
+                        <div class="chart-numbers-corner" aria-hidden="true"></div>
+                    </div>
                 </div>
             </div>
 

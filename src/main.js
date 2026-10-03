@@ -242,6 +242,50 @@ function applyPlateLayout(layout) {
     document.getElementById('previewTotal').textContent =
         `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
     document.getElementById('previewOutlineNote').hidden = !layout.outlined;
+    applyChartFrame(layout);
+}
+
+let chartNumbersDrawn = '';
+
+/**
+ * Frame a chart too large for the page, and number its stitches and rows from the
+ * right and the bottom (each one up to 20, every fifth beyond)
+ */
+function applyChartFrame(layout) {
+    const frame = document.getElementById('chartFrame');
+    frame.classList.toggle('is-framed', layout.framed);
+    frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
+    frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
+    if (layout.framed) {
+        // The frame scrolls, so it takes keyboard focus and says so
+        frame.setAttribute('tabindex', '0');
+        frame.setAttribute('role', 'group');
+        frame.setAttribute('aria-label', `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows. It scrolls in both directions`);
+    } else {
+        frame.removeAttribute('tabindex');
+        frame.removeAttribute('role');
+        frame.removeAttribute('aria-label');
+    }
+
+    const signature = [gridWidth, gridHeight, layout.cellWidth, layout.cellHeight].join(',');
+    if (signature === chartNumbersDrawn) return;
+    chartNumbersDrawn = signature;
+
+    const label = (n, every) => (n % every === 0 ? String(n) : '');
+    const rows = document.getElementById('chartRowNumbers');
+    rows.style.gridAutoRows = `${layout.cellHeight}px`;
+    rows.replaceChildren(...Array.from({ length: gridHeight }, (_, i) => {
+        const span = document.createElement('span');
+        span.textContent = label(gridHeight - i, layout.rowNumberEvery);
+        return span;
+    }));
+    const stitches = document.getElementById('chartStitchNumbers');
+    stitches.style.gridTemplateColumns = `repeat(${gridWidth}, ${layout.cellWidth}px)`;
+    stitches.replaceChildren(...Array.from({ length: gridWidth }, (_, i) => {
+        const span = document.createElement('span');
+        span.textContent = label(gridWidth - i, layout.stitchNumberEvery);
+        return span;
+    }));
 }
 
 // Optimized canvas update using requestAnimationFrame

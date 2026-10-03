@@ -134,6 +134,104 @@
     align-items: center;
 }
 
+/* The chart with its stitch and row numbers, counted from the right and the bottom */
+.chart-frame {
+    position: relative;
+    max-width: 100%;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: auto 24px;
+    grid-template-rows: auto 18px;
+    gap: var(--space-2);
+}
+
+.chart-row-numbers,
+.chart-stitch-numbers {
+    display: grid;
+    font: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-muted);
+    background: var(--surface);
+    user-select: none;
+}
+
+.chart-row-numbers {
+    grid-column: 2;
+    grid-row: 1;
+    align-content: start;
+    padding-top: var(--line-rule); /* the chart's frame */
+}
+
+.chart-row-numbers span {
+    display: flex;
+    align-items: center;
+}
+
+.chart-stitch-numbers {
+    grid-column: 1;
+    grid-row: 2;
+    justify-items: center;
+    padding: 0 var(--line-rule);
+    white-space: nowrap;
+}
+
+.chart-numbers-corner {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+/* Too large for the page: the chart scrolls in its frame, numbers held at the edges */
+.chart-frame.is-framed {
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-grid {
+    width: max-content;
+    grid-template-columns: auto 30px;
+    grid-template-rows: auto 20px;
+    gap: 0;
+}
+
+.chart-frame.is-framed #editCanvas {
+    border: 0;
+}
+
+.chart-frame.is-framed .chart-row-numbers {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    padding: 0 0 0 5px;
+    border-left: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-stitch-numbers {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    align-items: center;
+    padding: 0;
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-numbers-corner {
+    position: sticky;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--surface);
+    border-top: var(--line-rule) solid var(--frame);
+    border-left: var(--line-rule) solid var(--frame);
+}
+
+/* A framed chart has no edge grips: it is resized through its caption */
+.chart-frame.is-framed .edge-grip {
+    display: none;
+}
+
 /* Edge grip: a tab at the middle of each edge, straddling it */
 .edge-grip {
     position: absolute;
