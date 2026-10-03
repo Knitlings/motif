@@ -9,15 +9,27 @@
 }
 
 body {
-    font-family: var(--font-family-base);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-normal);
-    color: var(--color-text-primary);
-    background: var(--color-bg-primary);
+    font: var(--text-ui);
+    color: var(--ink);
+    background: var(--surface);
     height: 100vh;
     overflow: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numbers that change sit in columns that don't shift */
+input,
+output,
+.tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
 }
 
 /* ============================================
@@ -29,19 +41,17 @@ body {
     position: absolute;
     top: -40px;
     left: 0;
-    background: var(--color-primary);
-    color: white;
+    background: var(--surface);
+    color: var(--accent);
+    border: var(--line-rule) solid var(--frame);
     padding: var(--space-2) var(--space-4);
-    text-decoration: none;
-    border-radius: 0 0 var(--border-radius-md) 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
     z-index: 10000;
-    font-weight: var(--font-weight-semibold);
 }
 
 .skip-link:focus {
     top: 0;
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
 }
 
 /* Screen reader only content */
@@ -57,37 +67,31 @@ body {
     border-width: 0;
 }
 
-/* Focus indicators for all interactive elements */
+/* One focus appearance everywhere: an accent outline, offset 2px. Links get 3px. */
+:focus {
+    outline: none;
+}
+
 button:focus-visible,
-a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible,
 [role="menuitem"]:focus-visible,
-[tabindex]:focus-visible {
-    outline: 2px solid var(--color-primary);
+[tabindex]:focus-visible,
+[contenteditable]:focus-visible {
+    outline: var(--line-emphasis) solid var(--accent);
     outline-offset: 2px;
-    box-shadow: var(--shadow-focus);
 }
 
-/* Ensure focus is visible on clickable elements */
-button:focus,
-a:focus,
-input:focus,
-select:focus,
-textarea:focus,
-[role="button"]:focus,
-[role="menuitem"]:focus {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+a:focus-visible {
+    outline: var(--line-emphasis) solid var(--accent);
+    outline-offset: 3px;
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-    button:focus,
-    a:focus,
-    input:focus {
+    :focus-visible {
         outline-width: 3px;
     }
 }
@@ -109,39 +113,41 @@ textarea:focus,
    ============================================ */
 
 h1 {
-    font-family: var(--font-family-heading);
-    font-size: var(--font-size-3xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-primary);
-    line-height: 1;
+    font: var(--text-heading);
+    color: var(--ink);
     margin: 0;
     padding: 0;
 }
 
 h2 {
-    font-family: var(--font-family-heading);
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-secondary);
-    line-height: 1;
+    font: var(--text-subhead);
+    color: var(--ink);
     margin: 0;
     padding: 0;
 }
 
 h3 {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: var(--line-height-tight);
+    font: var(--text-ui);
+    font-weight: 600;
+    color: var(--ink-secondary);
+}
+
+/* Links: accent, always underlined */
+a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+a:hover {
+    color: var(--accent-strong);
 }
 
 /* Hint/Helper Text */
 .hint {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-normal);
-    color: var(--color-text-tertiary);
+    font: var(--text-caption);
+    color: var(--ink-muted);
 }
 
 /* Hide mobile-only hints on desktop by default */

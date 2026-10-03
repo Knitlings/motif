@@ -26,15 +26,19 @@ The CSS files are imported in this specific order in `main.css`:
 
 ## Design System
 
-All design tokens are defined in `variables.css` as CSS custom properties:
+Motif uses the Knitlings design system. Its tokens are defined in `variables.css` as CSS
+custom properties:
 
-- **Colors**: Primary, danger, text, background, borders
-- **Spacing**: Base unit of 4px (--space-1 through --space-16)
-- **Typography**: Font families, sizes, weights, line heights
-- **Borders**: Widths and border-radius values
-- **Shadows**: Elevation levels
-- **Transitions**: Animation durations
-- **Layout**: Panel widths and breakpoints
+- **Colour**: `--ink`, `--ink-secondary`, `--ink-muted`, `--surface`, `--ground`, `--rule`,
+  `--accent` (links, focus, wordmark only), `--signal-error`
+- **Spacing**: `--space-1` to `--space-8` (4px base)
+- **Line**: `--line-hairline` to `--line-heavy`; corners are always square
+- **Type**: Spectral only (self-hosted in `src/assets/fonts/`), as `font` shorthands
+  `--text-display`, `--text-heading`, `--text-subhead`, `--text-body`, `--text-ui`,
+  `--text-caption`, `--text-figure-caption`
+
+No shadows or gradients: `box-shadow` only draws a ring. The older variable names
+(`--color-*`, `--font-size-*`, ...) are transitional aliases and are being removed.
 
 ## Usage in HTML
 

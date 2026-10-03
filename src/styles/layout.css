@@ -74,10 +74,9 @@
     display: flex;
     width: 100%;
     height: 100%;
-    border: 2px solid #8f7891;
+    border: var(--line-rule) solid var(--ink);
     border-radius: var(--border-radius-sm);
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .color-swatch {
@@ -228,13 +227,11 @@
     height: 20px;
     border-radius: var(--border-radius-full);
     border: var(--border-width-thick) solid var(--color-border-dark);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     transition: transform var(--transition-base);
 }
 
 .navbar-color-circle:hover {
     transform: scale(1.15);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .header-actions {
@@ -261,12 +258,10 @@
     border: 2px solid var(--color-border-dark);
     cursor: pointer;
     transition: all var(--transition-base);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .navbar-color-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
 }
 
 .navbar-color-btn.round {
@@ -279,7 +274,6 @@
 
 .navbar-color-btn.active {
     transform: scale(1.15);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .navbar-color-btn.active:hover {
@@ -373,10 +367,9 @@
     min-width: 36px;
     min-height: 36px;
     border: 2px solid var(--color-border-dark);
-    border-radius: 50%;
+    border-radius: 0;
     cursor: pointer;
     transition: all var(--transition-base);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     background: transparent;
     padding: 0;
     flex-shrink: 0;
@@ -384,7 +377,6 @@
 
 .navbar-overflow-color-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================
@@ -406,17 +398,14 @@
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     transition: all var(--transition-base);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .navbar-palette-dropdown-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
 }
 
 .navbar-palette-dropdown-container.open .navbar-palette-dropdown-btn {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(89, 79, 134, 0.3);
 }
 
 .navbar-palette-preview {
@@ -431,7 +420,7 @@
 .navbar-palette-preview-color {
     width: 100%;
     height: 100%;
-    border-radius: 1px;
+    border-radius: 0;
 }
 
 .navbar-palette-dropdown-menu {
@@ -468,12 +457,10 @@
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     transition: all var(--transition-base);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-palette-color:hover {
     transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
     border-color: var(--color-border-primary);
 }
 
@@ -593,7 +580,7 @@
     width: 100%;
     height: 2px;
     background: var(--color-text-secondary);
-    border-radius: 2px;
+    border-radius: 0;
     transition: all var(--transition-base);
 }
 

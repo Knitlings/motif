@@ -1,91 +1,51 @@
 /* ============================================
-   DESIGN SYSTEM - CSS VARIABLES
-   Easy customization: change these values to restyle the entire app
+   KNITLINGS DESIGN TOKENS
+   From the Knitlings design system's tokens.css. Use these names, never raw values.
    ============================================ */
 
 :root {
-    /* === COLORS === */
-    /* Primary/Accent - using the deep crimson */
-    --color-primary: #8d2e3e;
-    --color-primary-hover: #6f2331;
-    --color-primary-light: rgba(141, 46, 62, 0.1);
-
-    /* Danger/Delete - brighter red for clear warning */
-    --color-danger: #c44f4f;
-    --color-danger-hover: #a83d3d;
-    --color-danger-light: #fdf3f3;
-
-    /* Text Colors - using the deep purple for primary text */
-    --color-text-primary: #2b0f2e;
-    --color-text-secondary: #5a3d5e;
-    --color-text-tertiary: #8f7891;
-
-    /* Background Colors - using the soft pink-white as base */
-    --color-bg-primary: #fdf9f8;
-    --color-bg-secondary: #f7f0ee;
-    --color-bg-tertiary: #f0e7e4;
-
-    /* Border Colors - soft neutrals with a hint of warmth */
-    --color-border-primary: #e8dbd8;
-    --color-border-secondary: #d9c9c5;
-    --color-border-dark: #2b0f2e;
+    /* === COLOUR: one ink, one paper, one accent === */
+    --ground: #f2f3f5;        /* Hover fill; page ground in panel tools (not Motif's plate) */
+    --surface: #ffffff;       /* Paper */
+    --ink: #1a1a18;           /* Text, frames, linework */
+    --ink-secondary: #56554f; /* Row labels and supporting text, 7.4:1 */
+    --ink-muted: #6b6a63;     /* Captions and metadata, 5.4:1: the lightest text grey */
+    --rule: #c8c7c3;          /* Hairline divisions */
+    --frame: var(--ink);      /* Panel frames: drawn, not tinted */
+    --accent: #6a4d7e;        /* Links, active navigation, focus rings, wordmark rule only */
+    --accent-strong: #4e3a5e; /* Hover and active for anything in accent */
+    --signal-error: #a32d2d;  /* Errors and destructive confirmation only */
 
     /* === SPACING === */
-    /* Base unit: 4px */
-    --space-1: 0.25rem;  /* 4px */
-    --space-2: 0.5rem;   /* 8px */
-    --space-3: 0.75rem;  /* 12px */
-    --space-4: 1rem;     /* 16px */
-    --space-5: 1.25rem;  /* 20px */
-    --space-6: 1.5rem;   /* 24px */
-    --space-8: 2rem;     /* 32px */
-    --space-10: 2.5rem;  /* 40px */
-    --space-12: 3rem;    /* 48px */
-    --space-16: 4rem;    /* 64px */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
 
-    /* === TYPOGRAPHY === */
-    /* Font Family */
-    --font-family-heading: 'Ruda', sans-serif;
-    --font-family-base: 'Libre Franklin', sans-serif;
-    --font-family-body: 'Palanquin', sans-serif;
-    --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    /* === CORNERS: square everywhere === */
+    --radius-none: 0;
 
-    /* Font Sizes */
-    --font-size-xs: 0.75rem;   /* 12px */
-    --font-size-sm: 0.875rem;  /* 14px */
-    --font-size-base: 1rem;    /* 16px */
-    --font-size-lg: 1.125rem;  /* 18px */
-    --font-size-xl: 1.25rem;   /* 20px */
-    --font-size-2xl: 1.5rem;   /* 24px */
-    --font-size-3xl: 2rem;     /* 32px */
+    /* === LINE WEIGHTS === */
+    --line-hairline: 0.5px;   /* Divides rows (in rule) */
+    --line-rule: 1px;         /* Frames panels and closes strips (in frame) */
+    --line-select: 1.5px;     /* Ink ring of a selected swatch, outside a 2px surface gap */
+    --line-figure: 1.6px;     /* Ordinary structure in a drawing */
+    --line-emphasis: 2px;     /* Active navigation, dialog frames, error notes, focus */
+    --line-heavy: 2.6px;      /* The one subject of a drawing */
 
-    /* Font Weights */
-    --font-weight-normal: 400;
-    --font-weight-medium: 500;
-    --font-weight-semibold: 600;
-    --font-weight-bold: 700;
+    /* === TYPE: Spectral for everything === */
+    --font-serif: "Spectral", "Literata", Georgia, serif;
+    --text-display: 600 32px/36px var(--font-serif);
+    --text-heading: 600 21px/26px var(--font-serif);
+    --text-subhead: 600 16px/22px var(--font-serif);
+    --text-body: 400 15px/23px var(--font-serif);
+    --text-ui: 400 13px/18px var(--font-serif);
+    --text-caption: 400 11.5px/15px var(--font-serif);
+    --text-figure-caption: italic 400 13px/18px var(--font-serif);
 
-    /* Line Heights */
-    --line-height-tight: 1.25;
-    --line-height-normal: 1.5;
-    --line-height-relaxed: 1.75;
-
-    /* === BORDERS === */
-    --border-width: 1px;
-    --border-width-thick: 2px;
-
-    --border-radius-sm: 0.25rem;  /* 4px */
-    --border-radius-md: 0.375rem; /* 6px */
-    --border-radius-lg: 0.5rem;   /* 8px */
-    --border-radius-full: 9999px;
-
-    /* === SHADOWS === */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-focus: 0 0 0 3px var(--color-primary-light);
-
-    /* === TRANSITIONS === */
+    /* === MOTION === */
     --transition-fast: 150ms ease;
     --transition-base: 200ms ease;
     --transition-slow: 300ms ease;
@@ -94,4 +54,84 @@
     --panel-width: 280px;
     --panel-width-collapsed: 40px;
     --header-height: auto;
+}
+
+/* ============================================
+   TRANSITIONAL ALIASES
+   The pre-redesign variable names, pointed at the tokens above so unconverted styles
+   follow the new look. Remove each as the components using it are rewritten; delete
+   this block once nothing uses it.
+   ============================================ */
+
+:root {
+    --color-primary: var(--accent);
+    --color-primary-hover: var(--accent-strong);
+    --color-primary-light: var(--ground);
+    --color-accent: var(--accent);
+
+    --color-danger: var(--signal-error);
+    --color-danger-hover: var(--signal-error);
+    --color-danger-light: var(--ground);
+    --color-error: var(--signal-error);
+    --color-warning: var(--ink);
+    --color-warning-dark: var(--ink);
+    --color-warning-light: var(--surface);
+
+    --color-text-primary: var(--ink);
+    --color-text-secondary: var(--ink-secondary);
+    --color-text-tertiary: var(--ink-muted);
+    --color-text-disabled: var(--ink-muted);
+
+    --color-bg: var(--surface);
+    --color-bg-primary: var(--surface);
+    --color-bg-secondary: var(--ground);
+    --color-bg-tertiary: var(--ground);
+    --color-surface: var(--surface);
+
+    --color-border: var(--rule);
+    --color-border-primary: var(--rule);
+    --color-border-secondary: var(--rule);
+    --color-border-dark: var(--ink);
+
+    --space-5: 20px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    --font-family: var(--font-serif);
+    --font-heading: var(--font-serif);
+    --font-family-heading: var(--font-serif);
+    --font-family-base: var(--font-serif);
+    --font-family-body: var(--font-serif);
+
+    --font-size-xs: 11.5px;
+    --font-size-sm: 13px;
+    --font-size-base: 15px;
+    --font-size-lg: 16px;
+    --font-size-xl: 21px;
+    --font-size-2xl: 21px;
+    --font-size-3xl: 32px;
+
+    /* Spectral ships 400 and 600 only */
+    --font-weight-normal: 400;
+    --font-weight-medium: 400;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 600;
+
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+
+    --border-width: var(--line-rule);
+    --border-width-thick: var(--line-emphasis);
+
+    --border-radius-sm: 0;
+    --border-radius-md: 0;
+    --border-radius-lg: 0;
+    --border-radius-full: 0;
+
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-focus: none;
 }

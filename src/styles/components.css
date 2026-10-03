@@ -69,10 +69,8 @@
 }
 
 .grid-dimension:focus {
-    outline: none;
     border-color: var(--color-primary);
     background: var(--color-bg-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-light);
     cursor: text;
 }
 
@@ -350,7 +348,6 @@ input[type="number"] {
 
 input[type="text"]:focus,
 input[type="number"]:focus {
-    outline: none;
     border-color: var(--color-primary);
     box-shadow: var(--shadow-focus);
 }
@@ -583,13 +580,13 @@ button:disabled {
     font-weight: var(--font-weight-bold);
     line-height: 1;
     text-shadow: none;
-    color: #666 !important;
+    color: var(--ink-muted) !important;
 }
 
 .pattern-btn.unused:hover {
     opacity: 1;
     transform: translateY(-1px);
-    color: #444 !important;
+    color: var(--ink-secondary) !important;
 }
 
 .pattern-delete-btn {
@@ -986,7 +983,6 @@ button:disabled {
 }
 
 .context-input-group input[type="number"]:focus {
-    outline: none;
     border-color: var(--color-primary);
 }
 
@@ -1127,19 +1123,16 @@ button:disabled {
 .share-url-input {
     width: 100%;
     padding: var(--space-3) var(--space-4);
-    font-family: monospace;
     font-size: var(--font-size-sm);
     color: var(--color-text-primary);
     background: var(--color-bg-secondary);
     border: var(--border-width) solid var(--color-border-secondary);
     border-radius: var(--border-radius-sm);
-    outline: none;
     cursor: text;
 }
 
 .share-url-input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .share-warning {
