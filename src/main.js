@@ -1228,8 +1228,13 @@ function exitVisualContextSelection() {
         pickerFrame.contains(document.activeElement);
     visualContextSelectionActive = false;
 
-    previewRepeatX = savedPreviewRepeatX;
-    previewRepeatY = savedPreviewRepeatY;
+    // The chart may have grown while picking: hold the restored repeats to its limit
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    previewRepeatX = Math.min(savedPreviewRepeatX, maxRepeat);
+    previewRepeatY = Math.min(savedPreviewRepeatY, maxRepeat);
+    if (previewRepeatX < savedPreviewRepeatX || previewRepeatY < savedPreviewRepeatY) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
+    }
     previewRepeatXDisplay.value = previewRepeatX;
     previewRepeatYDisplay.value = previewRepeatY;
 
@@ -1279,6 +1284,9 @@ pickerFrame.querySelectorAll('.edge-grip').forEach(grip => {
     grip.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
+        // Take focus from the caption's numbers (Safari doesn't focus buttons on click), so
+        // the field for this side follows the drag
+        grip.focus({ preventScroll: true });
         grip.setPointerCapture(e.pointerId);
         pickerFrame.classList.add('is-dragging');
     });

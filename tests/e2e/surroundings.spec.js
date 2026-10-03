@@ -68,6 +68,38 @@ test.describe('Choosing surrounding stitches', () => {
     await expect(page.locator('#pickRight')).toHaveValue('4');
   });
 
+  test('the focused field follows a drag of its own side', async ({ page }) => {
+    await openPicker(page);
+    await expect(page.locator('#pickLeft')).toBeFocused();
+    const grip = await page.locator('#pickerFrame .edge-grip-left').boundingBox();
+    const canvas = await page.locator('#previewCanvas').boundingBox();
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(canvas.x + 2, grip.y + grip.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.locator('#pickLeft')).toHaveValue('4');
+  });
+
+  test('leaving after the chart grew holds the preview to its new limit', async ({ page }) => {
+    // 25 stitches allows up to 6 repeats
+    await page.locator('#gridWidthDisplay').fill('25');
+    await page.locator('#gridWidthDisplay').press('Enter');
+    await page.locator('#previewRepeatXDisplay').fill('5');
+    await page.locator('#previewRepeatXDisplay').press('Enter');
+    await page.locator('#previewRepeatYDisplay').fill('5');
+    await page.locator('#previewRepeatYDisplay').press('Enter');
+
+    await openPicker(page);
+    // 45 stitches still fits a 3 x 3 preview, but allows no more than 3 repeats
+    await page.locator('#gridWidthDisplay').fill('45');
+    await page.locator('#gridWidthDisplay').press('Enter');
+    await expect(page.locator('#pickerCaptionLine')).toBeVisible();
+    await page.locator('#visualSelectionCancelBtn').click();
+
+    await expect(page.locator('#previewRepeatXDisplay')).toHaveValue('3');
+    await expect(page.locator('#previewRepeatYDisplay')).toHaveValue('3');
+  });
+
   test('Escape in a field cancels and returns focus to Download', async ({ page }) => {
     await openPicker(page);
     await page.keyboard.press('Escape');
