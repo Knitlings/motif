@@ -231,33 +231,6 @@
     width: 100%;
 }
 
-.choice {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font: var(--text-ui);
-    cursor: pointer;
-}
-
-/* Radio: a drawn 14px circle that fills with ink, with a surface inset */
-input[type="radio"].choice-input {
-    appearance: none;
-    -webkit-appearance: none;
-    margin: 0;
-    width: 14px;
-    height: 14px;
-    border: var(--line-rule) solid var(--ink);
-    border-radius: 50%;
-    background: var(--surface);
-    flex-shrink: 0;
-    cursor: pointer;
-}
-
-input[type="radio"].choice-input:checked {
-    background: var(--ink);
-    box-shadow: inset 0 0 0 3px var(--surface);
-}
-
 /* "↑ Contents" links only on the narrow layout, where the contents scroll away */
 .to-contents {
     display: none;

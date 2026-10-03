@@ -130,7 +130,8 @@
 .canvas-wrapper {
     position: relative;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* Edge grip: a tab at the middle of each edge, straddling it */

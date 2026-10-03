@@ -26,16 +26,17 @@ import {
     handleCanvasError,
     handleJSONError,
     setupGlobalErrorHandler,
+    setErrorPresenter,
     ErrorType
 } from './utils/errorHandler.js';
 import { checkBrowserCompatibility } from './utils/featureDetection.js';
 import { createPaletteManager } from './ui/palette.js';
-import { setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
 import { applyDimensionInput } from './ui/handlers.js';
 import { setupTooltips } from './ui/tooltip.js';
 import { createKey } from './ui/key.js';
+import { createNotes, showDialogNote } from './ui/notes.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -85,6 +86,13 @@ let customPalette = null; // Array of color strings when custom palette exists
 // Browser capabilities (set during initialization)
 let browserCapabilities = null;
 let key = null; // The key under the chart, created at initialisation
+
+// Status, warning and error notes in the top bar
+const notes = createNotes({
+    slot: document.getElementById('noteSlot'),
+    announce: (text) => announceToScreenReader(text)
+});
+setErrorPresenter((message) => notes.error(message));
 
 // ============================================
 // STATE HELPERS
@@ -145,21 +153,35 @@ function announceToScreenReader(message) {
     }
 }
 
-// Show loading overlay
-function showLoading(message = 'Processing...') {
-    const overlay = document.getElementById('loadingOverlay');
-    const messageEl = document.getElementById('loadingMessage');
-    if (overlay && messageEl) {
-        messageEl.textContent = message;
-        overlay.style.display = 'flex';
-    }
+/**
+ * Open a dialog modally. Focus goes to its first control, Escape closes it, and focus
+ * returns to the control that opened it.
+ * @param {HTMLDialogElement} dialog
+ */
+function openDialog(dialog) {
+    const opener = document.activeElement;
+    dialog.querySelectorAll('.dialog-note').forEach(note => note.replaceChildren());
+    dialog.showModal();
+    dialog.addEventListener('close', () => {
+        if (opener && opener.isConnected) opener.focus();
+    }, { once: true });
 }
 
-// Hide loading overlay
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
+/**
+ * Show a button as working on its own task: unavailable, reading "Preparing…"
+ * @param {HTMLButtonElement} button
+ * @param {boolean} busy
+ */
+function setBusy(button, busy) {
+    if (busy) {
+        button.dataset.label = button.textContent;
+        button.textContent = 'Preparing…';
+        button.setAttribute('aria-disabled', 'true');
+        button.classList.add('is-busy');
+    } else {
+        button.textContent = button.dataset.label || button.textContent;
+        button.removeAttribute('aria-disabled');
+        button.classList.remove('is-busy');
     }
 }
 
@@ -240,30 +262,29 @@ function scheduleCanvasUpdate() {
 
 function showConfirmDialog(title, message, confirmText, onConfirm) {
     const dialog = document.getElementById('mergeDialog');
-    const titleEl = document.getElementById('mergeDialogTitle');
-    const text = document.getElementById('mergeDialogText');
+    document.getElementById('mergeDialogTitle').textContent = title;
+    document.getElementById('mergeDialogText').textContent = message;
     const confirmBtn = document.getElementById('mergeConfirmBtn');
     const cancelBtn = document.getElementById('mergeCancelBtn');
-
-    titleEl.textContent = title;
-    text.textContent = message;
     confirmBtn.textContent = confirmText;
-    dialog.style.display = 'flex';
 
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    const newCancelBtn = cancelBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    let confirmed = false;
+    const onConfirmClick = () => {
+        confirmed = true;
+        dialog.close();
+    };
+    const onCancelClick = () => dialog.close();
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
 
-    newConfirmBtn.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        onConfirm(true);
-    });
+    // Escape, Cancel and the action all end in close
+    dialog.addEventListener('close', () => {
+        confirmBtn.removeEventListener('click', onConfirmClick);
+        cancelBtn.removeEventListener('click', onCancelClick);
+        onConfirm(confirmed);
+    }, { once: true });
 
-    newCancelBtn.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        onConfirm(false);
-    });
+    openDialog(dialog);
 }
 
 function showDeleteColorDialog(colorIndex) {
@@ -280,10 +301,10 @@ function showDeleteColorDialog(colorIndex) {
     }
 
     const message = colorIsUsed
-        ? `All cells using this color will be cleared to background.`
-        : `This color will be removed from your palette.`;
+        ? 'All cells using this colour will be cleared to background.'
+        : 'This colour will be removed from your palette.';
 
-    showConfirmDialog('Remove color?', message, 'Remove', (confirmed) => {
+    showConfirmDialog('Remove colour?', message, 'Remove', (confirmed) => {
         if (confirmed) {
             deletePatternColor(colorIndex);
         }
@@ -433,20 +454,11 @@ function getMaxPreviewRepeat(width, height) {
 }
 
 /**
- * Show toast notification over preview canvas
+ * Report that the preview's repeats were reduced
  * @param {string} message - Message to display
  */
 function showPreviewToast(message) {
-    const toast = document.getElementById('previewToast');
-    if (!toast) return;
-
-    toast.textContent = message;
-    toast.classList.add('show');
-
-    // Hide after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    notes.status(message);
 }
 
 /**
@@ -728,15 +740,6 @@ document.getElementById('clearBtn').onclick = () => {
     );
 };
 
-// Palette controls - dropdown menu items
-document.querySelectorAll('.palette-option').forEach(option => {
-    option.addEventListener('click', (e) => {
-        e.preventDefault();
-        const paletteId = e.target.dataset.palette;
-        switchPalette(paletteId);
-    });
-});
-
 
 // Share modal controls
 const shareModal = document.getElementById('shareModal');
@@ -748,30 +751,16 @@ const shareWarning = document.getElementById('shareWarning');
 
 // Open share modal and generate share URL
 shareBtn.onclick = async () => {
-    showLoading('Generating share link...');
-
     const result = await generateShareUrl(getState());
-
-    hideLoading();
 
     if (!result.success) {
         showError(result.error || 'Failed to generate share URL');
         return;
     }
 
-    // Show modal
-    shareModal.style.display = 'flex';
-
-    // Populate URL
     shareUrlInput.value = result.url;
-
-    // Show warning if present
-    if (result.warning) {
-        shareWarning.textContent = result.warning;
-        shareWarning.style.display = 'block';
-    } else {
-        shareWarning.style.display = 'none';
-    }
+    openDialog(shareModal);
+    showDialogNote(shareWarning, 'warning', result.warning || null);
 
     // Select URL for easy copying
     shareUrlInput.select();
@@ -780,36 +769,20 @@ shareBtn.onclick = async () => {
 
 // Copy share URL to clipboard
 copyShareUrlBtn.onclick = async () => {
-    const url = shareUrlInput.value;
-    const success = await copyToClipboard(url);
+    const success = await copyToClipboard(shareUrlInput.value);
 
     if (success) {
-        // Visual feedback
         copyShareUrlBtn.textContent = 'Copied!';
-        copyShareUrlBtn.classList.add('btn-success');
         announceToScreenReader('Share URL copied to clipboard');
-
-        // Reset button after delay
         setTimeout(() => {
             copyShareUrlBtn.textContent = 'Copy to clipboard';
-            copyShareUrlBtn.classList.remove('btn-success');
         }, 2000);
     } else {
         showError('Failed to copy to clipboard. Please copy manually.');
     }
 };
 
-// Close share modal
-shareModalCancelBtn.onclick = () => {
-    shareModal.style.display = 'none';
-};
-
-// Close modal on backdrop click
-shareModal.onclick = (e) => {
-    if (e.target === shareModal) {
-        shareModal.style.display = 'none';
-    }
-};
+shareModalCancelBtn.onclick = () => shareModal.close();
 
 // Download modal controls
 const downloadModal = document.getElementById('downloadModal');
@@ -825,13 +798,9 @@ sourceRadios.forEach(radio => {
         if (radio.value === 'pattern-with-context' && radio.checked) {
             // Only show form controls if pattern is too large for visual selection (3x3 preview)
             const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
-            if (maxRepeat < 3) {
-                contextControls.style.display = 'flex';
-            } else {
-                contextControls.style.display = 'none';
-            }
+            contextControls.hidden = maxRepeat >= 3;
         } else {
-            contextControls.style.display = 'none';
+            contextControls.hidden = true;
         }
         updateSizePreview();
     });
@@ -849,10 +818,8 @@ const currentSizeLabel = document.getElementById('currentSizeLabel');
 const formatRadios = document.querySelectorAll('input[name="format"]');
 formatRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-        if (radio.value === 'png' && radio.checked) {
-            sizeControls.style.display = 'block';
-        } else {
-            sizeControls.style.display = 'none';
+        if (radio.checked) {
+            sizeControls.hidden = radio.value !== 'png';
         }
     });
 });
@@ -861,11 +828,9 @@ formatRadios.forEach(radio => {
 const sizeRadios = document.querySelectorAll('input[name="size"]');
 sizeRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-        if (radio.value === 'custom' && radio.checked) {
-            customSizeControls.style.display = 'block';
+        if (radio.checked) {
+            customSizeControls.hidden = radio.value !== 'custom';
             updateSizePreview();
-        } else {
-            customSizeControls.style.display = 'none';
         }
     });
 });
@@ -1018,7 +983,7 @@ contextInputs.forEach(id => {
 
 // Open download modal
 downloadBtn.onclick = () => {
-    downloadModal.style.display = 'flex';
+    openDialog(downloadModal);
 
     // Update context input max values based on current pattern size
     const contextLeftInput = document.getElementById('contextLeft');
@@ -1034,12 +999,7 @@ downloadBtn.onclick = () => {
     // Update context controls visibility based on current pattern size
     const patternWithContextRadio = document.querySelector('input[name="source"][value="pattern-with-context"]');
     if (patternWithContextRadio && patternWithContextRadio.checked) {
-        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
-        if (maxRepeat < 3) {
-            contextControls.style.display = 'flex';
-        } else {
-            contextControls.style.display = 'none';
-        }
+        contextControls.hidden = getMaxPreviewRepeat(gridWidth, gridHeight) >= 3;
     }
 
     // Update size controls
@@ -1047,33 +1007,13 @@ downloadBtn.onclick = () => {
     updateCurrentDisplayLabel();
 };
 
-// Close download modal
-downloadModalCancelBtn.onclick = () => {
-    downloadModal.style.display = 'none';
-};
-
-// Close modal on backdrop click
-downloadModal.onclick = (e) => {
-    if (e.target === downloadModal) {
-        downloadModal.style.display = 'none';
-    }
-};
-
-// Close modals on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        if (shareModal.style.display === 'flex') {
-            shareModal.style.display = 'none';
-        }
-        if (downloadModal.style.display === 'flex') {
-            downloadModal.style.display = 'none';
-        }
-    }
-});
+downloadModalCancelBtn.onclick = () => downloadModal.close();
 
 // Handle download form submission
+const downloadSubmitBtn = document.getElementById('downloadModalSubmitBtn');
 downloadForm.onsubmit = async (e) => {
     e.preventDefault();
+    if (downloadSubmitBtn.getAttribute('aria-disabled') === 'true') return;
 
     const formData = new FormData(downloadForm);
     const source = formData.get('source');
@@ -1081,83 +1021,59 @@ downloadForm.onsubmit = async (e) => {
     const includeRowCounts = formData.get('rowCounts') === 'on';
     const sizeMode = formData.get('size');
     const customCellSize = sizeMode === 'custom' ? parseInt(cellSizeInput.value) : null;
+    const pickOnPreview = source === 'pattern-with-context' && getMaxPreviewRepeat(gridWidth, gridHeight) >= 3;
 
-    // Close modal
-    downloadModal.style.display = 'none';
+    // Surrounding stitches are chosen on the preview next
+    if (pickOnPreview) {
+        downloadModal.close();
+        enterVisualContextSelection(format, includeRowCounts, customCellSize);
+        return;
+    }
 
-    // If pattern-with-context is selected, check if we can use visual selection
-    if (source === 'pattern-with-context') {
-        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    // The button shows the work; the dialog stays until the file is ready
+    setBusy(downloadSubmitBtn, true);
+    try {
+        // Let the button repaint before the work blocks
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Use visual selection if pattern supports 3x3 preview
-        if (maxRepeat >= 3) {
-            enterVisualContextSelection(format, includeRowCounts, customCellSize);
-            return;
-        } else {
-            // Pattern too large - use form values
+        let blob, filename;
+        if (source === 'pattern-with-context') {
+            // Pattern too large for a 3 x 3 preview: the dialog's fields
             const context = {
                 left: parseInt(formData.get('contextLeft')) || 0,
                 right: parseInt(formData.get('contextRight')) || 0,
                 top: parseInt(formData.get('contextTop')) || 0,
                 bottom: parseInt(formData.get('contextBottom')) || 0
             };
-
-            try {
-                showLoading(`Exporting ${format.toUpperCase()}...`);
-                await new Promise(resolve => setTimeout(resolve, 50));
-
-                let blob, filename;
-                if (format === 'svg') {
-                    blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
-                } else {
-                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
-                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
-                }
-
-                downloadFile(blob, filename);
-                announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
-            } catch (error) {
-                handleFileError(error, `${format.toUpperCase()} export`);
-            } finally {
-                hideLoading();
+            if (format === 'svg') {
+                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+            } else {
+                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
             }
-            return;
-        }
-    }
-
-    try {
-        showLoading(`Exporting ${format.toUpperCase()}...`);
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        let blob;
-        let filename;
-
-        if (source === 'pattern') {
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`;
+        } else if (source === 'pattern') {
             if (format === 'svg') {
                 blob = exportSvg(getState(), includeRowCounts);
-                filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
             } else {
                 blob = await exportPng(getState(), includeRowCounts, customCellSize);
-                filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
             }
+            filename = `motif-pattern-${gridWidth}x${gridHeight}.${format}`;
         } else {
-            // Preview export
             if (format === 'svg') {
                 blob = exportPreviewSvg(getState(), includeRowCounts);
-                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
             } else {
                 blob = await exportPreviewPng(getState(), includeRowCounts, customCellSize);
-                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
             }
+            filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.${format}`;
         }
 
         downloadFile(blob, filename);
         announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+        setBusy(downloadSubmitBtn, false);
+        downloadModal.close();
     } catch (error) {
+        setBusy(downloadSubmitBtn, false);
         handleFileError(error, `${format.toUpperCase()} export`);
-    } finally {
-        hideLoading();
     }
 };
 
@@ -1342,12 +1258,12 @@ async function downloadWithContext() {
     const includeRowCounts = selectionIncludeRowCounts;
     const customCellSize = selectionCustomCellSize;
     const context = { ...contextSelection };
+    const button = document.getElementById('visualSelectionDownloadBtn');
+    if (button.getAttribute('aria-disabled') === 'true') return;
 
-    // Exit visual selection mode
-    exitVisualContextSelection();
-
+    setBusy(button, true);
     try {
-        showLoading(`Exporting ${format.toUpperCase()}...`);
+        // Let the button repaint before the work blocks
         await new Promise(resolve => setTimeout(resolve, 50));
 
         let blob;
@@ -1366,7 +1282,8 @@ async function downloadWithContext() {
     } catch (error) {
         handleFileError(error, `${format.toUpperCase()} export`);
     } finally {
-        hideLoading();
+        setBusy(button, false);
+        exitVisualContextSelection();
     }
 }
 
@@ -1509,8 +1426,7 @@ document.addEventListener('keydown', (e) => {
 // END VISUAL CONTEXT SELECTION
 // ============================================
 
-document.getElementById('navbarExportJsonBtn').onclick = (e) => {
-    e.preventDefault();
+document.getElementById('navbarExportJsonBtn').onclick = () => {
     try {
         const blob = exportJson(getState());
         downloadFile(blob, `motif-${gridWidth}x${gridHeight}.json`);
@@ -1518,6 +1434,11 @@ document.getElementById('navbarExportJsonBtn').onclick = (e) => {
     } catch (error) {
         handleFileError(error, 'JSON export');
     }
+};
+
+// Import JSON: the menu row opens the file picker
+document.getElementById('navbarImportJsonBtn').onclick = () => {
+    document.getElementById('navbarImportJsonInput').click();
 };
 
 document.getElementById('navbarImportJsonInput').onchange = (e) => {
@@ -1540,81 +1461,74 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
         return;
     }
 
-    showLoading('Importing pattern...');
-
-    // Use setTimeout to allow loading UI to render
     setTimeout(() => {
         importJson(
             file,
             (importedData) => {
-                try {
-                    // Validate imported data
-                    const dataValidation = validateImportData(importedData);
-                    if (!dataValidation.valid) {
-                        showError(dataValidation.error, ErrorType.VALIDATION);
-                        return;
-                    }
-
-                    gridWidth = importedData.gridWidth;
-                    gridHeight = importedData.gridHeight;
-                    aspectRatio = importedData.aspectRatio;
-                    grid = importedData.grid;
-                    backgroundColor = importedData.backgroundColor;
-                    patternColors = importedData.patternColors;
-
-                    if (importedData.previewRepeatX) {
-                        previewRepeatX = importedData.previewRepeatX;
-                    }
-                    if (importedData.previewRepeatY) {
-                        previewRepeatY = importedData.previewRepeatY;
-                    }
-
-                    // Import palette settings
-                    if (importedData.activePaletteId) {
-                        activePaletteId = importedData.activePaletteId;
-                    }
-                    if (importedData.customPalette) {
-                        customPalette = importedData.customPalette;
-                    }
-
-                    if (activePatternIndex >= patternColors.length) {
-                        activePatternIndex = 0;
-                    }
-
-                    // Ensure preview repeats don't exceed max for imported pattern size
-                    const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
-                    if (previewRepeatX > maxRepeatImport) {
-                        previewRepeatX = maxRepeatImport;
-                    }
-                    if (previewRepeatY > maxRepeatImport) {
-                        previewRepeatY = maxRepeatImport;
-                    }
-
-                    // Update all UI elements
-                    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
-                    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-                    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
-                    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
-
-                    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-                    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
-                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
-
-                                    renderKey();
-                    updatePaletteUI();
-                    renderKey();
-
-                    saveToHistory();
-                    updateCanvas();
-                    updatePreviewRepeatStatus();
-                    announceToScreenReader('Pattern imported successfully');
-                } finally {
-                    hideLoading();
+                // Validate imported data
+                const dataValidation = validateImportData(importedData);
+                if (!dataValidation.valid) {
+                    showError(dataValidation.error, ErrorType.VALIDATION);
+                    return;
                 }
+
+                gridWidth = importedData.gridWidth;
+                gridHeight = importedData.gridHeight;
+                aspectRatio = importedData.aspectRatio;
+                grid = importedData.grid;
+                backgroundColor = importedData.backgroundColor;
+                patternColors = importedData.patternColors;
+
+                if (importedData.previewRepeatX) {
+                    previewRepeatX = importedData.previewRepeatX;
+                }
+                if (importedData.previewRepeatY) {
+                    previewRepeatY = importedData.previewRepeatY;
+                }
+
+                // Import palette settings
+                if (importedData.activePaletteId) {
+                    activePaletteId = importedData.activePaletteId;
+                }
+                if (importedData.customPalette) {
+                    customPalette = importedData.customPalette;
+                }
+
+                if (activePatternIndex >= patternColors.length) {
+                    activePatternIndex = 0;
+                }
+
+                // Ensure preview repeats don't exceed max for imported pattern size
+                const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
+                if (previewRepeatX > maxRepeatImport) {
+                    previewRepeatX = maxRepeatImport;
+                }
+                if (previewRepeatY > maxRepeatImport) {
+                    previewRepeatY = maxRepeatImport;
+                }
+
+                // Update all UI elements
+                const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+                const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+                if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+                if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
+
+                const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+                const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+                if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+                if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
+
+                updatePaletteUI();
+                renderKey();
+                customRatioChosen = false;
+                syncAspectRatioControls();
+
+                saveToHistory();
+                updateCanvas();
+                updatePreviewRepeatStatus();
+                announceToScreenReader('Pattern imported successfully');
             },
             (errorMessage) => {
-                hideLoading();
                 showError(errorMessage, ErrorType.FILE_IO);
             }
         );
@@ -1745,6 +1659,8 @@ function updateUIDisplaysForSharedPattern() {
     // Re-render UI with shared pattern data
     updatePaletteUI();
     renderKey();
+    customRatioChosen = false;
+    syncAspectRatioControls();
 
     // Re-initialize grid with shared data
     initGrid();
@@ -1871,9 +1787,6 @@ const paletteManager = createPaletteManager({
 // Expose palette functions globally for button handlers
 const switchPalette = paletteManager.switchPalette;
 const updatePaletteUI = paletteManager.updatePaletteUI;
-
-// Initialize dropdowns
-setupDropdowns();
 
 // Initialize keyboard shortcuts
 setupKeyboardShortcuts({
@@ -2047,122 +1960,95 @@ renderKey();
 setupHamburgerMenu();
 setupTooltips();
 
-// Aspect Ratio controls
+// What this browser can't do, said where it matters
+if (!browserCapabilities.localStorage) {
+    notes.warning("Motif can't save your work in this browser. Export the pattern from the Menu to keep it.");
+}
+if (!browserCapabilities.fileReader) {
+    document.getElementById('navbarImportJsonBtn').disabled = true;
+    document.getElementById('importUnavailable').hidden = false;
+}
+
+// Aspect Ratio controls (in the Menu: presets, or Custom with a ratio field and slider)
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
 const ratioPresetButtons = document.querySelectorAll('.ratio-preset-btn');
 const customRatioControls = document.getElementById('customRatioControls');
 const aspectRatioSlider = document.getElementById('aspectRatio2');
+const aspectRatioValue = document.getElementById('cellAspectRatioValue');
+let customRatioChosen = false;
 
-const switchToCustomRatio = () => {
-    ratioPresetButtons.forEach(b => b.classList.remove('active'));
-    const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-    if (customBtn) {
-        customBtn.classList.add('active');
-        if (customRatioControls) customRatioControls.style.display = 'block';
+/**
+ * Show the current aspect ratio in the Menu: the chosen preset, the ratio field and
+ * slider, and the value on the "Cell aspect ratio" row
+ */
+function syncAspectRatioControls({ updateField = true } = {}) {
+    let preset = null;
+    if (!customRatioChosen) {
+        ratioPresetButtons.forEach(btn => {
+            const ratio = btn.dataset.ratio;
+            if (ratio !== 'custom' && Math.abs(aspectRatio - parseFloat(ratio)) < 0.01) preset = btn;
+        });
     }
-};
+    const chosen = preset || document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
+    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn === chosen)));
+
+    const isCustom = chosen.dataset.ratio === 'custom';
+    customRatioControls.hidden = !isCustom;
+    aspectRatioSlider.value = aspectRatio;
+    if (updateField) ratioDisplay2.value = Utils.aspectRatioToDisplay(aspectRatio);
+    aspectRatioValue.textContent = isCustom ? `Custom ${Utils.aspectRatioToDisplay(aspectRatio)}` : chosen.textContent;
+}
+
+function setAspectRatio(value, options) {
+    aspectRatio = Utils.clamp(value, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
+    syncAspectRatioControls(options);
+    updateCanvas();
+    saveToLocalStorage();
+}
 
 ratioPresetButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-        const ratio = btn.getAttribute('data-ratio');
-
-        ratioPresetButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        if (ratio !== 'custom') {
-            const ratioValue = parseFloat(ratio);
-            aspectRatio = ratioValue;
-            if (aspectRatioSlider) aspectRatioSlider.value = ratioValue;
-            if (ratioDisplay2) ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
-            if (customRatioControls) customRatioControls.style.display = 'none';
-            updateCanvas();
-            saveToLocalStorage();
+        const ratio = btn.dataset.ratio;
+        customRatioChosen = ratio === 'custom';
+        if (customRatioChosen) {
+            syncAspectRatioControls();
+            ratioDisplay2.focus();
+            ratioDisplay2.select();
         } else {
-            if (customRatioControls) customRatioControls.style.display = 'block';
+            setAspectRatio(parseFloat(ratio));
         }
     });
 });
 
-if (aspectRatioSlider) {
-    aspectRatioSlider.oninput = (e) => {
-        switchToCustomRatio();
-        aspectRatio = parseFloat(e.target.value);
-        if (ratioDisplay2) ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-        updateCanvas();
-        saveToLocalStorage();
-    };
-}
+aspectRatioSlider.addEventListener('input', () => {
+    customRatioChosen = true;
+    setAspectRatio(parseFloat(aspectRatioSlider.value));
+});
 
-if (ratioDisplay2) {
-    ratioDisplay2.addEventListener('focus', () => {
-        switchToCustomRatio();
-    });
+// Typing applies valid ratios at once; leaving the field tidies what was typed
+ratioDisplay2.addEventListener('input', () => {
+    const val = Utils.displayToAspectRatio(ratioDisplay2.value.trim());
+    if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
+        customRatioChosen = true;
+        setAspectRatio(val, { updateField: false });
+    }
+});
 
-    ratioDisplay2.addEventListener('input', (e) => {
-        const inputText = e.target.textContent.trim();
-        const val = Utils.displayToAspectRatio(inputText);
-        if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
-            aspectRatio = val;
-            if (aspectRatioSlider) aspectRatioSlider.value = val;
-            updateCanvas();
-            saveToLocalStorage();
-        }
-    });
+ratioDisplay2.addEventListener('change', () => {
+    const val = Utils.displayToAspectRatio(ratioDisplay2.value.trim());
+    setAspectRatio(val === null ? aspectRatio : val);
+});
 
-    ratioDisplay2.addEventListener('blur', (e) => {
-        const inputText = e.target.textContent.trim();
-        let val = Utils.displayToAspectRatio(inputText);
+ratioDisplay2.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        ratioDisplay2.dispatchEvent(new Event('change'));
+    }
+});
 
-        if (val === null) {
-            val = CONFIG.DEFAULT_ASPECT_RATIO;
-        }
-
-        val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
-
-        aspectRatio = val;
-        e.target.textContent = Utils.aspectRatioToDisplay(val);
-        if (aspectRatioSlider) aspectRatioSlider.value = val;
-        updateCanvas();
-        saveToLocalStorage();
-    });
-
-    ratioDisplay2.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            e.target.blur();
-        }
-    });
-
-    // Initialize button state and display based on current aspect ratio
-    (() => {
-        const currentRatio = aspectRatio;
-        let matchedPreset = false;
-
-        ratioPresetButtons.forEach(btn => {
-            const ratio = btn.getAttribute('data-ratio');
-            if (ratio !== 'custom') {
-                const ratioValue = parseFloat(ratio);
-                if (Math.abs(currentRatio - ratioValue) < 0.01) {
-                    btn.classList.add('active');
-                    if (customRatioControls) customRatioControls.style.display = 'none';
-                    matchedPreset = true;
-                } else {
-                    btn.classList.remove('active');
-                }
-            }
-        });
-
-        if (!matchedPreset) {
-            const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-            if (customBtn) {
-                customBtn.classList.add('active');
-                if (customRatioControls) customRatioControls.style.display = 'block';
-            }
-        }
-
-        ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-    })();
-}
+customRatioChosen = !Array.from(ratioPresetButtons).some(btn =>
+    btn.dataset.ratio !== 'custom' && Math.abs(aspectRatio - parseFloat(btn.dataset.ratio)) < 0.01);
+syncAspectRatioControls();
 
 // Inline Grid Dimension Controls
 const gridWidthDisplay = document.getElementById('gridWidthDisplay');
@@ -2212,23 +2098,14 @@ setupCaptionField(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONF
 setupCaptionField(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
 setupCaptionField(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
 
-// Setup toggle for cell aspect ratio section
+// The "Cell aspect ratio" row opens its options inside the Menu
 const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
 const cellAspectRatioToggle = document.getElementById('cellAspectRatioToggle');
-if (cellAspectRatioToggle && cellAspectRatioSection) {
-    cellAspectRatioToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent hamburger menu from closing
-        const isExpanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
-        cellAspectRatioToggle.setAttribute('aria-expanded', !isExpanded);
-        cellAspectRatioSection.style.display = isExpanded ? 'none' : 'block';
-    });
-
-    // Prevent clicks inside the section from closing the hamburger menu
-    cellAspectRatioSection.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
+cellAspectRatioToggle.addEventListener('click', () => {
+    const expanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
+    cellAspectRatioToggle.setAttribute('aria-expanded', String(!expanded));
+    cellAspectRatioSection.hidden = expanded;
+});
 
 // Window resize handler
 // Debounced resize handler to recreate navbar buttons when viewport changes
@@ -2433,35 +2310,52 @@ document.addEventListener('touchcancel', () => {
 // Keyboard shortcuts - Moved to src/ui/keyboard.js
 
 /**
- * Set up hamburger menu toggle
+ * The Menu: a button that shows a list of rows. Arrow keys move between the rows,
+ * Escape closes it and returns to the button.
  */
 function setupHamburgerMenu() {
-    const hamburgerBtn = document.getElementById('navbarHamburgerBtn');
-    const hamburgerMenu = document.getElementById('navbarHamburgerMenu');
+    const menuBtn = document.getElementById('navbarHamburgerBtn');
+    const menu = document.getElementById('navbarHamburgerMenu');
 
-    if (!hamburgerBtn || !hamburgerMenu) return;
+    const rows = () => [...menu.querySelectorAll('.menu-row, .menu-custom input')]
+        .filter(el => !el.disabled && el.offsetParent !== null);
 
-    hamburgerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = hamburgerMenu.classList.toggle('open');
-        hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    });
+    function setOpen(open, { focusButton = false } = {}) {
+        menu.classList.toggle('open', open);
+        menuBtn.setAttribute('aria-expanded', String(open));
+        if (open) rows()[0]?.focus();
+        if (!open && focusButton) menuBtn.focus();
+    }
 
-    // Close menu when clicking menu items (but not expandable ones)
-    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item:not(.navbar-hamburger-expandable)');
-    menuItems.forEach(item => {
-        item.addEventListener('click', () => {
-            hamburgerMenu.classList.remove('open');
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-        });
-    });
+    menuBtn.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
 
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!hamburgerMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
-            hamburgerMenu.classList.remove('open');
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
+    menu.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            setOpen(false, { focusButton: true });
+            return;
         }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        // Up and down inside the ratio field and slider belong to them
+        if (e.target.matches('.menu-custom input')) return;
+        e.preventDefault();
+        const items = rows();
+        const at = items.indexOf(document.activeElement);
+        const next = e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+        items[next].focus();
+    });
+
+    // Actions and destinations close the menu; the aspect ratio row and its options don't
+    menu.querySelectorAll('#navbarImportJsonBtn, #navbarExportJsonBtn, a.menu-row').forEach(item => {
+        item.addEventListener('click', () => setOpen(false));
+    });
+
+    // Close when clicking or tabbing outside
+    document.addEventListener('pointerdown', (e) => {
+        if (!menu.contains(e.target) && !menuBtn.contains(e.target)) setOpen(false);
+    });
+    menu.addEventListener('focusout', (e) => {
+        if (e.relatedTarget && !menu.contains(e.relatedTarget) && e.relatedTarget !== menuBtn) setOpen(false);
     });
 }
 

@@ -15,6 +15,17 @@ export const ErrorType = {
     UNKNOWN: 'unknown'
 };
 
+// Where errors are shown; set once the notes are ready (see setErrorPresenter)
+let presentError = null;
+
+/**
+ * Choose how errors reach the person: Motif shows them as error notes
+ * @param {Function} presenter - Called with the message
+ */
+export function setErrorPresenter(presenter) {
+    presentError = presenter;
+}
+
 /**
  * Display an error message to the user
  * @param {string} message - The error message to display
@@ -22,37 +33,9 @@ export const ErrorType = {
  */
 export function showError(message, type = ErrorType.UNKNOWN) {
     console.error(`[${type.toUpperCase()}]`, message);
-
-    // Show error in the confirmation dialog
-    const dialog = document.getElementById('mergeDialog');
-    const titleEl = document.getElementById('mergeDialogTitle');
-    const textEl = document.getElementById('mergeDialogText');
-    const confirmBtn = document.getElementById('mergeConfirmBtn');
-    const cancelBtn = document.getElementById('mergeCancelBtn');
-
-    if (!dialog || !titleEl || !textEl || !confirmBtn || !cancelBtn) {
-        // Fallback to alert if dialog elements aren't available
-        alert(message);
-        return;
+    if (presentError) {
+        presentError(message);
     }
-
-    titleEl.textContent = 'Error';
-    textEl.textContent = message;
-    confirmBtn.style.display = 'none';
-    cancelBtn.textContent = 'OK';
-    dialog.style.display = 'flex';
-
-    // Focus the OK button for accessibility
-    setTimeout(() => cancelBtn.focus(), 100);
-
-    const closeHandler = () => {
-        dialog.style.display = 'none';
-        confirmBtn.style.display = '';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.removeEventListener('click', closeHandler);
-    };
-
-    cancelBtn.addEventListener('click', closeHandler);
 }
 
 /**

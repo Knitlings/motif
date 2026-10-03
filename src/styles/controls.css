@@ -1,0 +1,472 @@
+/* ============================================
+   CONTROLS
+   Button, Field, Choice, Slider, Menu, Dialog and Note from the Knitlings design system
+   ============================================ */
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* ---------- Button: square, outlined in ink, no fill ---------- */
+
+.button {
+    padding: var(--space-2) 14px;
+    font: var(--text-ui);
+    color: var(--ink);
+    background: none;
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.button:hover {
+    background: var(--ground);
+}
+
+/* Unavailable, or busy with its own work ("Preparing…") */
+.button:disabled,
+.button[aria-disabled="true"] {
+    color: var(--ink-muted);
+    border-color: var(--rule);
+    background: none;
+    cursor: default;
+}
+
+/* ---------- Field: a caption-sized label above a square ink box ---------- */
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field label {
+    font: var(--text-caption);
+    color: var(--ink-secondary);
+}
+
+.field-input {
+    width: 100%;
+    min-width: 0;
+    padding: 7px 10px;
+    font: var(--text-ui);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.field-input[type="number"] {
+    text-align: right;
+}
+
+.field-input-short {
+    width: 56px;
+    flex-shrink: 0;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+/* ---------- Choice: a drawn 14px box that fills with ink (round for a radio) ---------- */
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font: var(--text-ui);
+    cursor: pointer;
+}
+
+input.choice-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin: 0;
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+input.choice-input[type="radio"] {
+    border-radius: 50%;
+}
+
+input.choice-input:checked {
+    background: var(--ink);
+    box-shadow: inset 0 0 0 3px var(--surface);
+}
+
+input.choice-input:disabled {
+    border-color: var(--rule);
+}
+
+.choice-row {
+    display: flex;
+    gap: var(--space-6);
+}
+
+/* ---------- Slider: a ruled line with a square ink marker, always with a field ---------- */
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font: var(--text-ui);
+}
+
+.slider-label,
+.slider-unit {
+    color: var(--ink-secondary);
+}
+
+.slider {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-grow: 1;
+    min-width: 0;
+    height: 20px;
+    margin: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+    height: 1px;
+    background: var(--ink);
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    background: var(--ink);
+    border: 0;
+    border-radius: 0;
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
+.slider::-moz-range-track {
+    height: 1px;
+    background: var(--ink);
+}
+
+.slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--ink);
+    border: 0;
+    border-radius: 0;
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* ---------- Menu: a framed list of rows under the Menu button ---------- */
+
+.menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: 300;
+    width: 240px;
+    background: var(--surface);
+    border: var(--line-rule) solid var(--frame);
+}
+
+.menu.open {
+    display: block;
+}
+
+.menu-group + .menu-group {
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.menu-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: var(--space-2) 14px;
+    font: var(--text-ui);
+    color: var(--ink);
+    text-align: left;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    border-radius: 0;
+}
+
+/* Destinations (About, Help) are links drawn as rows: ink, no underline */
+a.menu-row:hover {
+    color: var(--ink);
+}
+
+.menu-row + .menu-row,
+.menu-reason + .menu-row,
+.menu-section {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.menu-row:hover:not(:disabled) {
+    background: var(--ground);
+}
+
+.menu-row:focus-visible {
+    outline-offset: -2px;
+}
+
+.menu-row:disabled {
+    color: var(--ink-muted);
+    cursor: default;
+}
+
+.menu-reason {
+    padding: 0 14px var(--space-2);
+    font: var(--text-caption);
+    color: var(--ink-muted);
+}
+
+.menu-value {
+    color: var(--ink-secondary);
+    white-space: nowrap;
+}
+
+/* An option: the filled square marks the chosen one */
+.menu-option {
+    justify-content: flex-start;
+    padding-left: 22px;
+}
+
+.menu-option::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+}
+
+.menu-option[aria-pressed="true"] {
+    font-weight: 600;
+}
+
+.menu-option[aria-pressed="true"]::before {
+    background: var(--ink);
+}
+
+.menu-custom {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: var(--space-1);
+    padding: var(--space-2) 14px 12px 42px;
+    font: var(--text-ui);
+}
+
+.menu-custom-label {
+    color: var(--ink-secondary);
+}
+
+.menu-custom-range {
+    grid-column: 1 / -1;
+    font: var(--text-caption);
+    color: var(--ink-muted);
+}
+
+/* ---------- Dialog: a 2px ink frame, header and footer strips ---------- */
+
+.dialog {
+    margin: auto;
+    width: 420px;
+    max-width: calc(100% - 2 * var(--space-4));
+    max-height: calc(100% - 2 * var(--space-4));
+    padding: 0;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-emphasis) solid var(--ink);
+    border-radius: 0;
+}
+
+.dialog-wide {
+    width: 520px;
+}
+
+/* The page under the dialog lies under a paper veil */
+.dialog::backdrop {
+    background: rgb(255 255 255 / 0.7);
+}
+
+.dialog-title {
+    margin: 0;
+    padding: 12px var(--space-4);
+    font: var(--text-subhead);
+    border-bottom: var(--line-rule) solid var(--frame);
+}
+
+.dialog-body {
+    padding: 12px var(--space-4);
+    font: var(--text-ui);
+}
+
+.dialog-fieldset {
+    margin: 0;
+    padding: 12px var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border: 0;
+    border-bottom: var(--line-hairline) solid var(--rule);
+}
+
+.dialog-fieldset-plain {
+    border-bottom: 0;
+}
+
+.dialog-fieldset[hidden] {
+    display: none;
+}
+
+.dialog-fieldset legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    font: var(--text-caption);
+    color: var(--ink-secondary);
+}
+
+.dialog-suboptions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: var(--space-6);
+}
+
+.dialog-suboptions[hidden] {
+    display: none;
+}
+
+.dialog-detail {
+    font: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-muted);
+}
+
+.dialog-note:empty {
+    display: none;
+}
+
+.dialog-note {
+    padding: 0 var(--space-4) 12px;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: 9px var(--space-4);
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.share-url-row {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: 12px;
+}
+
+.share-url-row .button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* ---------- Note: a framed line reporting a status, a warning or an error ---------- */
+
+.note {
+    display: flex;
+    align-items: stretch;
+    max-width: 560px;
+    min-height: 36px;
+    font: var(--text-ui);
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+}
+
+.note-text {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) 10px;
+}
+
+.note-text svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.note-error {
+    color: var(--signal-error);
+    border: var(--line-emphasis) solid var(--signal-error);
+}
+
+.note-error .note-text {
+    padding: 7px 10px;
+}
+
+.note-dismiss {
+    flex-shrink: 0;
+    padding: 0 12px;
+    font: var(--text-ui);
+    color: inherit;
+    background: none;
+    border: 0;
+    border-left: var(--line-rule) solid currentColor;
+    border-radius: 0;
+}
+
+.note-dismiss:hover {
+    background: var(--ground);
+}
+
+/* ---------- The surroundings picker's actions (chunk 7 makes them word buttons) ---------- */
+
+.visual-selection-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: 12px;
+}
+
+/* ---------- Touch: 44px targets, 16px fields ---------- */
+
+@media (pointer: coarse) {
+    .button,
+    .menu-row,
+    .note-dismiss {
+        min-height: 44px;
+    }
+
+    .field-input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .note {
+        min-height: 44px;
+    }
+}

@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
     detectBrowserFeatures,
     showCriticalError,
-    showWarningBanner,
-    disableFeatureDependentUI,
     checkBrowserCompatibility
 } from '../../src/utils/featureDetection.js';
 
@@ -46,117 +44,21 @@ describe('Feature Detection', () => {
     });
 
     describe('showCriticalError', () => {
-        it('should create error overlay in DOM', () => {
+        it('replaces the page with a plain explanation', () => {
+            document.body.innerHTML = '<main class="plate">editor</main>';
             showCriticalError('canvas', 'Test error message');
 
-            const overlay = document.getElementById('feature-error-overlay');
-            expect(overlay).toBeTruthy();
-            expect(overlay.textContent).toContain('Test error message');
+            const page = document.getElementById('feature-error');
+            expect(page).toBeTruthy();
+            expect(page.querySelector('h1').textContent).toBe("Motif can't run in this browser");
+            expect(page.textContent).toContain('Test error message');
+            expect(document.querySelector('.plate')).toBeNull();
         });
 
-        it('should show warning icon in error overlay', () => {
+        it('keeps the wordmark in a top bar', () => {
             showCriticalError('canvas', 'Test error');
 
-            const overlay = document.getElementById('feature-error-overlay');
-            expect(overlay.textContent).toContain('⚠️');
-        });
-
-        it('should include browser recommendation', () => {
-            showCriticalError('canvas', 'Test error');
-
-            const overlay = document.getElementById('feature-error-overlay');
-            expect(overlay.textContent).toContain('modern browser');
-        });
-    });
-
-    describe('showWarningBanner', () => {
-        it('should create warning banner in DOM', () => {
-            showWarningBanner('localStorage', 'Test warning message');
-
-            const banner = document.getElementById('feature-warning-localStorage');
-            expect(banner).toBeTruthy();
-            expect(banner.textContent).toContain('Test warning message');
-        });
-
-        it('should include dismiss button', () => {
-            showWarningBanner('localStorage', 'Test warning');
-
-            const banner = document.getElementById('feature-warning-localStorage');
-            const dismissButton = banner.querySelector('button');
-            expect(dismissButton).toBeTruthy();
-            expect(dismissButton.textContent).toContain('Dismiss');
-        });
-
-        it('should be dismissible', () => {
-            showWarningBanner('localStorage', 'Test warning');
-
-            const banner = document.getElementById('feature-warning-localStorage');
-            const dismissButton = banner.querySelector('button');
-
-            // Manually trigger the onclick handler (happy-dom has issues with inline onclick)
-            banner.remove();
-
-            // Banner should be removed from DOM
-            expect(document.getElementById('feature-warning-localStorage')).toBeNull();
-        });
-
-        it('should add padding to body', () => {
-            const originalPadding = document.body.style.paddingTop;
-            showWarningBanner('localStorage', 'Test warning');
-
-            expect(document.body.style.paddingTop).toBe('60px');
-        });
-    });
-
-    describe('disableFeatureDependentUI', () => {
-        beforeEach(() => {
-            // Create test buttons
-            document.body.innerHTML = `
-                <button id="importJson" class="import-btn">Import JSON</button>
-                <button id="importPng" class="import-btn">Import PNG</button>
-            `;
-        });
-
-        it('should disable elements matching selector', () => {
-            disableFeatureDependentUI('.import-btn', 'Not supported');
-
-            const buttons = document.querySelectorAll('.import-btn');
-            buttons.forEach(btn => {
-                expect(btn.disabled).toBe(true);
-            });
-        });
-
-        it('should set title tooltip with reason', () => {
-            const reason = 'File import not supported';
-            disableFeatureDependentUI('.import-btn', reason);
-
-            const buttons = document.querySelectorAll('.import-btn');
-            buttons.forEach(btn => {
-                expect(btn.title).toBe(reason);
-            });
-        });
-
-        it('should apply visual disabled styles', () => {
-            disableFeatureDependentUI('.import-btn', 'Not supported');
-
-            const buttons = document.querySelectorAll('.import-btn');
-            buttons.forEach(btn => {
-                expect(btn.style.opacity).toBe('0.5');
-                expect(btn.style.cursor).toBe('not-allowed');
-            });
-        });
-
-        it('should prevent click events', () => {
-            const clickSpy = vi.fn();
-            const button = document.getElementById('importJson');
-            button.addEventListener('click', clickSpy);
-
-            disableFeatureDependentUI('#importJson', 'Not supported');
-
-            button.click();
-
-            // Click should be prevented
-            expect(clickSpy).not.toHaveBeenCalled();
+            expect(document.querySelector('header.top-bar .wordmark').textContent).toBe('Motif');
         });
     });
 
@@ -170,14 +72,10 @@ describe('Feature Detection', () => {
             expect(capabilities).toHaveProperty('fileReader');
         });
 
-        it('should not show warnings when all features available', () => {
+        it('should leave the page alone when all features are available', () => {
             checkBrowserCompatibility();
 
-            // No error overlay
-            expect(document.getElementById('feature-error-overlay')).toBeNull();
-
-            // No warning banner
-            expect(document.getElementById('feature-warning-localStorage')).toBeNull();
+            expect(document.getElementById('feature-error')).toBeNull();
         });
     });
 

@@ -57,7 +57,7 @@ export function showResizeBlocked(direction) {
 
     // Flash the border red
     container.style.transition = 'none';
-    container.style.outline = '3px solid var(--color-danger)';
+    container.style.outline = '3px solid var(--signal-error)';
     container.style.outlineOffset = '-3px';
 
     setTimeout(() => {
@@ -67,9 +67,9 @@ export function showResizeBlocked(direction) {
 
     // Flash the specific handle if it's an edge resize
     if (direction) {
-        const handle = document.querySelector(`.resize-handle-${direction}`);
+        const handle = document.querySelector(`.edge-grip-${direction}`);
         if (handle) {
-            handle.style.background = 'var(--color-danger)';
+            handle.style.background = 'var(--signal-error)';
             setTimeout(() => {
                 handle.style.background = '';
             }, 300);
