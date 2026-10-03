@@ -39,7 +39,7 @@ test.describe('Chart size and numbers', () => {
   test('a mid-size chart keeps its grips and is not framed', async ({ page }) => {
     await setSize(page, 40, 30);
     await expect(page.locator('#chartFrame')).not.toHaveClass(/is-framed/);
-    await expect(page.locator('.edge-grip-right')).toBeVisible();
+    await expect(page.locator('#chartFrame .edge-grip-right')).toBeVisible();
     await expect(page.locator('#plate')).toHaveClass(/is-stacked/);
   });
 
@@ -49,7 +49,7 @@ test.describe('Chart size and numbers', () => {
     await expect(frame).toHaveClass(/is-framed/);
     await expect(frame).toHaveAttribute('tabindex', '0');
     await expect(frame).toHaveAccessibleName(/scrolls in both directions/);
-    await expect(page.locator('.edge-grip-right')).toBeHidden();
+    await expect(page.locator('#chartFrame .edge-grip-right')).toBeHidden();
 
     // Squares stay at least 20px, and the frame fits the page
     const canvasWidth = await page.locator('#editCanvas').evaluate(c => c.width);

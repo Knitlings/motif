@@ -80,6 +80,7 @@ export const CONFIG = {
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
     REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
     REPEAT_OUTLINE_HALO: '#ffffff',  // surface
+    SURROUNDINGS_VEIL: 'rgba(255, 255, 255, 0.6)', // surface at 60%, outside a download's surroundings
     SMALL_MOBILE_BREAKPOINT: 480,
     LANDSCAPE_HEIGHT_THRESHOLD: 500,
     MAX_CANVAS_SIZE_MOBILE_LANDSCAPE: 1200,

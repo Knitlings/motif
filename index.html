@@ -124,13 +124,35 @@
                     </button>
                 </div>
             </div>
+            <!-- Choosing surrounding stitches for a download: replaces the caption line above -->
+            <div class="caption-line caption-line-preview" id="pickerCaptionLine" role="group" aria-label="Surrounding stitches" hidden>
+                <p class="caption">
+                    <span aria-hidden="true">Surrounding stitches:</span>
+                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickLeft" data-side="left" aria-label="Left" autocomplete="off" spellcheck="false" value="0">
+                    <span aria-hidden="true">left,</span>
+                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickRight" data-side="right" aria-label="Right" autocomplete="off" spellcheck="false" value="0">
+                    <span aria-hidden="true">right,</span>
+                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickTop" data-side="top" aria-label="Top" autocomplete="off" spellcheck="false" value="0">
+                    <span aria-hidden="true">top,</span>
+                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickBottom" data-side="bottom" aria-label="Bottom" autocomplete="off" spellcheck="false" value="0">
+                    <span aria-hidden="true">bottom.</span>
+                </p>
+                <div class="caption-actions">
+                    <button type="button" class="word-button" id="visualSelectionCancelBtn">Cancel</button>
+                    <button type="button" class="word-button" id="visualSelectionDownloadBtn">Download</button>
+                </div>
+            </div>
             <p id="previewRepeatStatus" class="caption-message" role="status" aria-live="polite"></p>
             <div class="canvas-wrapper">
-                <canvas id="previewCanvas" role="img" aria-label="Tiled pattern preview"></canvas>
-                <!-- Visual Context Selection Controls -->
-                <div id="visualSelectionControls" class="visual-selection-controls" style="display: none;">
-                    <button type="button" id="visualSelectionCancelBtn" class="button">Cancel</button>
-                    <button type="button" id="visualSelectionDownloadBtn" class="button">Download</button>
+                <div class="preview-stage">
+                    <canvas id="previewCanvas" role="img" aria-label="Tiled pattern preview"></canvas>
+                    <!-- The download's heavy frame while surrounding stitches are chosen -->
+                    <div class="picker-frame" id="pickerFrame" hidden>
+                        <button type="button" class="edge-grip edge-grip-top" data-side="top" aria-label="Drag to add or remove surrounding rows at the top" aria-keyshortcuts="ArrowUp ArrowDown"></button>
+                        <button type="button" class="edge-grip edge-grip-right" data-side="right" aria-label="Drag to add or remove surrounding stitches on the right" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
+                        <button type="button" class="edge-grip edge-grip-bottom" data-side="bottom" aria-label="Drag to add or remove surrounding rows at the bottom" aria-keyshortcuts="ArrowDown ArrowUp"></button>
+                        <button type="button" class="edge-grip edge-grip-left" data-side="left" aria-label="Drag to add or remove surrounding stitches on the left" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
+                    </div>
                 </div>
             </div>
         </section>

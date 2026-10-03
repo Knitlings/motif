@@ -168,13 +168,14 @@ export const CanvasManager = {
      * @param {string[]} patternColors - Array of hex color strings
      * @param {string} backgroundColor - Hex color for empty cells
      * @param {Object} [options]
-     * @param {boolean} [options.outlineRepeat=true] - Outline one repeat on the preview
+     * @param {{left: number, right: number, top: number, bottom: number}|null} [options.surroundings]
+     *   - Surrounding stitches being chosen on a 3 x 3 preview (replaces the one-repeat outline)
      * @returns {{stacked: boolean, previewWidth: number, outlined: boolean, framed: boolean,
      *   frameWidth: number|null, frameHeight: number|null, cellWidth: number, cellHeight: number,
      *   stitchNumberEvery: number, rowNumberEvery: number}} The layout chosen
      */
     update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor, options = {}) {
-        const { outlineRepeat = true } = options;
+        const { surroundings = null } = options;
         // Calculate viewport constraints - adjust for mobile vs desktop
         // Use cached dimensions if available for consistency
         const currentWidth = window.innerWidth;
@@ -315,8 +316,14 @@ export const CanvasManager = {
         this.drawPreview(gridWidth, gridHeight, previewCellWidth, previewCellHeight,
                         previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor);
 
+        // Choosing surrounding stitches: veil all but the download, thin frame on the centre repeat
+        let surroundingsArea = null;
+        if (surroundings) {
+            surroundingsArea = this.drawSurroundings(gridWidth, gridHeight, previewCellWidth, previewCellHeight, surroundings);
+        }
+
         // Outline one repeat: the centre one, or the one before the centre for even counts
-        const outlined = outlineRepeat && (previewRepeatX > 1 || previewRepeatY > 1);
+        const outlined = !surroundings && (previewRepeatX > 1 || previewRepeatY > 1);
         if (outlined) {
             this.drawRepeatOutline(
                 Math.floor((previewRepeatX - 1) / 2) * gridWidth * previewCellWidth,
@@ -336,8 +343,41 @@ export const CanvasManager = {
             cellWidth: cellSize.width,
             cellHeight: cellSize.height,
             stitchNumberEvery: gridWidth > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1,
-            rowNumberEvery: gridHeight > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1
+            rowNumberEvery: gridHeight > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1,
+            surroundingsArea
         };
+    },
+
+    /**
+     * Mark surrounding stitches on a 3 x 3 preview: everything outside the download lies
+     * under a veil of paper, and a thin ink frame marks the centre repeat. The heavy frame
+     * around the download is drawn by the page, with its grips.
+     * @returns {{x: number, y: number, width: number, height: number, cellWidth: number,
+     *   cellHeight: number}} The download's area on the preview, in canvas pixels
+     */
+    drawSurroundings(gridWidth, gridHeight, cellWidth, cellHeight, surroundings) {
+        const ctx = this.previewCtx;
+        const { width: canvasWidth, height: canvasHeight } = this.previewCanvas;
+        const repeatX = gridWidth * cellWidth;
+        const repeatY = gridHeight * cellHeight;
+        const x = repeatX - surroundings.left * cellWidth;
+        const y = repeatY - surroundings.top * cellHeight;
+        const width = repeatX + (surroundings.left + surroundings.right) * cellWidth;
+        const height = repeatY + (surroundings.top + surroundings.bottom) * cellHeight;
+
+        ctx.save();
+        ctx.fillStyle = CONFIG.SURROUNDINGS_VEIL;
+        ctx.fillRect(0, 0, canvasWidth, y);
+        ctx.fillRect(0, y + height, canvasWidth, canvasHeight - y - height);
+        ctx.fillRect(0, y, x, height);
+        ctx.fillRect(x + width, y, canvasWidth - x - width, height);
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_COLOR;
+        ctx.strokeRect(repeatX + 0.5, repeatY + 0.5, repeatX - 1, repeatY - 1);
+        ctx.restore();
+
+        return { x, y, width, height, cellWidth, cellHeight };
     },
 
     /**

@@ -345,7 +345,7 @@ test.describe('Pattern with Context Visual Selection', () => {
     await page.locator('#downloadModalSubmitBtn').click();
 
     // Visual selection controls should appear
-    const visualControls = page.locator('#visualSelectionControls');
+    const visualControls = page.locator('#pickerCaptionLine');
     await expect(visualControls).toBeVisible();
 
     // Preview should show 3x3
@@ -394,7 +394,7 @@ test.describe('Pattern with Context Visual Selection', () => {
     await page.locator('#downloadModalSubmitBtn').click();
 
     // Visual controls should be visible
-    const visualControls = page.locator('#visualSelectionControls');
+    const visualControls = page.locator('#pickerCaptionLine');
     await expect(visualControls).toBeVisible();
 
     // Click cancel
@@ -422,7 +422,7 @@ test.describe('Pattern with Context Visual Selection', () => {
     await page.locator('#downloadModalSubmitBtn').click();
 
     // Visual controls should be visible
-    const visualControls = page.locator('#visualSelectionControls');
+    const visualControls = page.locator('#pickerCaptionLine');
     await expect(visualControls).toBeVisible();
 
     // Press escape

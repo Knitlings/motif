@@ -443,13 +443,28 @@ a.menu-row:hover {
     background: var(--ground);
 }
 
-/* ---------- The surroundings picker's actions (chunk 7 makes them word buttons) ---------- */
+/* ---------- Word button: a plain upright word, for the surroundings picker's actions ---------- */
 
-.visual-selection-controls {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-2);
-    margin-top: 12px;
+.word-button {
+    height: 30px;
+    min-height: 0;
+    padding: 0 var(--space-2);
+    font: var(--text-ui);
+    font-style: normal;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.word-button:hover:not([aria-disabled="true"]) {
+    background: var(--ground);
+}
+
+.word-button[aria-disabled="true"] {
+    color: var(--ink-muted);
+    cursor: default;
 }
 
 /* ---------- Touch: 44px targets, 16px fields ---------- */
@@ -468,5 +483,10 @@ a.menu-row:hover {
 
     .note {
         min-height: 44px;
+    }
+
+    .word-button {
+        height: 44px;
+        font-size: 15px;
     }
 }

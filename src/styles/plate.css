@@ -134,6 +134,37 @@
     align-items: center;
 }
 
+.preview-stage {
+    position: relative;
+}
+
+/* Choosing surrounding stitches: a heavy frame around the download, outside its stitches */
+.picker-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: var(--line-heavy) solid var(--ink);
+    pointer-events: none;
+}
+
+.picker-frame[hidden],
+.caption-line[hidden] {
+    display: none;
+}
+
+.picker-frame .edge-grip {
+    pointer-events: auto;
+}
+
+/* Grips centred on the heavy line rather than its inner edge */
+.picker-frame .edge-grip-top { top: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-bottom { bottom: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-left { left: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-right { right: calc(-6px - var(--line-heavy) / 2); }
+
+.picker-frame.is-dragging .edge-grip {
+    background: var(--ground);
+}
+
 /* The chart with its stitch and row numbers, counted from the right and the bottom */
 .chart-frame {
     position: relative;
@@ -482,8 +513,18 @@
         box-sizing: border-box;
     }
 
+    .picker-frame .edge-grip-top { top: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-bottom { bottom: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-left { left: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-right { right: calc(-12px - var(--line-heavy) / 2); }
+
+    .picker-frame.is-dragging .edge-grip {
+        background: transparent;
+    }
+
     .edge-grip:hover::after,
-    .canvas-resize-container.is-resizing .edge-grip::after {
+    .canvas-resize-container.is-resizing .edge-grip::after,
+    .picker-frame.is-dragging .edge-grip::after {
         background: var(--ground);
     }
 }

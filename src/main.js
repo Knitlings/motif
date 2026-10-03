@@ -216,11 +216,17 @@ function updateButtons() {
 }
 
 function updateCanvas() {
+    if (visualContextSelectionActive && !keepSurroundingsInReach()) {
+        // The chart has grown too large for a 3 x 3 preview; leaving redraws without the picker
+        exitVisualContextSelection();
+        return;
+    }
     try {
         const layout = CanvasManager.update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY,
                             grid, patternColors, backgroundColor,
-                            { outlineRepeat: !visualContextSelectionActive });
+                            { surroundings: visualContextSelectionActive ? contextSelection : null });
         applyPlateLayout(layout);
+        placePickerFrame(layout.surroundingsArea);
         updateButtons();
     } catch (error) {
         handleCanvasError(error, 'update canvas');
@@ -238,7 +244,8 @@ function applyPlateLayout(layout) {
     plate.classList.toggle('is-stacked', layout.stacked);
     // The key's row has one place fewer when stacked
     if (wasStacked !== layout.stacked) renderKey();
-    document.getElementById('previewCaptionLine').style.setProperty('--preview-width', `${layout.previewWidth}px`);
+    // Both of the preview's caption lines (its own and the surroundings picker's) are as wide as it
+    document.querySelector('.plate-preview').style.setProperty('--preview-width', `${layout.previewWidth}px`);
     document.getElementById('previewTotal').textContent =
         `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
     document.getElementById('previewOutlineNote').hidden = !layout.outlined;
@@ -1069,6 +1076,8 @@ downloadForm.onsubmit = async (e) => {
 
     // Surrounding stitches are chosen on the preview next
     if (pickOnPreview) {
+        // Focus goes to the first of the picker's numbers once the dialog has handed it back
+        downloadModal.addEventListener('close', () => pickerFields[0].focus(), { once: true });
         downloadModal.close();
         enterVisualContextSelection(format, includeRowCounts, customCellSize);
         return;
@@ -1123,9 +1132,9 @@ downloadForm.onsubmit = async (e) => {
 
 // ============================================
 // VISUAL CONTEXT SELECTION
+// Surrounding stitches for a download, chosen on a 3 x 3 preview
 // ============================================
 
-// Visual context selection state
 let visualContextSelectionActive = false;
 let savedPreviewRepeatX = 3;
 let savedPreviewRepeatY = 3;
@@ -1133,14 +1142,69 @@ let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
 let selectionFormat = 'png';
 let selectionIncludeRowCounts = false;
 let selectionCustomCellSize = null;
-let draggingEdge = null;
-let dragStartPos = { x: 0, y: 0 };
+let pickerArea = null;
+
+const previewCanvas = document.getElementById('previewCanvas');
+const previewCaptionLine = document.getElementById('previewCaptionLine');
+const pickerCaptionLine = document.getElementById('pickerCaptionLine');
+const pickerFrame = document.getElementById('pickerFrame');
+const pickerFields = [...pickerCaptionLine.querySelectorAll('.picker-field')];
+const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
+const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
+
+/** Up to one stitch (or row) short of a full repeat */
+function maxSurrounding(side) {
+    return (side === 'left' || side === 'right' ? gridWidth : gridHeight) - 1;
+}
 
 /**
- * Enter visual context selection mode
+ * Hold the surroundings within reach of the current chart, which can change while they are
+ * being chosen
+ * @returns {boolean} false when the chart no longer fits a 3 x 3 preview
  */
+function keepSurroundingsInReach() {
+    if (getMaxPreviewRepeat(gridWidth, gridHeight) < 3) return false;
+    for (const side of Object.keys(contextSelection)) {
+        contextSelection[side] = Math.min(contextSelection[side], maxSurrounding(side));
+    }
+    syncPickerFields();
+    return true;
+}
+
+function syncPickerFields() {
+    pickerFields.forEach(field => {
+        if (document.activeElement !== field) field.value = contextSelection[field.dataset.side];
+    });
+}
+
+function setSurrounding(side, value) {
+    contextSelection[side] = Utils.clampInt(value, 0, maxSurrounding(side), 0);
+    updateCanvas();
+}
+
+function announceSurroundings() {
+    const { left, right, top, bottom } = contextSelection;
+    announceToScreenReader(`Surrounding stitches: ${left} left, ${right} right, ${top} top, ${bottom} bottom`);
+}
+
+/**
+ * Lay the heavy frame over the download's area on the preview
+ * @param {{x: number, y: number, width: number, height: number}|null} area - In canvas pixels
+ */
+function placePickerFrame(area) {
+    pickerArea = area;
+    pickerFrame.hidden = !area;
+    if (!area) return;
+    // The canvas sits inside its own 1px frame; the heavy line lies outside the stitches
+    const heavy = parseFloat(getComputedStyle(pickerFrame).borderTopWidth);
+    const inset = previewCanvas.clientLeft;
+    pickerFrame.style.left = `${inset + area.x - heavy}px`;
+    pickerFrame.style.top = `${inset + area.y - heavy}px`;
+    pickerFrame.style.width = `${area.width + 2 * heavy}px`;
+    pickerFrame.style.height = `${area.height + 2 * heavy}px`;
+}
+
 function enterVisualContextSelection(format, includeRowCounts, customCellSize = null) {
-    // Save current state
     savedPreviewRepeatX = previewRepeatX;
     savedPreviewRepeatY = previewRepeatY;
     selectionFormat = format;
@@ -1149,160 +1213,36 @@ function enterVisualContextSelection(format, includeRowCounts, customCellSize = 
     contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
     visualContextSelectionActive = true;
 
-    // Switch to 3x3 preview
     previewRepeatX = 3;
     previewRepeatY = 3;
+    previewRepeatXDisplay.value = previewRepeatX;
+    previewRepeatYDisplay.value = previewRepeatY;
 
-    // Update preview repeat displays
-    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
-
-    // Show visual selection controls
-    const controls = document.getElementById('visualSelectionControls');
-    if (controls) controls.style.display = 'flex';
-
-    // Re-render preview
+    previewCaptionLine.hidden = true;
+    pickerCaptionLine.hidden = false;
     updateCanvas();
-
-    // Add visual selection overlay to preview canvas
-    renderVisualSelection();
 }
 
-/**
- * Exit visual context selection mode
- */
 function exitVisualContextSelection() {
+    const focusWasInPicker = pickerCaptionLine.contains(document.activeElement) ||
+        pickerFrame.contains(document.activeElement);
     visualContextSelectionActive = false;
 
-    // Hide visual selection controls
-    const controls = document.getElementById('visualSelectionControls');
-    if (controls) controls.style.display = 'none';
-
-    // Restore original preview repeat values
     previewRepeatX = savedPreviewRepeatX;
     previewRepeatY = savedPreviewRepeatY;
+    previewRepeatXDisplay.value = previewRepeatX;
+    previewRepeatYDisplay.value = previewRepeatY;
 
-    // Update preview repeat displays
-    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
-
-    // Re-render preview
+    pickerCaptionLine.hidden = true;
+    previewCaptionLine.hidden = false;
     updateCanvas();
+    if (focusWasInPicker || document.activeElement === document.body) downloadBtn.focus();
 }
 
-/**
- * Render visual selection overlay on preview canvas
- */
-function renderVisualSelection() {
-    if (!visualContextSelectionActive) return;
-
-    const previewCanvas = document.getElementById('previewCanvas');
-    const ctx = previewCanvas.getContext('2d');
-
-    // Draw red box around the center repeat
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat is the middle one in the 3x3 grid
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerWidth = gridWidth * cellWidth;
-    const centerHeight = gridHeight * cellHeight;
-
-    // Calculate context box dimensions
-    const contextStartX = centerStartX - (contextSelection.left * cellWidth);
-    const contextStartY = centerStartY - (contextSelection.top * cellHeight);
-    const contextWidth = centerWidth + (contextSelection.left + contextSelection.right) * cellWidth;
-    const contextHeight = centerHeight + (contextSelection.top + contextSelection.bottom) * cellHeight;
-
-    // Draw grey overlay on areas outside the selection (like image crop tools)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-
-    // Top rectangle
-    ctx.fillRect(0, 0, previewCanvas.width, contextStartY);
-
-    // Bottom rectangle
-    ctx.fillRect(0, contextStartY + contextHeight, previewCanvas.width, previewCanvas.height - (contextStartY + contextHeight));
-
-    // Left rectangle (between top and bottom)
-    ctx.fillRect(0, contextStartY, contextStartX, contextHeight);
-
-    // Right rectangle (between top and bottom)
-    ctx.fillRect(contextStartX + contextWidth, contextStartY, previewCanvas.width - (contextStartX + contextWidth), contextHeight);
-
-    // Draw black box around center repeat
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(centerStartX, centerStartY, centerWidth, centerHeight);
-
-    // Draw context selection if any
-    if (contextSelection.left > 0 || contextSelection.right > 0 ||
-        contextSelection.top > 0 || contextSelection.bottom > 0) {
-
-        // Draw amber box for context area (thicker for visibility)
-        ctx.strokeStyle = '#FFA726';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(contextStartX, contextStartY, contextWidth, contextHeight);
-    }
-
-    // Draw drag handles (triangles) on the edges
-    const handleSize = 12;
-    ctx.fillStyle = '#FFA726';
-
-    // Left handle
-    const leftX = contextStartX;
-    const leftY = contextStartY + contextHeight / 2;
-    ctx.beginPath();
-    ctx.moveTo(leftX - handleSize, leftY);
-    ctx.lineTo(leftX, leftY - handleSize / 2);
-    ctx.lineTo(leftX, leftY + handleSize / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    // Right handle
-    const rightX = contextStartX + contextWidth;
-    const rightY = contextStartY + contextHeight / 2;
-    ctx.beginPath();
-    ctx.moveTo(rightX + handleSize, rightY);
-    ctx.lineTo(rightX, rightY - handleSize / 2);
-    ctx.lineTo(rightX, rightY + handleSize / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    // Top handle
-    const topX = contextStartX + contextWidth / 2;
-    const topY = contextStartY;
-    ctx.beginPath();
-    ctx.moveTo(topX, topY - handleSize);
-    ctx.lineTo(topX - handleSize / 2, topY);
-    ctx.lineTo(topX + handleSize / 2, topY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Bottom handle
-    const bottomX = contextStartX + contextWidth / 2;
-    const bottomY = contextStartY + contextHeight;
-    ctx.beginPath();
-    ctx.moveTo(bottomX, bottomY + handleSize);
-    ctx.lineTo(bottomX - handleSize / 2, bottomY);
-    ctx.lineTo(bottomX + handleSize / 2, bottomY);
-    ctx.closePath();
-    ctx.fill();
-}
-
-/**
- * Handle download with selected context
- */
 async function downloadWithContext() {
     const format = selectionFormat;
-    const includeRowCounts = selectionIncludeRowCounts;
-    const customCellSize = selectionCustomCellSize;
     const context = { ...contextSelection };
-    const button = document.getElementById('visualSelectionDownloadBtn');
+    const button = visualSelectionDownloadBtn;
     if (button.getAttribute('aria-disabled') === 'true') return;
 
     setBusy(button, true);
@@ -1311,17 +1251,12 @@ async function downloadWithContext() {
         await new Promise(resolve => setTimeout(resolve, 50));
 
         let blob;
-        let filename;
-
         if (format === 'svg') {
-            blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
+            blob = exportPatternWithContextSvg(getState(), context, selectionIncludeRowCounts);
         } else {
-            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
-            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
+            blob = await exportPatternWithContextPng(getState(), context, selectionIncludeRowCounts, selectionCustomCellSize);
         }
-
-        downloadFile(blob, filename);
+        downloadFile(blob, `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`);
         announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
     } catch (error) {
         handleFileError(error, `${format.toUpperCase()} export`);
@@ -1331,139 +1266,68 @@ async function downloadWithContext() {
     }
 }
 
-/**
- * Handle mouse/touch events for dragging selection edges
- */
-function handleSelectionMouseDown(e) {
-    if (!visualContextSelectionActive) return;
+// The numbers in the caption: the keyboard way to set the surroundings
+pickerFields.forEach(field => {
+    const side = field.dataset.side;
+    setupCaptionField(field, value => setSurrounding(side, value), 0, () => maxSurrounding(side));
+});
 
-    const previewCanvas = document.getElementById('previewCanvas');
-    const rect = previewCanvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
+// Edge grips: drag out by whole stitches, or arrow keys one at a time
+pickerFrame.querySelectorAll('.edge-grip').forEach(grip => {
+    const side = grip.dataset.side;
 
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat bounds
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerEndX = centerStartX + gridWidth * cellWidth;
-    const centerEndY = centerStartY + gridHeight * cellHeight;
-
-    // Use larger touch target for touch events (30px) vs mouse (10px)
-    const threshold = e.touches ? 30 : 10;
-
-    // Check edges with context
-    const leftEdge = centerStartX - (contextSelection.left * cellWidth);
-    const rightEdge = centerEndX + (contextSelection.right * cellWidth);
-    const topEdge = centerStartY - (contextSelection.top * cellHeight);
-    const bottomEdge = centerEndY + (contextSelection.bottom * cellHeight);
-
-    if (Math.abs(x - leftEdge) < threshold && y >= topEdge && y <= bottomEdge) {
-        draggingEdge = 'left';
-        dragStartPos = { x, y };
+    grip.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
-    } else if (Math.abs(x - rightEdge) < threshold && y >= topEdge && y <= bottomEdge) {
-        draggingEdge = 'right';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    } else if (Math.abs(y - topEdge) < threshold && x >= leftEdge && x <= rightEdge) {
-        draggingEdge = 'top';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    } else if (Math.abs(y - bottomEdge) < threshold && x >= leftEdge && x <= rightEdge) {
-        draggingEdge = 'bottom';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    }
-}
+        grip.setPointerCapture(e.pointerId);
+        pickerFrame.classList.add('is-dragging');
+    });
 
-function handleSelectionMouseMove(e) {
-    if (!visualContextSelectionActive || !draggingEdge) return;
+    grip.addEventListener('pointermove', (e) => {
+        if (!grip.hasPointerCapture(e.pointerId) || !pickerArea) return;
+        // Measured from the centre repeat's edge on this side, in whole stitches or rows
+        const rect = previewCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - previewCanvas.clientLeft;
+        const y = e.clientY - rect.top - previewCanvas.clientTop;
+        const { cellWidth, cellHeight } = pickerArea;
+        const distance = {
+            left: gridWidth * cellWidth - x,
+            right: x - 2 * gridWidth * cellWidth,
+            top: gridHeight * cellHeight - y,
+            bottom: y - 2 * gridHeight * cellHeight
+        }[side];
+        const stitches = Math.round(distance / (side === 'left' || side === 'right' ? cellWidth : cellHeight));
+        const value = Utils.clampInt(stitches, 0, maxSurrounding(side), 0);
+        if (value !== contextSelection[side]) setSurrounding(side, value);
+    });
 
-    const previewCanvas = document.getElementById('previewCanvas');
-    const rect = previewCanvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
-
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat bounds
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerEndX = centerStartX + gridWidth * cellWidth;
-    const centerEndY = centerStartY + gridHeight * cellHeight;
-
-    // Calculate new context values based on drag
-    if (draggingEdge === 'left') {
-        const deltaStitches = Math.round((centerStartX - x) / cellWidth);
-        contextSelection.left = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
-    } else if (draggingEdge === 'right') {
-        const deltaStitches = Math.round((x - centerEndX) / cellWidth);
-        contextSelection.right = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
-    } else if (draggingEdge === 'top') {
-        const deltaStitches = Math.round((centerStartY - y) / cellHeight);
-        contextSelection.top = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
-    } else if (draggingEdge === 'bottom') {
-        const deltaStitches = Math.round((y - centerEndY) / cellHeight);
-        contextSelection.bottom = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
-    }
-
-    // Re-render
-    updateCanvas();
-    renderVisualSelection();
-
-    e.preventDefault();
-}
-
-function handleSelectionMouseUp(e) {
-    draggingEdge = null;
-    dragStartPos = { x: 0, y: 0 };
-}
-
-// Add event listeners for visual selection
-const previewCanvas = document.getElementById('previewCanvas');
-previewCanvas.addEventListener('mousedown', handleSelectionMouseDown);
-previewCanvas.addEventListener('touchstart', handleSelectionMouseDown, { passive: false });
-document.addEventListener('mousemove', handleSelectionMouseMove);
-document.addEventListener('touchmove', handleSelectionMouseMove, { passive: false });
-document.addEventListener('mouseup', handleSelectionMouseUp);
-document.addEventListener('touchend', handleSelectionMouseUp);
-
-// Modify updateCanvas to call renderVisualSelection after rendering preview
-const originalUpdateCanvas = updateCanvas;
-function updateCanvasWithSelection() {
-    originalUpdateCanvas();
-    if (visualContextSelectionActive) {
-        renderVisualSelection();
-    }
-}
-// Replace updateCanvas reference
-updateCanvas = updateCanvasWithSelection;
-
-// Wire up visual selection control buttons
-const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
-const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
-
-if (visualSelectionCancelBtn) {
-    visualSelectionCancelBtn.onclick = () => {
-        exitVisualContextSelection();
+    const endDrag = (e) => {
+        if (!grip.hasPointerCapture(e.pointerId)) return;
+        grip.releasePointerCapture(e.pointerId);
+        pickerFrame.classList.remove('is-dragging');
+        announceSurroundings();
     };
-}
+    grip.addEventListener('pointerup', endDrag);
+    grip.addEventListener('pointercancel', endDrag);
 
-if (visualSelectionDownloadBtn) {
-    visualSelectionDownloadBtn.onclick = () => {
-        downloadWithContext();
-    };
-}
+    grip.addEventListener('keydown', (e) => {
+        const outward = { top: 'ArrowUp', bottom: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[side];
+        const inward = { top: 'ArrowDown', bottom: 'ArrowUp', left: 'ArrowRight', right: 'ArrowLeft' }[side];
+        if (e.key !== outward && e.key !== inward) return;
+        e.preventDefault();
+        setSurrounding(side, contextSelection[side] + (e.key === outward ? 1 : -1));
+        announceSurroundings();
+    });
+});
 
-// Handle Escape key to exit visual selection mode
+visualSelectionCancelBtn.addEventListener('click', exitVisualContextSelection);
+visualSelectionDownloadBtn.addEventListener('click', downloadWithContext);
+
+// Escape cancels, unless it is closing something else first (the Menu, a dialog)
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && visualContextSelectionActive) {
-        exitVisualContextSelection();
-    }
+    if (e.key !== 'Escape' || !visualContextSelectionActive || e.defaultPrevented) return;
+    if (document.querySelector('dialog[open]')) return;
+    exitVisualContextSelection();
 });
 
 // ============================================
@@ -2100,7 +1964,8 @@ const gridHeightDisplay = document.getElementById('gridHeightDisplay');
 const previewRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const previewRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
 
-// Caption fields: numbers typed into the caption sentences, applied on Enter or leaving the field
+// Caption fields: numbers typed into the caption sentences, applied on Enter or leaving the field.
+// max may be a function, for limits that follow the chart.
 function setupCaptionField(element, applyFunc, min, max) {
     if (!element) return;
 
@@ -2115,7 +1980,7 @@ function setupCaptionField(element, applyFunc, min, max) {
             val = element.dataset.lastValid ? parseInt(element.dataset.lastValid, 10) : min;
         }
 
-        val = Utils.clampInt(val, min, max, min);
+        val = Utils.clampInt(val, min, typeof max === 'function' ? max() : max, min);
         element.value = val;
         element.dataset.lastValid = val;
         applyFunc(val);
