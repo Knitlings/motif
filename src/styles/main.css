@@ -15,5 +15,8 @@
 /* Components - buttons, inputs, dialogs, etc */
 @import './components.css';
 
+/* Top bar, help and about pages */
+@import './pages.css';
+
 /* Responsive styles - mobile and tablet adjustments */
 @import './responsive.css';
