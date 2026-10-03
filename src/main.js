@@ -87,9 +87,14 @@ let customPalette = null; // Array of color strings when custom palette exists
 let browserCapabilities = null;
 let key = null; // The key under the chart, created at initialisation
 
-// Status, warning and error notes in the top bar
+// The phone layout (the max-width: 600px rules in the styles)
+const phoneLayout = window.matchMedia(`(max-width: ${CONFIG.PHONE_BREAKPOINT}px)`);
+
+// Status, warning and error notes in the top bar, or in the hint's place on a phone
 const notes = createNotes({
     slot: document.getElementById('noteSlot'),
+    phoneSlot: document.getElementById('noteSlotPhone'),
+    phone: phoneLayout,
     announce: (text) => announceToScreenReader(text)
 });
 setErrorPresenter((message) => notes.error(message));
@@ -1865,8 +1870,11 @@ key = createKey({
     }),
     actions: keyActions,
     isStacked: () => document.getElementById('plate').classList.contains('is-stacked'),
+    isPhone: () => phoneLayout.matches,
     isTouch: () => window.matchMedia('(hover: none) and (pointer: coarse)').matches
 });
+// The phone's key is laid out differently
+phoneLayout.addEventListener('change', () => renderKey());
 
 // Initialize UI
 updatePaletteUI();

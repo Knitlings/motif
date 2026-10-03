@@ -55,13 +55,6 @@ export const CONFIG = {
     PADDING_VERTICAL_MOBILE_LANDSCAPE: 60,
     PADDING_VERTICAL_MOBILE_PORTRAIT: 100,
     PADDING_VERTICAL_DESKTOP: 300,
-    PADDING_HORIZONTAL_SMALL_MOBILE: 24,
-    PADDING_HORIZONTAL_MOBILE: 32,
-    PADDING_HORIZONTAL_DESKTOP: 480,
-    CANVAS_GAP_MOBILE_LANDSCAPE: 32,
-    CANVAS_GAP_MOBILE: 64,
-    CANVAS_GAP_DESKTOP: 96,
-    COLLAPSED_PANEL_WIDTH: 40,
     MOBILE_BREAKPOINT: 1024,
 
     // Desktop plate (see the Knitlings design system's Motif layout)
@@ -80,6 +73,14 @@ export const CONFIG = {
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
     REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
     REPEAT_OUTLINE_HALO: '#ffffff',  // surface
+    PLATE_PADDING_NARROW: 16,        // Tablet and phone side padding
+
+    // Phone layout (matches the max-width: 600px rules in the styles)
+    PHONE_BREAKPOINT: 600,
+    PHONE_CHART_TOP: 76,             // Top bar and the plate's top padding above the chart
+    PHONE_CHART_RESERVE: 326,        // Caption, key and hint left on the first screen under the chart
+    PHONE_NUMBERS_WIDTH: 21,         // Row numbers and their gap beside the chart
+    PHONE_NUMBERS_HEIGHT: 20,        // Stitch numbers and their gap under it
     SURROUNDINGS_VEIL: 'rgba(255, 255, 255, 0.6)', // surface at 60%, outside a download's surroundings
     SMALL_MOBILE_BREAKPOINT: 480,
     LANDSCAPE_HEIGHT_THRESHOLD: 500,

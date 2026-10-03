@@ -125,6 +125,8 @@
 
 #editCanvas {
     cursor: crosshair;
+    /* A drag scrolls; no double-tap zoom holding up a tap */
+    touch-action: manipulation;
 }
 
 .canvas-wrapper {
@@ -529,8 +531,13 @@
     }
 }
 
+/* Notes take the hint's place on a phone only */
+.note-slot-phone {
+    display: none;
+}
+
 /* ============================================
-   NARROW WINDOWS (tablet and phone; the phone layout itself comes later)
+   NARROW WINDOWS (tablet and phone)
    ============================================ */
 
 @media (max-width: 1024px) {
@@ -549,5 +556,190 @@
     .caption-line-chart,
     .caption-line-preview {
         width: 100%;
+    }
+}
+
+/* ============================================
+   PHONE
+   Stacked top to bottom: chart, caption, key, hint, then the preview's caption and the
+   preview. Short captions share their line with 44px icon buttons. Matches
+   CONFIG.PHONE_BREAKPOINT.
+   ============================================ */
+
+@media (max-width: 600px) {
+    /* The top bar scrolls away; notes sit under the key instead */
+    .editor-top-bar {
+        position: static;
+    }
+
+    .editor-top-bar .note-slot {
+        display: none;
+    }
+
+    .menu-button {
+        height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .plate,
+    .plate.is-stacked {
+        min-height: 0;
+        align-items: stretch;
+        padding: 20px var(--space-4) var(--space-6);
+    }
+
+    .plate.is-stacked .plate-chart {
+        align-self: stretch;
+        align-items: stretch;
+        gap: var(--space-4);
+        padding-bottom: var(--space-6);
+    }
+
+    .plate.is-stacked .plate-preview {
+        align-items: stretch;
+        gap: 12px;
+        padding-top: 20px;
+    }
+
+    .chart-area,
+    .canvas-wrapper {
+        align-self: center;
+    }
+
+    /* Row numbers closer beside the chart (CONFIG.PHONE_NUMBERS_WIDTH and _HEIGHT) */
+    .chart-grid {
+        grid-template-columns: auto 18px;
+        grid-template-rows: auto 16px;
+        gap: 4px 3px;
+    }
+
+    /* "[12] stitches by [12] rows": the sentence wraps rather than pushing the icons off */
+    .caption-line {
+        gap: var(--space-2);
+    }
+
+    .caption {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+        font-size: 16px;
+        line-height: 22px;
+        white-space: nowrap;
+    }
+
+    .caption-long {
+        display: none;
+    }
+
+    .caption input.caption-field {
+        width: 48px;
+        height: 44px;
+        padding: 0 8px;
+        font-size: 16px;
+        line-height: 22px;
+    }
+
+    .caption-line-preview input.caption-field {
+        width: 44px;
+    }
+
+    .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .icon-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .caption-actions {
+        gap: 0;
+        margin-right: -14px;
+    }
+
+    .word-button {
+        height: 44px;
+        font-size: 15px;
+    }
+
+    /* The picker's caption on two lines: its title with Cancel and Download, then the numbers */
+    #pickerCaptionLine:not([hidden]) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        row-gap: var(--space-1);
+    }
+
+    #pickerCaptionLine .caption {
+        display: contents;
+    }
+
+    #pickerCaptionLine .picker-title {
+        grid-row: 1;
+        grid-column: 1;
+    }
+
+    #pickerCaptionLine .caption-actions {
+        grid-row: 1;
+        grid-column: 2;
+        margin-right: -8px;
+    }
+
+    #pickerCaptionLine .picker-numbers {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+    }
+
+    #pickerCaptionLine input.caption-field {
+        width: 44px;
+    }
+
+    /* A note takes the hint's place, at the same height, so nothing below moves */
+    .note-slot-phone:not(:empty) {
+        display: block;
+    }
+
+    .note-slot-phone .note {
+        max-width: none;
+        min-height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .note-slot-phone:not(:empty) + .key-hint {
+        display: none;
+    }
+
+    .plate-chart .key-hint {
+        width: auto;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        line-height: 18px;
+    }
+
+    /* 15px controls, 16px inputs */
+    .button,
+    .menu-row,
+    .note-dismiss {
+        min-height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .field-input {
+        min-height: 44px;
+        font-size: 16px;
     }
 }

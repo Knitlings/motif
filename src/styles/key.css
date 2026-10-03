@@ -404,3 +404,177 @@ label.key-menu-row {
     --palette-row: 44px;
     --menu-row-padding: 13px;
 }
+
+/* ---------- Phone: "Key" strip on top, 44px swatches, palette in a section ---------- */
+
+/* Outranks the stacked sizes above */
+.plate .key.key-phone {
+    --swatch: 44px;
+    --strip-height: 44px;
+    --menu-row-padding: 12px;
+
+    width: 100%;
+    font-size: 15px;
+    line-height: 20px;
+}
+
+.key-top {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    border-bottom: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-label {
+    padding: 0 12px;
+    border-right: 0;
+}
+
+.key-phone .key-background {
+    flex-direction: row;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    color: var(--ink-secondary);
+}
+
+.key-phone .key-background-label {
+    font: inherit;
+}
+
+.key-phone .key-background .key-well {
+    width: 30px;
+    height: 30px;
+}
+
+/* Six places, spread across the row: four colours, "+N" and add */
+.key-phone .key-swatches,
+.key-more-row {
+    display: grid;
+    grid-template-columns: repeat(6, var(--swatch));
+    justify-content: space-between;
+    row-gap: 12px;
+    padding: 12px clamp(0px, (100% - 6 * var(--swatch)) / 2, 16px);
+}
+
+.key-more-row {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-place {
+    gap: 4px;
+}
+
+.key-phone .key-number,
+.key-place-caption {
+    font-size: 15px;
+    line-height: 18px;
+}
+
+.key-place-caption {
+    font-style: italic;
+    color: var(--ink-secondary);
+}
+
+.key-phone .key-more {
+    font-size: 15px;
+    line-height: 20px;
+}
+
+.key-phone .key-swatch-menu {
+    width: 172px;
+}
+
+/* The palette's row: the word, its name and a strip that only shows its colours */
+.key-palette-trigger {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-top: var(--line-hairline) solid var(--rule);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.key-palette-trigger:active,
+.key-palette-trigger[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+.key-palette-word {
+    color: var(--ink-secondary);
+}
+
+.key-palette-trigger .key-option-strip {
+    height: 14px;
+}
+
+.key-palette-trigger svg {
+    flex-shrink: 0;
+}
+
+.key-palette-section {
+    display: flex;
+    flex-direction: column;
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.key-strip-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 12px;
+}
+
+/* A custom colour's Use / Edit / Delete, as a row under the strip */
+.key-chip-row {
+    display: flex;
+    align-items: stretch;
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-chip-row .key-menu-row {
+    width: auto;
+    min-height: 44px;
+    padding: 0 12px;
+}
+
+.key-chip-row .key-menu-row:first-child {
+    flex: 1 1 auto;
+}
+
+.key-chip-row .key-menu-row + .key-menu-row {
+    justify-content: flex-start;
+    border-top: 0;
+    border-left: var(--line-hairline) solid var(--rule);
+}
+
+.key-chip-row .key-well-small {
+    width: 30px;
+    height: 30px;
+}
+
+.key-palette-section .key-listbox {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-option {
+    min-height: 44px;
+    padding: 0 12px;
+}
+
+.key-phone .key-option-name {
+    width: 60px;
+}
+
+.key-phone .key-menu-row {
+    min-height: 44px;
+}
+
+.key-phone .key-load {
+    padding: 0 12px 0 32px;
+}

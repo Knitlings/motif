@@ -80,7 +80,7 @@ test.describe('Dialogs', () => {
 });
 
 test.describe('Notes', () => {
-  test('an import error shows in the top bar until dismissed', async ({ page }) => {
+  test('an import error shows in the top bar (on a phone, in the hint\'s place) until dismissed', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('#editCanvas');
 
@@ -90,9 +90,12 @@ test.describe('Notes', () => {
       buffer: Buffer.from('not a pattern')
     });
 
-    const note = page.locator('#noteSlot').getByRole('alert');
+    const phone = page.viewportSize().width <= 600;
+    const note = page.locator(phone ? '#noteSlotPhone' : '#noteSlot').getByRole('alert');
     await expect(note).toBeVisible();
+    if (phone) await expect(page.locator('#keyHint')).toBeHidden();
     await note.getByRole('button', { name: 'Dismiss' }).click();
     await expect(note).toBeHidden();
+    if (phone) await expect(page.locator('#keyHint')).toBeVisible();
   });
 });

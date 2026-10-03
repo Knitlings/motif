@@ -103,6 +103,8 @@
             <div class="key" id="key">
                 <!-- Rendered by src/ui/key.js -->
             </div>
+            <!-- On a phone, notes take the hint's place: src/ui/notes.js -->
+            <div class="note-slot note-slot-phone" id="noteSlotPhone"></div>
             <p class="key-hint" id="keyHint"></p>
         </section>
 
@@ -127,15 +129,18 @@
             <!-- Choosing surrounding stitches for a download: replaces the caption line above -->
             <div class="caption-line caption-line-preview" id="pickerCaptionLine" role="group" aria-label="Surrounding stitches" hidden>
                 <p class="caption">
-                    <span aria-hidden="true">Surrounding stitches:</span>
-                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickLeft" data-side="left" aria-label="Left" autocomplete="off" spellcheck="false" value="0">
-                    <span aria-hidden="true">left,</span>
-                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickRight" data-side="right" aria-label="Right" autocomplete="off" spellcheck="false" value="0">
-                    <span aria-hidden="true">right,</span>
-                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickTop" data-side="top" aria-label="Top" autocomplete="off" spellcheck="false" value="0">
-                    <span aria-hidden="true">top,</span>
-                    <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickBottom" data-side="bottom" aria-label="Bottom" autocomplete="off" spellcheck="false" value="0">
-                    <span aria-hidden="true">bottom.</span>
+                    <span class="picker-title" aria-hidden="true">Surrounding stitches<span class="caption-long">:</span></span>
+                    <!-- One row of numbers on a phone, under the title and the words -->
+                    <span class="picker-numbers">
+                        <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickLeft" data-side="left" aria-label="Left" autocomplete="off" spellcheck="false" value="0">
+                        <span aria-hidden="true">left<span class="caption-long">,</span></span>
+                        <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickRight" data-side="right" aria-label="Right" autocomplete="off" spellcheck="false" value="0">
+                        <span aria-hidden="true">right<span class="caption-long">,</span></span>
+                        <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickTop" data-side="top" aria-label="Top" autocomplete="off" spellcheck="false" value="0">
+                        <span aria-hidden="true">top<span class="caption-long">,</span></span>
+                        <input type="text" inputmode="numeric" class="caption-field picker-field" id="pickBottom" data-side="bottom" aria-label="Bottom" autocomplete="off" spellcheck="false" value="0">
+                        <span aria-hidden="true">bottom<span class="caption-long">.</span></span>
+                    </span>
                 </p>
                 <div class="caption-actions">
                     <button type="button" class="word-button" id="visualSelectionCancelBtn">Cancel</button>

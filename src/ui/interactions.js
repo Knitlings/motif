@@ -2,6 +2,8 @@
 // CANVAS INTERACTIONS MODULE
 // ============================================
 
+import { UI_CONSTANTS } from '../config.js';
+
 /**
  * Setup canvas interaction events
  * @param {Object} deps - Dependencies object
@@ -48,47 +50,77 @@ export function setupCanvasInteractions(deps) {
     }
 
     /**
-     * Setup all canvas event listeners
+     * Start painting at the pointer: the first square decides whether the stroke paints or erases
+     */
+    function beginStroke(e) {
+        markInteracted();
+        setIsDrawing(true);
+        const { row, col } = canvasManager.getCellFromMouse(e, getGridWidth(), getGridHeight());
+        if (row >= 0 && row < getGridHeight() && col >= 0 && col < getGridWidth()) {
+            setInitialCellState(getGrid()[row][col]);
+        }
+        paintCell(row, col, e.shiftKey, true);
+    }
+
+    function endStroke() {
+        if (getIsDrawing()) {
+            setIsDrawing(false);
+            setInitialCellState(null);
+            setLastPaintedCell({ row: -1, col: -1 });
+            saveToHistory();
+        }
+    }
+
+    /**
+     * Setup all canvas event listeners. A mouse paints as it drags. A finger or pen paints the
+     * square it taps; a drag is left to the browser, so it moves a framed chart in its frame
+     * and moves the page anywhere else.
      */
     function setupCanvasEvents() {
-        canvasManager.editCanvas.addEventListener('mousedown', (e) => {
-            markInteracted();
-            setIsDrawing(true);
-            const { row, col } = canvasManager.getCellFromMouse(e, getGridWidth(), getGridHeight());
+        const canvas = canvasManager.editCanvas;
+        let tap = null; // { id, x, y } while a touch may still be a tap
 
-            const grid = getGrid();
-            const gridHeight = getGridHeight();
-            const gridWidth = getGridWidth();
-            if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth) {
-                setInitialCellState(grid[row][col]);
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse') {
+                if (e.button === 0) beginStroke(e);
+                return;
             }
-
-            paintCell(row, col, e.shiftKey, true);
+            tap = e.isPrimary ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
         });
 
-        canvasManager.editCanvas.addEventListener('mousemove', (e) => {
-            if (getIsDrawing()) {
-                const { row, col } = canvasManager.getCellFromMouse(e, getGridWidth(), getGridHeight());
-                paintCell(row, col, e.shiftKey, false);
+        canvas.addEventListener('pointermove', (e) => {
+            if (e.pointerType === 'mouse') {
+                if (getIsDrawing()) {
+                    const { row, col } = canvasManager.getCellFromMouse(e, getGridWidth(), getGridHeight());
+                    paintCell(row, col, e.shiftKey, false);
+                }
+                return;
             }
-        });
-
-        canvasManager.editCanvas.addEventListener('mouseup', () => {
-            if (getIsDrawing()) {
-                setIsDrawing(false);
-                setInitialCellState(null);
-                setLastPaintedCell({ row: -1, col: -1 });
-                saveToHistory();
+            if (tap && e.pointerId === tap.id &&
+                Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > UI_CONSTANTS.DRAG_THRESHOLD) {
+                tap = null;
             }
         });
 
-        canvasManager.editCanvas.addEventListener('mouseleave', () => {
-            if (getIsDrawing()) {
-                setIsDrawing(false);
-                setInitialCellState(null);
-                setLastPaintedCell({ row: -1, col: -1 });
-                saveToHistory();
+        canvas.addEventListener('pointerup', (e) => {
+            if (e.pointerType === 'mouse') {
+                endStroke();
+                return;
             }
+            if (tap && e.pointerId === tap.id) {
+                tap = null;
+                beginStroke(e);
+                endStroke();
+            }
+        });
+
+        // The browser took the touch over to scroll
+        canvas.addEventListener('pointercancel', () => {
+            tap = null;
+        });
+
+        canvas.addEventListener('pointerleave', (e) => {
+            if (e.pointerType === 'mouse') endStroke();
         });
     }
 

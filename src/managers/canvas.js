@@ -157,6 +157,35 @@ export const CanvasManager = {
     },
 
     /**
+     * The phone's window height, held while the width stays the same so the chart doesn't
+     * jump when the browser's address bar slides in or out
+     * @param {number} width - The window width it is held for
+     */
+    phoneViewportHeight(width) {
+        if (this.phoneHeightFor !== width) {
+            this.phoneHeightFor = width;
+            this.phoneHeight = window.innerHeight;
+        }
+        return this.phoneHeight;
+    },
+
+    /**
+     * Squares as large as fit in the given room, never below the 20px floor (a chart held
+     * at the floor may then be larger than the room)
+     * @returns {{width: number, height: number}} Cell dimensions in pixels
+     */
+    fitCells(gridWidth, gridHeight, aspectRatio, maxWidth, maxHeight) {
+        let width = Math.min(maxWidth / gridWidth, maxHeight / gridHeight / aspectRatio);
+        let height = width * aspectRatio;
+        const floor = Math.max(CONFIG.MIN_CELL_SIZE / width, CONFIG.MIN_CELL_SIZE / height);
+        if (floor > 1) {
+            width *= floor;
+            height *= floor;
+        }
+        return { width, height };
+    },
+
+    /**
      * Update canvas sizes and redraw both edit and preview canvases
      * Handles responsive layout (side-by-side or stacked) based on available space
      * @param {number} gridWidth - Number of columns in grid
@@ -188,27 +217,46 @@ export const CanvasManager = {
 
         const isLandscape = effectiveWidth > currentHeight;
         const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
-        const isSmallMobile = effectiveWidth <= CONFIG.SMALL_MOBILE_BREAKPOINT;
 
         let cellSize, shouldStack;
         let framed = false;
         let frameWidth = null;
         let frameHeight = null;
-        const plateWidth = effectiveWidth - 2 * CONFIG.PLATE_PADDING_DESKTOP;
-        if (!isMobile) {
+        const isPhone = effectiveWidth <= CONFIG.PHONE_BREAKPOINT;
+        const plateWidth = effectiveWidth - 2 * (isMobile ? CONFIG.PLATE_PADDING_NARROW : CONFIG.PLATE_PADDING_DESKTOP);
+        if (isPhone) {
+            // Phone: the chart takes the page's width and leaves the caption, key and hint on
+            // the first screen. Too large for that at 20px squares, it scrolls in a frame as
+            // wide as the page and as tall as what is left of the first screen.
+            const roomHeight = Math.max(CONFIG.MIN_FRAME_HEIGHT,
+                this.phoneViewportHeight(effectiveWidth) - CONFIG.PHONE_CHART_TOP - CONFIG.PHONE_CHART_RESERVE);
+            const maxChartWidth = plateWidth - CONFIG.PHONE_NUMBERS_WIDTH - 2;
+            const maxChartHeight = roomHeight - CONFIG.PHONE_NUMBERS_HEIGHT - 2;
+            cellSize = this.fitCells(gridWidth, gridHeight, aspectRatio, maxChartWidth, maxChartHeight);
+            const chartWidth = gridWidth * cellSize.width;
+            const chartHeight = gridHeight * cellSize.height;
+            shouldStack = true;
+            if (chartWidth > maxChartWidth + 0.5 || chartHeight > maxChartHeight + 0.5) {
+                framed = true;
+                // In the frame the numbers sit in 30px and 20px strips; phone scrollbars overlay
+                frameWidth = Math.min(chartWidth + 30 + 2, plateWidth);
+                frameHeight = Math.min(chartHeight + 20 + 2, roomHeight);
+            }
+        } else {
             // Desktop plate: the chart fills its column, as wide as the key. The column widens
             // with a chart held at the 20px floor; chart and preview stay side by side while
-            // both fit at their natural sizes.
+            // both fit at their natural sizes. Tablets always stack.
+            const headerHeight = isMobile ? CONFIG.HEADER_HEIGHT_MOBILE : CONFIG.HEADER_HEIGHT_DESKTOP;
             cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, CONFIG.CHART_COLUMN_WIDTH);
             const chartWidth = gridWidth * cellSize.width;
             const chartHeight = gridHeight * cellSize.height;
             const chartColumnWidth = Math.max(CONFIG.CHART_COLUMN_MIN_WIDTH, chartWidth + CONFIG.CHART_COLUMN_RESERVE);
             const previewNaturalWidth = chartWidth * previewRepeatX * CONFIG.PREVIEW_SCALE;
-            shouldStack = chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
+            shouldStack = isMobile || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
 
             // Too large for the page at the 20px floor: the chart keeps its squares and
             // scrolls in a frame as wide as the page, leaving room for caption and key
-            const pageHeight = window.innerHeight - CONFIG.HEADER_HEIGHT_DESKTOP - 2 * CONFIG.PLATE_PADDING_VERTICAL;
+            const pageHeight = window.innerHeight - headerHeight - 2 * CONFIG.PLATE_PADDING_VERTICAL;
             const numbered = { width: chartWidth + CONFIG.CHART_NUMBERS_WIDTH + 2, height: chartHeight + CONFIG.CHART_NUMBERS_HEIGHT + 2 };
             if (numbered.width > plateWidth || numbered.height > pageHeight) {
                 framed = true;
@@ -218,55 +266,8 @@ export const CanvasManager = {
                 frameWidth = Math.min(chartWidth + 30 + 2 + scrollbar, plateWidth);
                 frameHeight = Math.min(
                     chartHeight + 20 + 2 + scrollbar,
-                    Math.max(CONFIG.MIN_FRAME_HEIGHT, window.innerHeight - CONFIG.HEADER_HEIGHT_DESKTOP - CONFIG.CHART_FRAME_RESERVE)
+                    Math.max(CONFIG.MIN_FRAME_HEIGHT, window.innerHeight - headerHeight - CONFIG.CHART_FRAME_RESERVE)
                 );
-            }
-        } else {
-            // On mobile, panels are overlays (not side-by-side), so ignore panel width
-            const collapsedPanelWidth = isMobile ? 0 : CONFIG.COLLAPSED_PANEL_WIDTH;
-
-            // Adjust padding based on screen size and orientation
-            let paddingHorizontal;
-            if (isSmallMobile && !isLandscape) {
-                paddingHorizontal = CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE;
-            } else if (isMobile) {
-                // In landscape, use minimal padding to maximize canvas space (like mini-desktop)
-                paddingHorizontal = isLandscape ? CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE : CONFIG.PADDING_HORIZONTAL_MOBILE;
-            } else {
-                paddingHorizontal = CONFIG.PADDING_HORIZONTAL_DESKTOP;
-            }
-
-            // Gap between canvases - smaller in landscape to encourage side-by-side layout
-            const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
-
-            // Calculate available width using effectiveWidth for consistency; the row numbers sit beside the chart
-            const availableWidth = effectiveWidth - (collapsedPanelWidth * 2) - paddingHorizontal - CONFIG.CHART_NUMBERS_WIDTH;
-
-            // First, try to calculate cell sizes assuming side-by-side layout
-            // Available width for each canvas when side-by-side
-            const widthPerCanvas = (availableWidth - gap) / 2;
-
-            // Calculate cell size for edit canvas with half the available width
-            const cellSizeSideBySide = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, widthPerCanvas);
-
-            // Calculate what the canvas dimensions would be with these cell sizes
-            const editCanvasWidthSideBySide = gridWidth * cellSizeSideBySide.width;
-            const previewWidthSideBySide = gridWidth * cellSizeSideBySide.width * previewRepeatX * CONFIG.PREVIEW_SCALE;
-
-            // Check if both canvases can actually fit side-by-side
-            const totalWidthSideBySide = editCanvasWidthSideBySide + previewWidthSideBySide + gap;
-            const canFitSideBySide = totalWidthSideBySide <= availableWidth;
-
-            // Decide on final layout and calculate cell sizes accordingly
-            // Force stacking on mobile portrait to maximize grid size
-            if (canFitSideBySide && !(isMobile && !isLandscape)) {
-                // Use the side-by-side cell size
-                cellSize = cellSizeSideBySide;
-                shouldStack = false;
-            } else {
-                // Recalculate with full available width for stacked layout
-                cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, availableWidth);
-                shouldStack = true;
             }
         }
 

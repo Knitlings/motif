@@ -16,6 +16,8 @@ const DRAG_THRESHOLD = 5;
 
 const ICON_PLUS = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 1v10M1 6h10"/></svg>';
 const ICON_CHEVRON = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 6.5L5 3l3.5 3.5"/></svg>';
+// On a phone the palette opens below its row
+const ICON_CHEVRON_DOWN = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 3.5L5 7l3.5-3.5"/></svg>';
 
 /**
  * Create an element with attributes and children
@@ -64,14 +66,18 @@ function suppressNextClick(node) {
  *   giveActiveColour(hex), switchPalette(id), loadPalette(), addCustomColour(),
  *   editCustomColour(i, hex), deleteCustomColour(i)
  * @param {Function} deps.isStacked - Whether the plate is stacked (fewer places in the row)
+ * @param {Function} deps.isPhone - Whether the phone layout is showing (a key laid out for it)
  * @param {Function} deps.isTouch - Whether instructions should speak of tapping
  */
-export function createKey({ getState, actions, isStacked, isTouch }) {
+export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
     const root = document.getElementById('key');
     const hint = document.getElementById('keyHint');
 
     // Which panel is open: null | 'swatch' | 'more' | 'palette' | { chip: index }
     let open = null;
+    // On a phone the palette opens a section inside the key, which stays open while
+    // colours are given from it, until its row is tapped again
+    let paletteSectionOpen = false;
 
     function close(returnFocusTo) {
         if (open === null) return;
@@ -271,12 +277,12 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
         ]);
     }
 
-    function swatchRow(state, squeeze) {
+    function swatchRow(state, squeeze, phone) {
         const count = state.patternColors.length;
         const canAdd = count < CONFIG.MAX_PATTERN_COLORS;
-        // Places in the row: four colours, "+N" and add on the plate; one fewer stacked;
-        // fewer again if the key is too narrow for those
-        const places = Math.max(3, (isStacked() ? 5 : 6) - squeeze);
+        // Places in the row: four colours, "+N" and add on the plate and the phone; one
+        // fewer stacked; fewer again if the key is too narrow for those
+        const places = phone ? 6 : Math.max(3, (isStacked() ? 5 : 6) - squeeze);
         let shown;
         if (count + (canAdd ? 1 : 0) <= places) {
             shown = [...Array(count).keys()];
@@ -291,9 +297,13 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
 
         const group = el('div', { class: 'key-swatches', role: 'group', 'aria-labelledby': 'keyLabel' },
             shown.map(i => swatch(state, i)));
+        // On a phone "+N" and add are captioned like the swatches' numbers
+        const place = (button, caption) => (phone
+            ? el('div', { class: 'key-place' }, [button, el('span', { class: 'key-place-caption', 'aria-hidden': 'true', text: caption })])
+            : button);
 
         if (hidden.length) {
-            group.append(el('button', {
+            group.append(place(el('button', {
                 type: 'button',
                 class: 'key-more',
                 text: `+${hidden.length}`,
@@ -305,11 +315,11 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
                     render();
                     focusById(moreOpen ? 'more' : `swatch-${hidden[0]}`);
                 }
-            }));
+            }), 'more'));
         }
 
         if (canAdd) {
-            group.append(el('button', {
+            group.append(place(el('button', {
                 type: 'button',
                 class: 'key-add',
                 html: ICON_PLUS,
@@ -321,18 +331,22 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
                     actions.addColor();
                     focusById('add');
                 }
-            }));
+            }), 'add'));
         }
 
+        // The rest: a panel above the key, or on a phone a second row beneath
         const morePanel = moreOpen
-            ? el('div', { class: 'key-popover key-more-panel', role: 'group', 'aria-label': 'More colours' },
-                hidden.map(i => swatch(state, i, { inMore: true })))
+            ? el('div', {
+                class: phone ? 'key-more-row' : 'key-popover key-more-panel',
+                role: 'group',
+                'aria-label': 'More colours'
+            }, hidden.map(i => swatch(state, i, { inMore: true })))
             : null;
 
         return { group, morePanel };
     }
 
-    function backgroundCell(state) {
+    function backgroundCell(state, phone) {
         const active = state.isBackgroundActive || state.isShiftKeyHeld;
         const input = el('input', {
             type: 'color',
@@ -345,10 +359,9 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
             onchange: (e) => actions.setBackground(e.target.value)
         });
         attachDrag(input, 'background');
-        return el('label', { class: 'key-background' }, [
-            input,
-            el('span', { class: 'key-background-label', 'aria-hidden': 'true', text: 'Background' })
-        ]);
+        const word = el('span', { class: 'key-background-label', 'aria-hidden': 'true', text: 'Background' });
+        // On a phone the word comes first, at the right of the "Key" strip
+        return el('label', { class: 'key-background' }, phone ? [word, input] : [input, word]);
     }
 
     function paletteRow(state) {
@@ -399,7 +412,11 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
         return el('div', { class: 'key-palette-row' }, [trigger, strip, add]);
     }
 
-    function chip(state, hex, index, isCustom) {
+    /**
+     * @param {boolean} [menuApart] - The custom colour's menu is drawn elsewhere (the phone's row
+     *   under the strip) rather than above the chip
+     */
+    function chip(state, hex, index, isCustom, menuApart = false) {
         const menuOpen = isCustom && open && open.chip === index;
         const activeNumber = state.activePatternIndex + 1;
         const button = el('button', {
@@ -425,12 +442,16 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
         });
         attachBackgroundShortcut(button, hex);
 
-        return el('span', { class: 'key-chip-place' }, [button, menuOpen ? chipMenu(state, hex, index) : null]);
+        return el('span', { class: 'key-chip-place' }, [button, menuOpen && !menuApart ? chipMenu(state, hex, index) : null]);
     }
 
-    function chipMenu(state, hex, index) {
+    function chipMenu(state, hex, index, phone = false) {
         const activeNumber = state.activePatternIndex + 1;
-        return el('div', { class: 'key-popover key-chip-menu', role: 'group', 'aria-label': `Custom palette colour ${index + 1}` }, [
+        return el('div', {
+            class: phone ? 'key-chip-row' : 'key-popover key-chip-menu',
+            role: 'group',
+            'aria-label': `Custom palette colour ${index + 1}`
+        }, [
             el('button', {
                 type: 'button',
                 class: 'key-menu-row',
@@ -471,7 +492,11 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
         ]);
     }
 
-    function paletteList(state) {
+    /**
+     * The list of palettes with Load at its foot: a panel above the key, or on a phone the
+     * end of the palette's section (where choosing a palette leaves the section open)
+     */
+    function paletteList(state, phone = false) {
         const options = PALETTE_IDS.map(id => {
             const selected = id === state.activePaletteId;
             const colors = id === 'custom' ? null : CONFIG.BUILT_IN_PALETTES[id].colors;
@@ -485,7 +510,7 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
                 onclick: () => {
                     open = null;
                     actions.switchPalette(id);
-                    focusById('palette');
+                    focusById(phone ? `palette-option-${id}` : 'palette');
                 }
             }, [
                 el('span', { class: 'key-option-mark', 'aria-hidden': 'true' }),
@@ -518,18 +543,88 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
             }
         }, options);
 
-        return el('div', { class: 'key-popover key-palette-list' }, [
-            listbox,
-            el('button', {
+        const load = el('button', {
+            type: 'button',
+            class: 'key-menu-row key-load',
+            text: 'Load palette',
+            onclick: () => {
+                open = null;
+                paletteSectionOpen = false;
+                actions.loadPalette();
+                focusById('palette');
+            }
+        });
+
+        return phone ? [listbox, load] : el('div', { class: 'key-popover key-palette-list' }, [listbox, load]);
+    }
+
+    /**
+     * The phone's palette row: the word, the palette's name and its colours as a preview.
+     * Tapping it opens the section beneath.
+     */
+    function phonePaletteRow(state) {
+        const id = state.activePaletteId;
+        const colors = id === 'custom' ? (state.customPalette || []) : CONFIG.BUILT_IN_PALETTES[id].colors;
+        const button = el('button', {
+            type: 'button',
+            class: 'key-palette-trigger',
+            'aria-label': `Palette: ${paletteName(id)}`,
+            'aria-expanded': String(paletteSectionOpen),
+            'aria-controls': 'keyPaletteSection',
+            'data-focus-id': 'palette',
+            onclick: () => {
+                paletteSectionOpen = !paletteSectionOpen;
+                open = null;
+                render();
+                focusById('palette');
+            }
+        }, [
+            el('span', { class: 'key-palette-word', text: 'Palette' }),
+            el('span', { text: paletteName(id) }),
+            el('span', { class: 'key-option-strip', 'aria-hidden': 'true' },
+                colors.map(hex => el('span', { style: { backgroundColor: hex } })))
+        ]);
+        button.insertAdjacentHTML('beforeend', ICON_CHEVRON_DOWN);
+        return button;
+    }
+
+    /**
+     * The phone's palette section: the colours as 44px buttons (a custom colour's menu as a row
+     * under them), then the list of palettes and Load
+     */
+    function phonePaletteSection(state) {
+        const id = state.activePaletteId;
+        const isCustom = id === 'custom';
+        const colors = isCustom ? (state.customPalette || []) : CONFIG.BUILT_IN_PALETTES[id].colors;
+        const activeNumber = state.activePatternIndex + 1;
+        const chipOpen = isCustom && open && typeof open.chip === 'number' && open.chip < colors.length;
+
+        const strip = el('div', {
+            class: 'key-strip',
+            role: 'group',
+            'aria-label': isCustom ? 'Custom palette' : `Give colour ${activeNumber} a colour from the ${paletteName(id)} palette`,
+            style: { maxWidth: `${colors.length * 56 + 2}px` }
+        }, colors.map((hex, i) => chip(state, hex, i, isCustom, true)));
+
+        const add = isCustom && colors.length < CONFIG.MAX_PALETTE_COLORS
+            ? el('button', {
                 type: 'button',
-                class: 'key-menu-row key-load',
-                text: 'Load palette',
+                class: 'key-add',
+                html: ICON_PLUS,
+                'aria-label': 'Add a colour to the custom palette',
+                'data-focus-id': 'chip-add',
                 onclick: () => {
                     open = null;
-                    actions.loadPalette();
-                    focusById('palette');
+                    actions.addCustomColour();
+                    focusById('chip-add');
                 }
             })
+            : null;
+
+        return el('div', { class: 'key-palette-section', id: 'keyPaletteSection' }, [
+            el('div', { class: 'key-strip-row' }, [strip, add]),
+            chipOpen ? chipMenu(state, colors[open.chip], open.chip, true) : null,
+            ...paletteList(state, true)
         ]);
     }
 
@@ -538,21 +633,30 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
     function render(squeeze = 0) {
         const state = getState();
         const focusedId = root.contains(document.activeElement) ? document.activeElement.dataset.focusId : null;
+        const phone = isPhone();
+        root.classList.toggle('key-phone', phone);
 
-        const { group, morePanel } = swatchRow(state, squeeze);
-        root.replaceChildren(...[
-            el('div', { class: 'key-row' }, [
-                el('span', { class: 'key-label', id: 'keyLabel', text: 'Key' }),
+        const { group, morePanel } = swatchRow(state, squeeze, phone);
+        const label = el('span', { class: 'key-label', id: 'keyLabel', text: 'Key' });
+        root.replaceChildren(...(phone
+            ? [
+                // "Key" in a strip across the top with the background, so the swatches get the full width
+                el('div', { class: 'key-top' }, [label, backgroundCell(state, true)]),
                 group,
-                backgroundCell(state)
-            ]),
-            paletteRow(state),
-            morePanel,
-            open === 'palette' ? paletteList(state) : null
-        ].filter(Boolean));
+                morePanel,
+                phonePaletteRow(state),
+                paletteSectionOpen ? phonePaletteSection(state) : null
+            ]
+            : [
+                el('div', { class: 'key-row' }, [label, group, backgroundCell(state)]),
+                paletteRow(state),
+                morePanel,
+                open === 'palette' ? paletteList(state) : null
+            ]
+        ).filter(Boolean));
 
         // The row never wraps: if it overflows, give up a place and draw it again
-        if (group.scrollWidth > group.clientWidth + 1 && squeeze < 3) {
+        if (!phone && group.scrollWidth > group.clientWidth + 1 && squeeze < 3) {
             render(squeeze + 1);
             return;
         }
@@ -591,7 +695,16 @@ export function createKey({ getState, actions, isStacked, isTouch }) {
     });
 
     root.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape' || open === null) return;
+        if (e.key !== 'Escape') return;
+        if (open === null) {
+            // The phone's palette section closes last
+            if (!paletteSectionOpen) return;
+            e.stopPropagation();
+            paletteSectionOpen = false;
+            render();
+            focusById('palette');
+            return;
+        }
         e.stopPropagation();
         const state = getState();
         const returnTo = open === 'swatch' ? `swatch-${state.activePatternIndex}`

@@ -83,15 +83,15 @@ test.describe('UI Controls', () => {
     await page.locator('#previewRepeatXDisplay').fill('2');
     await page.locator('#previewRepeatXDisplay').press('Enter');
 
-    // 8 stitches x 2 repeats across, 5 rows x 3 repeats up
+    // 8 stitches x 2 repeats across, 5 rows x 3 repeats up (the phone's short caption leaves these out)
     await expect(page.locator('#previewTotal')).toHaveText(', 16 stitches by 15 rows in all.');
-    await expect(page.locator('#previewOutlineNote')).toBeVisible();
+    await expect(page.locator('#previewOutlineNote')).not.toHaveAttribute('hidden');
 
     await page.locator('#previewRepeatXDisplay').fill('1');
     await page.locator('#previewRepeatXDisplay').press('Enter');
     await page.locator('#previewRepeatYDisplay').fill('1');
     await page.locator('#previewRepeatYDisplay').press('Enter');
-    await expect(page.locator('#previewOutlineNote')).toBeHidden();
+    await expect(page.locator('#previewOutlineNote')).toHaveAttribute('hidden');
   });
 
   test('should change preview repeat dimensions', async ({ page }) => {

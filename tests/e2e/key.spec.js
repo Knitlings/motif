@@ -15,6 +15,13 @@ async function setColourInput(locator, hex) {
   }, hex);
 }
 
+// The phone layout (CONFIG.PHONE_BREAKPOINT): the palette's colours are in a section opened from its row
+const isPhone = (page) => page.viewportSize().width <= 600;
+
+async function showPaletteColours(page) {
+  if (isPhone(page)) await page.getByRole('button', { name: /^Palette: / }).click();
+}
+
 async function drag(page, from, to) {
   const a = await from.boundingBox();
   const b = await to.boundingBox();
@@ -104,6 +111,7 @@ test.describe('Key', () => {
   });
 
   test('gives the selected colour a palette colour, or the background with Shift', async ({ page }) => {
+    await showPaletteColours(page);
     await page.getByRole('button', { name: 'Make colour 1 #000000' }).click();
     await expect(swatch(page, 1)).toHaveAccessibleName('Colour 1, #000000');
 
@@ -112,6 +120,7 @@ test.describe('Key', () => {
   });
 
   test('switches palette from the list with the keyboard', async ({ page }) => {
+    test.skip(isPhone(page), 'On a phone the list is part of the palette section (tests/e2e/phone.spec.js)');
     const trigger = page.getByRole('button', { name: 'Palette: Motif' });
     await trigger.click();
     const listbox = page.getByRole('listbox', { name: 'Palette' });
@@ -134,6 +143,8 @@ test.describe('Key', () => {
   test('edits the custom palette', async ({ page }) => {
     await page.getByRole('button', { name: 'Palette: Motif' }).click();
     await page.getByRole('option', { name: /Custom/ }).click();
+    // On a phone the section stays open on choosing a palette
+    if (!isPhone(page)) await expect(page.getByRole('listbox', { name: 'Palette' })).toBeHidden();
     await page.getByRole('button', { name: 'Add a colour to the custom palette' }).click();
     await expect(page.locator('.key-chip')).toHaveCount(2);
 

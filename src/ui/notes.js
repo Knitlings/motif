@@ -3,9 +3,9 @@
 // ============================================
 //
 // Status, warning and error notes (see the design system's Note component).
-// One slot in the top bar: a newer note takes it, and a lasting warning that hasn't been
-// dismissed returns when the newer note leaves. An error raised while a dialog is open
-// shows in that dialog instead.
+// One slot, in the top bar (on a phone, in the hint's place under the key): a newer note
+// takes it, and a lasting warning that hasn't been dismissed returns when the newer note
+// leaves. An error raised while a dialog is open shows in that dialog instead.
 
 const STATUS_DURATION = 4000;
 
@@ -43,25 +43,32 @@ function buildNote(kind, text, onDismiss) {
 
 /**
  * @param {Object} deps
- * @param {HTMLElement} deps.slot - Where notes sit on the plate
+ * @param {HTMLElement} deps.slot - Where notes sit in the top bar
+ * @param {HTMLElement} [deps.phoneSlot] - Where they sit on a phone
+ * @param {MediaQueryList} [deps.phone] - Whether the phone layout is showing
  * @param {Function} deps.announce - Screen reader announcement for status and warning notes
  */
-export function createNotes({ slot, announce }) {
+export function createNotes({ slot, phoneSlot, phone, announce }) {
     let current = null; // { kind, text }
     let lasting = null; // a warning, until dismissed
     let timer = null;
 
     function render() {
         const shown = current || lasting;
+        const target = phoneSlot && phone?.matches ? phoneSlot : slot;
         slot.replaceChildren();
+        phoneSlot?.replaceChildren();
         if (!shown) return;
         const dismiss = shown.kind === 'status' ? null : () => {
             if (shown === current) current = null;
             if (shown === lasting) lasting = null;
             render();
         };
-        slot.append(buildNote(shown.kind, shown.text, dismiss));
+        target.append(buildNote(shown.kind, shown.text, dismiss));
     }
+
+    // Moving between the phone and the wider layouts moves the note with them
+    phone?.addEventListener('change', render);
 
     function show(kind, text) {
         clearTimeout(timer);
