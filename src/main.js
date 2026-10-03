@@ -36,6 +36,7 @@ import { setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
 import { applyDimensionInput } from './ui/handlers.js';
+import { setupTooltips } from './ui/tooltip.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -194,12 +195,27 @@ function updateButtons() {
 
 function updateCanvas() {
     try {
-        CanvasManager.update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY,
-                            grid, patternColors, backgroundColor);
+        const layout = CanvasManager.update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY,
+                            grid, patternColors, backgroundColor,
+                            { outlineRepeat: !visualContextSelectionActive });
+        applyPlateLayout(layout);
         updateButtons();
     } catch (error) {
         handleCanvasError(error, 'update canvas');
     }
+}
+
+/**
+ * Arrange the plate for the layout the canvas manager chose, and keep the preview's
+ * caption in step with it
+ * @param {{stacked: boolean, previewWidth: number, outlined: boolean}} layout
+ */
+function applyPlateLayout(layout) {
+    document.getElementById('plate').classList.toggle('is-stacked', layout.stacked);
+    document.getElementById('previewCaptionLine').style.setProperty('--preview-width', `${layout.previewWidth}px`);
+    document.getElementById('previewTotal').textContent =
+        `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
+    document.getElementById('previewOutlineNote').hidden = !layout.outlined;
 }
 
 // Optimized canvas update using requestAnimationFrame
@@ -543,14 +559,14 @@ function applyGridResize(newWidth, newHeight) {
     if (previewRepeatX > maxRepeat) {
         previewRepeatX = maxRepeat;
         const display = document.getElementById('previewRepeatXDisplay');
-        if (display) display.textContent = previewRepeatX;
+        if (display) display.value = previewRepeatX;
         repeatReduced = true;
     }
 
     if (previewRepeatY > maxRepeat) {
         previewRepeatY = maxRepeat;
         const display = document.getElementById('previewRepeatYDisplay');
-        if (display) display.textContent = previewRepeatY;
+        if (display) display.value = previewRepeatY;
         repeatReduced = true;
     }
 
@@ -584,8 +600,8 @@ function applyGridResizeFromEdge(direction, delta) {
 
     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
     // Check if preview repeats need to be reduced due to larger pattern
     const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -594,14 +610,14 @@ function applyGridResizeFromEdge(direction, delta) {
     if (previewRepeatX > maxRepeat) {
         previewRepeatX = maxRepeat;
         const display = document.getElementById('previewRepeatXDisplay');
-        if (display) display.textContent = previewRepeatX;
+        if (display) display.value = previewRepeatX;
         repeatReduced = true;
     }
 
     if (previewRepeatY > maxRepeat) {
         previewRepeatY = maxRepeat;
         const display = document.getElementById('previewRepeatYDisplay');
-        if (display) display.textContent = previewRepeatY;
+        if (display) display.value = previewRepeatY;
         repeatReduced = true;
     }
 
@@ -613,7 +629,6 @@ function applyGridResizeFromEdge(direction, delta) {
     saveToHistory();
     updateCanvas();
     updatePreviewRepeatStatus();
-    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function paintCell(row, col, isShiftKey, useInitialState = false) {
@@ -686,8 +701,8 @@ document.getElementById('undoBtn').onclick = () => {
         // Update grid dimension displays
         const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
         const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+        if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
         // Check if preview repeats need to be reduced due to larger pattern
         const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -696,14 +711,14 @@ document.getElementById('undoBtn').onclick = () => {
         if (previewRepeatX > maxRepeat) {
             previewRepeatX = maxRepeat;
             const display = document.getElementById('previewRepeatXDisplay');
-            if (display) display.textContent = previewRepeatX;
+            if (display) display.value = previewRepeatX;
             repeatReduced = true;
         }
 
         if (previewRepeatY > maxRepeat) {
             previewRepeatY = maxRepeat;
             const display = document.getElementById('previewRepeatYDisplay');
-            if (display) display.textContent = previewRepeatY;
+            if (display) display.value = previewRepeatY;
             repeatReduced = true;
         }
 
@@ -732,8 +747,8 @@ document.getElementById('redoBtn').onclick = () => {
         // Update grid dimension displays
         const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
         const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+        if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
         // Check if preview repeats need to be reduced due to larger pattern
         const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -742,14 +757,14 @@ document.getElementById('redoBtn').onclick = () => {
         if (previewRepeatX > maxRepeat) {
             previewRepeatX = maxRepeat;
             const display = document.getElementById('previewRepeatXDisplay');
-            if (display) display.textContent = previewRepeatX;
+            if (display) display.value = previewRepeatX;
             repeatReduced = true;
         }
 
         if (previewRepeatY > maxRepeat) {
             previewRepeatY = maxRepeat;
             const display = document.getElementById('previewRepeatYDisplay');
-            if (display) display.textContent = previewRepeatY;
+            if (display) display.value = previewRepeatY;
             repeatReduced = true;
         }
 
@@ -1250,8 +1265,8 @@ function enterVisualContextSelection(format, includeRowCounts, customCellSize = 
     // Update preview repeat displays
     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
     // Show visual selection controls
     const controls = document.getElementById('visualSelectionControls');
@@ -1281,8 +1296,8 @@ function exitVisualContextSelection() {
     // Update preview repeat displays
     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
     // Re-render preview
     updateCanvas();
@@ -1647,13 +1662,13 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     // Update all UI elements
                     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
                     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-                    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-                    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+                    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+                    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
                     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
                     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
                                     createNavbarColorButtons();
                     updateActiveColorUI();
@@ -1690,8 +1705,7 @@ function applyGridWidth(value) {
         defaultValue: CONFIG.MIN_GRID_SIZE,
         displayElementId: 'gridWidthDisplay',
         applyFunction: (val) => applyGridResize(val, gridHeight),
-        getCurrentValue: () => gridWidth,
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        getCurrentValue: () => gridWidth
     });
 }
 
@@ -1703,8 +1717,7 @@ function applyGridHeight(value) {
         defaultValue: CONFIG.MIN_GRID_SIZE,
         displayElementId: 'gridHeightDisplay',
         applyFunction: (val) => applyGridResize(gridWidth, val),
-        getCurrentValue: () => gridHeight,
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        getCurrentValue: () => gridHeight
     });
 }
 
@@ -1721,8 +1734,7 @@ function applyPreviewRepeatX(value) {
             updateCanvas();
             updatePreviewRepeatStatus();
             saveToLocalStorage();
-        },
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        }
     });
 }
 
@@ -1739,8 +1751,7 @@ function applyPreviewRepeatY(value) {
             updateCanvas();
             updatePreviewRepeatStatus();
             saveToLocalStorage();
-        },
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        }
     });
 }
 
@@ -1793,13 +1804,13 @@ function updateUIDisplaysForSharedPattern() {
     // Update inline displays
     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
     // Re-render UI with shared pattern data
     updatePaletteUI();
@@ -1893,8 +1904,8 @@ if (!shareUrlResult.success) {
 
 const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
 const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
 const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
@@ -1908,8 +1919,8 @@ if (previewRepeatY > maxRepeatOnLoad) {
     previewRepeatY = maxRepeatOnLoad;
 }
 
-if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
@@ -1990,6 +2001,7 @@ initGrid();
 
 // Initialize navbar components
 setupHamburgerMenu();
+setupTooltips();
 setupNavbarPaletteDropdown();
 updateNavbarPaletteName();
 updateNavbarPalettePreview();
@@ -2002,9 +2014,6 @@ if (hasInteracted) {
     const instructions = document.getElementById('canvasInstructions');
     instructions.style.display = 'none';
 }
-
-// Grid dimension controls - now handled by contenteditable spans
-// (gridWidthDisplay and gridHeightDisplay elements)
 
 // Aspect Ratio controls
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
@@ -2129,166 +2138,47 @@ const gridHeightDisplay = document.getElementById('gridHeightDisplay');
 const previewRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const previewRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
 
-// Helper function to setup contenteditable dimension displays
-function setupContenteditableDimension(element, applyFunc, min, max) {
+// Caption fields: numbers typed into the caption sentences, applied on Enter or leaving the field
+function setupCaptionField(element, applyFunc, min, max) {
     if (!element) return;
 
-    element.addEventListener('input', (e) => {
-        const text = e.target.textContent.trim();
-        const val = parseInt(text, 10);
-        if (!isNaN(val) && val >= min && val <= max) {
-            // Valid value, update immediately
-            element.dataset.lastValid = text;
-        }
+    element.addEventListener('focus', () => {
+        element.dataset.lastValid = element.value;
     });
 
-    element.addEventListener('blur', (e) => {
-        const text = e.target.textContent.trim();
-        let val = parseInt(text, 10);
+    element.addEventListener('change', () => {
+        let val = parseInt(element.value.trim(), 10);
 
         if (isNaN(val)) {
             val = element.dataset.lastValid ? parseInt(element.dataset.lastValid, 10) : min;
         }
 
         val = Utils.clampInt(val, min, max, min);
-        e.target.textContent = val;
+        element.value = val;
         element.dataset.lastValid = val;
         applyFunc(val);
     });
 
     element.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
+            // Leaving the field applies it
             e.preventDefault();
-            e.target.blur();
-        }
-        // Prevent non-numeric input
-        if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            element.blur();
+        } else if (e.key === 'Escape') {
+            element.value = element.dataset.lastValid ?? element.value;
+            element.blur();
+        } else if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            // Digits only
             e.preventDefault();
         }
     });
-
-    // Initialize
-    element.dataset.lastValid = element.textContent.trim();
 }
 
 // Setup grid dimension displays
-setupContenteditableDimension(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
-setupContenteditableDimension(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
-setupContenteditableDimension(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
-setupContenteditableDimension(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
-
-// Grid chevron buttons
-const gridChevrons = document.querySelectorAll('.grid-chevron');
-gridChevrons.forEach(btn => {
-    let pressTimer = null;
-    let isLongPress = false;
-
-    btn.addEventListener('click', (e) => {
-        // Ignore if this was a long press (already handled)
-        if (isLongPress) {
-            isLongPress = false;
-            return;
-        }
-
-        const dimension = btn.getAttribute('data-dimension');
-        const direction = btn.getAttribute('data-direction');
-
-        // Grid arrows: add/remove from specific edge
-        // Normal click adds (+1), shift+click removes (-1)
-        const delta = e.shiftKey ? -1 : 1;
-
-        // Map data-direction to edge direction
-        let edgeDirection;
-        if (dimension === 'width') {
-            edgeDirection = direction === 'decrease' ? 'left' : 'right';
-        } else if (dimension === 'height') {
-            edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
-        }
-
-        applyGridResizeFromEdge(edgeDirection, delta);
-    });
-
-    // Touch long press for remove (same as shift+click)
-    btn.addEventListener('touchstart', (e) => {
-        isLongPress = false;
-        pressTimer = setTimeout(() => {
-            isLongPress = true;
-            const dimension = btn.getAttribute('data-dimension');
-            const direction = btn.getAttribute('data-direction');
-
-            // Map data-direction to edge direction
-            let edgeDirection;
-            if (dimension === 'width') {
-                edgeDirection = direction === 'decrease' ? 'left' : 'right';
-            } else if (dimension === 'height') {
-                edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
-            }
-
-            applyGridResizeFromEdge(edgeDirection, -1); // Remove row/column
-
-            // Haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-            }
-        }, UI_CONSTANTS.LONG_PRESS_DURATION);
-    }, { passive: true });
-
-    btn.addEventListener('touchend', (e) => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-    });
-
-    btn.addEventListener('touchcancel', (e) => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-        isLongPress = false;
-    });
-});
-
-// Function to update chevron disabled states
-function updateChevronStates() {
-    gridChevrons.forEach(btn => {
-        const dimension = btn.getAttribute('data-dimension');
-        let shouldDisable = false;
-
-        // All arrows add in their direction, so disable when at max size
-        if (dimension === 'width') {
-            shouldDisable = gridWidth >= CONFIG.MAX_GRID_SIZE;
-        } else if (dimension === 'height') {
-            shouldDisable = gridHeight >= CONFIG.MAX_GRID_SIZE;
-        }
-
-        btn.disabled = shouldDisable;
-        btn.classList.toggle('disabled', shouldDisable);
-    });
-}
-
-// Helper functions to check if grid can shrink
-function canShrinkWidth() {
-    const result = resizeGrid({
-        grid,
-        gridWidth,
-        gridHeight,
-        newWidth: gridWidth - 1,
-        newHeight: gridHeight
-    });
-    return result !== false;
-}
-
-function canShrinkHeight() {
-    const result = resizeGrid({
-        grid,
-        gridWidth,
-        gridHeight,
-        newWidth: gridWidth,
-        newHeight: gridHeight - 1
-    });
-    return result !== false;
-}
+setupCaptionField(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupCaptionField(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupCaptionField(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+setupCaptionField(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
 
 // Setup toggle for cell aspect ratio section
 const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
@@ -2307,9 +2197,6 @@ if (cellAspectRatioToggle && cellAspectRatioSection) {
         e.stopPropagation();
     });
 }
-
-// Initialize chevron states
-updateChevronStates();
 
 // Window resize handler
 // Debounced resize handler to recreate navbar buttons when viewport changes
@@ -2368,7 +2255,7 @@ function startResize(handle, clientX, clientY) {
     resizeStartSize.cellWidth = cellWidth;
     resizeStartSize.cellHeight = cellHeight;
 
-    document.body.style.cursor = handle.style.cursor;
+    document.body.style.cursor = getComputedStyle(handle).cursor;
 
     // Add visual feedback class (especially useful for touch devices)
     const container = document.querySelector('.canvas-resize-container');
@@ -2383,6 +2270,17 @@ resizeHandles.forEach(handle => {
         e.preventDefault();
         e.stopPropagation();
         startResize(handle, e.clientX, e.clientY);
+    });
+
+    // Arrow keys add (outward) or remove (inward) one row or stitch at this edge
+    handle.addEventListener('keydown', (e) => {
+        const direction = handle.dataset.direction;
+        const outward = { top: 'ArrowUp', bottom: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[direction];
+        const inward = { top: 'ArrowDown', bottom: 'ArrowUp', left: 'ArrowRight', right: 'ArrowLeft' }[direction];
+        if (e.key !== outward && e.key !== inward) return;
+        e.preventDefault();
+        applyGridResizeFromEdge(direction, e.key === outward ? 1 : -1);
+        announceToScreenReader(`${gridWidth} stitches by ${gridHeight} rows`);
     });
 
     // Touch events - delay resize start until we detect intentional drag

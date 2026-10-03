@@ -1,0 +1,418 @@
+/* ============================================
+   EDITOR TOP BAR
+   Wordmark, notes between, Menu at the right (see pages.css for the bar itself)
+   ============================================ */
+
+.editor-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+
+.top-bar-centre {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.top-bar-centre .navbar-center {
+    position: static;
+    transform: none;
+}
+
+.menu-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Button: square, outlined in ink, no fill */
+.menu-button {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 14px;
+    font: var(--text-ui);
+    color: var(--ink);
+    background: none;
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+/* ============================================
+   THE PLATE
+   A white page divided by rules: the chart's column, then the preview
+   ============================================ */
+
+.plate {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 64px);
+    padding: var(--space-6) 64px;
+}
+
+.plate-chart {
+    flex: 0 0 auto;
+    min-width: 520px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--space-4);
+    padding-right: 48px;
+    border-right: var(--line-rule) solid var(--frame);
+}
+
+.plate-preview {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding-left: 48px;
+}
+
+/* Stacked: the chart above a rule, the preview below */
+.plate.is-stacked {
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-6) 32px;
+}
+
+.plate.is-stacked .plate-chart {
+    min-width: 0;
+    align-self: center;
+    align-items: center;
+    padding: 0 0 var(--space-6);
+    border-right: 0;
+    border-bottom: var(--line-rule) solid var(--frame);
+}
+
+.plate.is-stacked .plate-preview {
+    align-self: stretch;
+    justify-content: flex-start;
+    padding: var(--space-6) 0 0;
+}
+
+/* ============================================
+   CHART
+   ============================================ */
+
+.chart-area {
+    position: relative;
+}
+
+.canvas-resize-container {
+    position: relative;
+    display: inline-block;
+}
+
+#editCanvas,
+#previewCanvas {
+    display: block;
+    border: var(--line-rule) solid var(--frame);
+}
+
+#editCanvas {
+    cursor: crosshair;
+}
+
+.canvas-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+/* Edge grip: a tab at the middle of each edge, straddling it */
+.edge-grip {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.edge-grip::before {
+    content: "";
+    border-color: var(--ink);
+    border-style: solid;
+}
+
+.edge-grip:hover,
+.canvas-resize-container.is-resizing .edge-grip {
+    background: var(--ground);
+}
+
+.edge-grip-top,
+.edge-grip-bottom {
+    left: 50%;
+    width: 40px;
+    height: 12px;
+    margin-left: -20px;
+    cursor: ns-resize;
+}
+
+.edge-grip-top::before,
+.edge-grip-bottom::before {
+    width: 16px;
+    height: 2px;
+    border-width: 1px 0;
+}
+
+.edge-grip-top { top: -6px; }
+.edge-grip-bottom { bottom: -6px; }
+
+.edge-grip-left,
+.edge-grip-right {
+    top: 50%;
+    width: 12px;
+    height: 40px;
+    margin-top: -20px;
+    cursor: ew-resize;
+}
+
+.edge-grip-left::before,
+.edge-grip-right::before {
+    width: 2px;
+    height: 16px;
+    border-width: 0 1px;
+}
+
+.edge-grip-left { left: -6px; }
+.edge-grip-right { right: -6px; }
+
+/* ============================================
+   CAPTION LINES
+   An italic sentence with editable numbers, then the icon buttons that act on it
+   ============================================ */
+
+.caption-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    max-width: 100%;
+}
+
+/* As wide as the key under the chart; as wide as the preview, up to 650px, above it */
+.caption-line-chart {
+    width: 421px;
+}
+
+.caption-line-preview {
+    width: clamp(421px, var(--preview-width, 650px), 650px);
+}
+
+.caption {
+    font: var(--text-figure-caption);
+    color: var(--ink);
+}
+
+.caption input.caption-field {
+    width: 36px;
+    min-height: 0;
+    margin: 0;
+    padding: 1px 5px;
+    font: var(--text-ui);
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.caption-line-preview input.caption-field {
+    width: 30px;
+}
+
+.caption input.caption-field:focus {
+    border-color: var(--ink);
+}
+
+.caption input.caption-field-invalid {
+    border: var(--line-emphasis) solid var(--signal-error);
+}
+
+/* Message under a caption sentence */
+.caption-message {
+    font: var(--text-caption);
+    color: var(--ink-muted);
+}
+
+.caption-message:empty {
+    display: none;
+}
+
+.caption-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 2px;
+    margin-right: -8px;
+}
+
+/* Icon button: one 14px line icon, no frame */
+.icon-button {
+    width: 30px;
+    height: 30px;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+    background: var(--ground);
+}
+
+.icon-button:disabled {
+    opacity: 1;
+    color: var(--ink-muted);
+    cursor: default;
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+
+.tooltip {
+    position: absolute;
+    z-index: 2000;
+    padding: 4px 8px;
+    font-family: var(--font-serif);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.tooltip[hidden] {
+    display: none;
+}
+
+/* ============================================
+   TOUCH: 44px targets
+   ============================================ */
+
+@media (pointer: coarse) {
+    .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .icon-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .caption-actions {
+        gap: 0;
+        margin-right: -14px;
+    }
+
+    /* The grip looks the same; the button around it takes a 44 x 24 touch area */
+    .edge-grip {
+        background: transparent;
+        border: 0;
+    }
+
+    .edge-grip::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        background: var(--surface);
+        border: var(--line-rule) solid var(--ink);
+    }
+
+    .edge-grip-top,
+    .edge-grip-bottom {
+        width: 44px;
+        height: 24px;
+        margin-left: -22px;
+    }
+
+    .edge-grip-top { top: -12px; }
+    .edge-grip-bottom { bottom: -12px; }
+
+    .edge-grip-top::after,
+    .edge-grip-bottom::after {
+        width: 40px;
+        height: 12px;
+        box-sizing: border-box;
+    }
+
+    .edge-grip-left,
+    .edge-grip-right {
+        width: 24px;
+        height: 44px;
+        margin-top: -22px;
+    }
+
+    .edge-grip-left { left: -12px; }
+    .edge-grip-right { right: -12px; }
+
+    .edge-grip-left::after,
+    .edge-grip-right::after {
+        width: 12px;
+        height: 40px;
+        box-sizing: border-box;
+    }
+
+    .edge-grip:hover::after,
+    .canvas-resize-container.is-resizing .edge-grip::after {
+        background: var(--ground);
+    }
+}
+
+/* ============================================
+   NARROW WINDOWS (tablet and phone; the phone layout itself comes later)
+   ============================================ */
+
+@media (max-width: 1024px) {
+    .plate,
+    .plate.is-stacked {
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .plate-chart {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* The pattern colours still sit in the top bar here, so the wordmark makes way */
+    .editor-top-bar .wordmark {
+        display: none;
+    }
+
+    .caption-line-chart,
+    .caption-line-preview {
+        width: 100%;
+    }
+}

@@ -167,8 +167,12 @@ export const CanvasManager = {
      * @param {number[][]} grid - 2D array of cell values (0=background, 1-20=color indices)
      * @param {string[]} patternColors - Array of hex color strings
      * @param {string} backgroundColor - Hex color for empty cells
+     * @param {Object} [options]
+     * @param {boolean} [options.outlineRepeat=true] - Outline one repeat on the preview
+     * @returns {{stacked: boolean, previewWidth: number, outlined: boolean}} The layout chosen
      */
-    update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor) {
+    update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor, options = {}) {
+        const { outlineRepeat = true } = options;
         // Calculate viewport constraints - adjust for mobile vs desktop
         // Use cached dimensions if available for consistency
         const currentWidth = window.innerWidth;
@@ -183,52 +187,66 @@ export const CanvasManager = {
         const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
         const isSmallMobile = effectiveWidth <= CONFIG.SMALL_MOBILE_BREAKPOINT;
 
-        // On mobile, panels are overlays (not side-by-side), so ignore panel width
-        const collapsedPanelWidth = isMobile ? 0 : CONFIG.COLLAPSED_PANEL_WIDTH;
-
-        // Adjust padding based on screen size and orientation
-        let paddingHorizontal;
-        if (isSmallMobile && !isLandscape) {
-            paddingHorizontal = CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE;
-        } else if (isMobile) {
-            // In landscape, use minimal padding to maximize canvas space (like mini-desktop)
-            paddingHorizontal = isLandscape ? CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE : CONFIG.PADDING_HORIZONTAL_MOBILE;
-        } else {
-            paddingHorizontal = CONFIG.PADDING_HORIZONTAL_DESKTOP;
-        }
-
-        // Gap between canvases - smaller in landscape to encourage side-by-side layout
-        const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
-
-        // Calculate available width using effectiveWidth for consistency
-        const availableWidth = effectiveWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
-
-        // First, try to calculate cell sizes assuming side-by-side layout
-        // Available width for each canvas when side-by-side
-        const widthPerCanvas = (availableWidth - gap) / 2;
-
-        // Calculate cell size for edit canvas with half the available width
-        const cellSizeSideBySide = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, widthPerCanvas);
-
-        // Calculate what the canvas dimensions would be with these cell sizes
-        const editCanvasWidthSideBySide = gridWidth * cellSizeSideBySide.width;
-        const previewWidthSideBySide = gridWidth * cellSizeSideBySide.width * previewRepeatX * CONFIG.PREVIEW_SCALE;
-
-        // Check if both canvases can actually fit side-by-side
-        const totalWidthSideBySide = editCanvasWidthSideBySide + previewWidthSideBySide + gap;
-        const canFitSideBySide = totalWidthSideBySide <= availableWidth;
-
-        // Decide on final layout and calculate cell sizes accordingly
-        // Force stacking on mobile portrait to maximize grid size
         let cellSize, shouldStack;
-        if (canFitSideBySide && !(isMobile && !isLandscape)) {
-            // Use the side-by-side cell size
-            cellSize = cellSizeSideBySide;
-            shouldStack = false;
+        if (!isMobile) {
+            // Desktop plate: the chart fills its column, as wide as the key. The column widens
+            // with a chart held at the 20px floor; chart and preview stay side by side while
+            // both fit at their natural sizes.
+            cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, CONFIG.CHART_COLUMN_WIDTH);
+            const chartColumnWidth = Math.max(
+                CONFIG.CHART_COLUMN_MIN_WIDTH,
+                gridWidth * cellSize.width + CONFIG.CHART_COLUMN_RESERVE
+            );
+            const previewNaturalWidth = gridWidth * cellSize.width * previewRepeatX * CONFIG.PREVIEW_SCALE;
+            const plateWidth = effectiveWidth - 2 * CONFIG.PLATE_PADDING_DESKTOP;
+            shouldStack = chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
         } else {
-            // Recalculate with full available width for stacked layout
-            cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, availableWidth);
-            shouldStack = true;
+            // On mobile, panels are overlays (not side-by-side), so ignore panel width
+            const collapsedPanelWidth = isMobile ? 0 : CONFIG.COLLAPSED_PANEL_WIDTH;
+
+            // Adjust padding based on screen size and orientation
+            let paddingHorizontal;
+            if (isSmallMobile && !isLandscape) {
+                paddingHorizontal = CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE;
+            } else if (isMobile) {
+                // In landscape, use minimal padding to maximize canvas space (like mini-desktop)
+                paddingHorizontal = isLandscape ? CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE : CONFIG.PADDING_HORIZONTAL_MOBILE;
+            } else {
+                paddingHorizontal = CONFIG.PADDING_HORIZONTAL_DESKTOP;
+            }
+
+            // Gap between canvases - smaller in landscape to encourage side-by-side layout
+            const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
+
+            // Calculate available width using effectiveWidth for consistency
+            const availableWidth = effectiveWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
+
+            // First, try to calculate cell sizes assuming side-by-side layout
+            // Available width for each canvas when side-by-side
+            const widthPerCanvas = (availableWidth - gap) / 2;
+
+            // Calculate cell size for edit canvas with half the available width
+            const cellSizeSideBySide = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, widthPerCanvas);
+
+            // Calculate what the canvas dimensions would be with these cell sizes
+            const editCanvasWidthSideBySide = gridWidth * cellSizeSideBySide.width;
+            const previewWidthSideBySide = gridWidth * cellSizeSideBySide.width * previewRepeatX * CONFIG.PREVIEW_SCALE;
+
+            // Check if both canvases can actually fit side-by-side
+            const totalWidthSideBySide = editCanvasWidthSideBySide + previewWidthSideBySide + gap;
+            const canFitSideBySide = totalWidthSideBySide <= availableWidth;
+
+            // Decide on final layout and calculate cell sizes accordingly
+            // Force stacking on mobile portrait to maximize grid size
+            if (canFitSideBySide && !(isMobile && !isLandscape)) {
+                // Use the side-by-side cell size
+                cellSize = cellSizeSideBySide;
+                shouldStack = false;
+            } else {
+                // Recalculate with full available width for stacked layout
+                cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, availableWidth);
+                shouldStack = true;
+            }
         }
 
         // Calculate final canvas dimensions
@@ -271,6 +289,36 @@ export const CanvasManager = {
         this.drawEdit(gridWidth, gridHeight, cellSize.width, cellSize.height, grid, patternColors, backgroundColor);
         this.drawPreview(gridWidth, gridHeight, previewCellWidth, previewCellHeight,
                         previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor);
+
+        // Outline one repeat: the centre one, or the one before the centre for even counts
+        const outlined = outlineRepeat && (previewRepeatX > 1 || previewRepeatY > 1);
+        if (outlined) {
+            this.drawRepeatOutline(
+                Math.floor((previewRepeatX - 1) / 2) * gridWidth * previewCellWidth,
+                Math.floor((previewRepeatY - 1) / 2) * gridHeight * previewCellHeight,
+                gridWidth * previewCellWidth,
+                gridHeight * previewCellHeight
+            );
+        }
+
+        return { stacked: shouldStack, previewWidth, outlined };
+    },
+
+    /**
+     * Frame one repeat on the preview: a heavy ink line with a thin paper line around it,
+     * so it reads on any colour
+     */
+    drawRepeatOutline(x, y, width, height) {
+        const ctx = this.previewCtx;
+        const heavy = CONFIG.REPEAT_OUTLINE_WIDTH;
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_HALO;
+        ctx.strokeRect(x - 0.5, y - 0.5, width + 1, height + 1);
+        ctx.lineWidth = heavy;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_COLOR;
+        ctx.strokeRect(x + heavy / 2, y + heavy / 2, width - heavy, height - heavy);
+        ctx.restore();
     },
 
     /**

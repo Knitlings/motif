@@ -7,19 +7,19 @@ test.describe('UI Controls', () => {
   });
 
   test('should change grid dimensions', async ({ page }) => {
-    // Grid dimensions are now inline contenteditable elements
+    // Grid dimensions are number fields in the chart's caption
     const widthDisplay = page.locator('#gridWidthDisplay');
 
     // Wait for display to be visible
     await widthDisplay.waitFor({ state: 'visible' });
 
-    // Change width by editing contenteditable element
+    // Change width by typing in the caption
     await widthDisplay.click();
     await widthDisplay.fill('10');
     await widthDisplay.press('Enter');
 
     // Verify display updated
-    await expect(widthDisplay).toHaveText('10');
+    await expect(widthDisplay).toHaveValue('10');
   });
 
   test('should open palette dropdown', async ({ page }) => {
@@ -141,23 +141,41 @@ test.describe('UI Controls', () => {
     await expect(hamburgerMenu).not.toHaveClass(/open/);
   });
 
-  test('should change grid dimensions with chevrons', async ({ page }) => {
+  test('should resize from an edge grip with the arrow keys', async ({ page }) => {
     const widthDisplay = page.locator('#gridWidthDisplay');
-    const rightChevron = page.locator('.grid-chevron-right');
+    const heightDisplay = page.locator('#gridHeightDisplay');
+    const initialWidth = parseInt(await widthDisplay.inputValue());
+    const initialHeight = parseInt(await heightDisplay.inputValue());
 
-    // Wait for elements to be visible
-    await widthDisplay.waitFor({ state: 'visible' });
-    await rightChevron.waitFor({ state: 'visible' });
+    // Outward adds a stitch at that edge, inward removes one
+    const rightGrip = page.getByRole('button', { name: 'Drag to add or remove stitches on the right' });
+    await rightGrip.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(widthDisplay).toHaveValue(String(initialWidth + 1));
+    await page.keyboard.press('ArrowLeft');
+    await expect(widthDisplay).toHaveValue(String(initialWidth));
 
-    // Get initial width
-    const initialWidth = await widthDisplay.textContent();
+    const topGrip = page.getByRole('button', { name: 'Drag to add or remove rows at the top' });
+    await topGrip.focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(heightDisplay).toHaveValue(String(initialHeight + 1));
+  });
 
-    // Click right chevron to increase width
-    await rightChevron.click();
+  test('should describe the whole preview in its caption', async ({ page }) => {
+    await page.locator('#gridWidthDisplay').fill('8');
+    await page.locator('#gridWidthDisplay').press('Enter');
+    await page.locator('#previewRepeatXDisplay').fill('2');
+    await page.locator('#previewRepeatXDisplay').press('Enter');
 
-    // Width should increase
-    const newWidth = await widthDisplay.textContent();
-    expect(parseInt(newWidth)).toBe(parseInt(initialWidth) + 1);
+    // 8 stitches x 2 repeats across, 5 rows x 3 repeats up
+    await expect(page.locator('#previewTotal')).toHaveText(', 16 stitches by 15 rows in all.');
+    await expect(page.locator('#previewOutlineNote')).toBeVisible();
+
+    await page.locator('#previewRepeatXDisplay').fill('1');
+    await page.locator('#previewRepeatXDisplay').press('Enter');
+    await page.locator('#previewRepeatYDisplay').fill('1');
+    await page.locator('#previewRepeatYDisplay').press('Enter');
+    await expect(page.locator('#previewOutlineNote')).toBeHidden();
   });
 
   test('should change preview repeat dimensions', async ({ page }) => {
@@ -166,13 +184,13 @@ test.describe('UI Controls', () => {
     // Wait for display to be visible
     await repeatXDisplay.waitFor({ state: 'visible' });
 
-    // Change preview repeat by editing contenteditable element
+    // Change preview repeat by typing in the caption
     await repeatXDisplay.click();
     await repeatXDisplay.fill('5');
     await repeatXDisplay.press('Enter');
 
     // Verify display updated
-    await expect(repeatXDisplay).toHaveText('5');
+    await expect(repeatXDisplay).toHaveValue('5');
   });
 
   test('should not have CSP violations', async ({ page }) => {
@@ -416,7 +434,7 @@ test.describe('Pattern with Context Visual Selection', () => {
 
     // Preview should show 3x3
     const repeatXDisplay = page.locator('#previewRepeatXDisplay');
-    await expect(repeatXDisplay).toHaveText('3');
+    await expect(repeatXDisplay).toHaveValue('3');
   });
 
   test('should show form inputs for large patterns', async ({ page }) => {
@@ -471,7 +489,7 @@ test.describe('Pattern with Context Visual Selection', () => {
 
     // Preview should restore original repeat (default 3x3)
     const repeatXDisplay = page.locator('#previewRepeatXDisplay');
-    await expect(repeatXDisplay).toHaveText('3');
+    await expect(repeatXDisplay).toHaveValue('3');
   });
 
   test('should exit visual selection on escape key', async ({ page }) => {

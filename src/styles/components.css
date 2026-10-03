@@ -1,112 +1,4 @@
-/* ============================================
-   CANVAS AREA
-   ============================================ */
 
-.canvas-container {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--space-8) var(--space-10) var(--space-8);
-    justify-content: center;
-    align-items: flex-start;
-}
-
-.canvas-section {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-5);
-    min-width: 300px;
-}
-
-.canvas-heading {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
-.preview-repeat-status {
-    font-size: var(--font-size-xs);
-    margin-left: var(--space-3);
-}
-
-/* Grid Control (Inline Dimension Controls) */
-.grid-control {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    justify-content: center;
-    align-self: center;
-}
-
-.grid-control-label {
-    /* Inherits canvas-heading styles */
-}
-
-.grid-dimension {
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-primary);
-    text-transform: none;
-    letter-spacing: normal;
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--border-radius-sm);
-    background: transparent;
-    border: var(--border-width) solid transparent;
-    min-width: 2ch;
-    text-align: center;
-    cursor: default;
-    transition: all var(--transition-base);
-}
-
-.grid-dimension:hover {
-    background: var(--color-bg-secondary);
-    border-color: var(--color-border-secondary);
-    cursor: text;
-}
-
-.grid-dimension:focus {
-    border-color: var(--color-primary);
-    background: var(--color-bg-primary);
-    cursor: text;
-}
-
-.grid-chevron {
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-lg);
-    padding: var(--space-1);
-    cursor: pointer;
-    transition: all var(--transition-base);
-    line-height: 1;
-    border-radius: var(--border-radius-sm);
-}
-
-.grid-chevron:hover:not(:disabled) {
-    color: var(--color-primary);
-    background: var(--color-bg-secondary);
-}
-
-.grid-chevron:active:not(:disabled) {
-    background: var(--color-bg-tertiary);
-}
-
-.grid-chevron:disabled,
-.grid-chevron.disabled {
-    color: var(--color-text-disabled);
-    cursor: not-allowed;
-    opacity: 0.4;
-}
-
-.grid-control-separator {
-    font-size: var(--font-size-base);
-    color: var(--color-text-tertiary);
-    margin: 0 var(--space-1);
-}
 
 /* Cells Control (Aspect Ratio Menu) */
 .cells-control {
@@ -180,27 +72,6 @@
     margin-top: var(--space-4);
 }
 
-.canvas-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 0; /* Allow canvas to overflow grid control width */
-}
-
-.canvas-resize-container {
-    position: relative;
-    display: inline-block;
-    transition: outline 300ms ease;
-}
-
-canvas {
-    display: block;
-    border: var(--border-width-thick) solid var(--color-border-dark);
-    border-radius: var(--border-radius-sm);
-    cursor: crosshair;
-}
-
 /* Preview Toast Notification */
 .preview-toast {
     position: absolute;
@@ -222,53 +93,6 @@ canvas {
 
 .preview-toast.show {
     opacity: 1;
-}
-
-/* Resize Handles */
-.resize-handle {
-    position: absolute;
-    background: transparent;
-    z-index: 10;
-}
-
-.resize-handle:hover {
-    background: var(--color-primary-light);
-}
-
-.resize-handle-top,
-.resize-handle-bottom {
-    left: 0;
-    right: 0;
-    height: 8px;
-    cursor: ns-resize;
-}
-
-.resize-handle-top {
-    top: -4px;
-}
-
-.resize-handle-bottom {
-    bottom: -4px;
-}
-
-.resize-handle-left,
-.resize-handle-right {
-    top: 0;
-    bottom: 0;
-    width: 8px;
-    cursor: ew-resize;
-}
-
-.resize-handle-left {
-    left: -4px;
-}
-
-.resize-handle-right {
-    right: -4px;
-}
-
-#previewCanvas {
-    cursor: default;
 }
 
 /* Canvas Instructions Overlay */
@@ -379,33 +203,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-/* Icon Buttons */
-.icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 28px;
-    padding: 0;
-    font-size: var(--font-size-base);
-    line-height: 1;
-    color: var(--color-text-tertiary);
-    background: transparent;
-    border: none;
-}
-
-.icon-btn:hover:not(:disabled) {
-    color: var(--color-text-secondary);
-}
-
-.icon-btn-danger {
-    color: var(--color-text-tertiary);
-}
-
-.icon-btn-danger:hover:not(:disabled) {
-    color: var(--color-danger);
-}
-
 /* Primary Button */
 .btn-primary {
     color: white;
@@ -454,11 +251,6 @@ button:disabled {
 
 .text-link-label:hover {
     text-decoration: underline;
-}
-
-/* Text link in header-actions context */
-.header-actions .text-link-label {
-    margin-top: 0;
 }
 
 /* ============================================
@@ -1024,28 +816,6 @@ button:disabled {
 .modal-btn-primary:hover {
     background: var(--color-primary-hover);
     border-color: var(--color-primary-hover);
-}
-
-/* Download Button in Header */
-.header-actions .text-link {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-secondary);
-    background: transparent;
-    border: none;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-base);
-    text-decoration: none;
-}
-
-.header-actions .text-link:hover {
-    color: var(--color-primary);
-    background: var(--color-bg-secondary);
-    text-decoration: none;
 }
 
 /* Mobile/Touch Adjustments for Download Modal */

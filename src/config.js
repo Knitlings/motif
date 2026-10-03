@@ -41,7 +41,7 @@ export const CONFIG = {
     DEFAULT_ADD_COLOR: '#5a3d5e',
 
     // UI
-    GRID_STROKE_COLOR: '#ddd',
+    GRID_STROKE_COLOR: '#c8c7c3',
     PREVIEW_STROKE_COLOR: '#eee',
     CANVAS_BORDER_COLOR: '#666',
     INSTRUCTIONS_FADE_TIME: 400,
@@ -54,7 +54,7 @@ export const CONFIG = {
     HEADER_HEIGHT_DESKTOP: 64,
     PADDING_VERTICAL_MOBILE_LANDSCAPE: 60,
     PADDING_VERTICAL_MOBILE_PORTRAIT: 100,
-    PADDING_VERTICAL_DESKTOP: 220,
+    PADDING_VERTICAL_DESKTOP: 300,
     PADDING_HORIZONTAL_SMALL_MOBILE: 24,
     PADDING_HORIZONTAL_MOBILE: 32,
     PADDING_HORIZONTAL_DESKTOP: 480,
@@ -63,6 +63,16 @@ export const CONFIG = {
     CANVAS_GAP_DESKTOP: 96,
     COLLAPSED_PANEL_WIDTH: 40,
     MOBILE_BREAKPOINT: 1024,
+
+    // Desktop plate (see the Knitlings design system's Motif layout)
+    CHART_COLUMN_WIDTH: 421,         // The chart is as wide as the key
+    CHART_COLUMN_MIN_WIDTH: 520,     // Column including its 48px gutter before the rule
+    CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
+    PREVIEW_COLUMN_PADDING: 48,
+    PLATE_PADDING_DESKTOP: 64,
+    REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
+    REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
+    REPEAT_OUTLINE_HALO: '#ffffff',  // surface
     SMALL_MOBILE_BREAKPOINT: 480,
     LANDSCAPE_HEIGHT_THRESHOLD: 500,
     MAX_CANVAS_SIZE_MOBILE_LANDSCAPE: 1200,
@@ -171,7 +181,17 @@ export const UI_CONSTANTS = {
     Z_INDEX_DROPDOWN: 100,           // Dropdown panels
 
     // Responsive breakpoints (duplicated from CONFIG for UI-specific use)
-    MOBILE_BREAKPOINT: 1024,         // px - Mobile vs desktop threshold
+    MOBILE_BREAKPOINT: 1024,
+
+    // Desktop plate (see the Knitlings design system's Motif layout)
+    CHART_COLUMN_WIDTH: 421,         // The chart is as wide as the key
+    CHART_COLUMN_MIN_WIDTH: 520,     // Column including its 48px gutter before the rule
+    CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
+    PREVIEW_COLUMN_PADDING: 48,
+    PLATE_PADDING_DESKTOP: 64,
+    REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
+    REPEAT_OUTLINE_COLOR: '#1a1a18', // ink
+    REPEAT_OUTLINE_HALO: '#ffffff',  // surface         // px - Mobile vs desktop threshold
     SMALL_MOBILE_BREAKPOINT: 480,    // px - Small mobile devices
     TABLET_BREAKPOINT: 768,          // px - Tablet breakpoint
 

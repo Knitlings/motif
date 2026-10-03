@@ -69,8 +69,8 @@ test.describe('Desktop Layout (>768px)', () => {
     await expect(hamburgerMenu).toBeVisible();
   });
 
-  test('should have navbar height of 64px', async ({ page }) => {
-    const navbar = page.locator('.header-navbar');
+  test('should have top bar height of 64px', async ({ page }) => {
+    const navbar = page.locator('.editor-top-bar');
     await expect(navbar).toHaveCSS('height', '64px');
   });
 
@@ -137,8 +137,8 @@ test.describe('Tablet Layout (768px)', () => {
     expect(box.height).toBeLessThanOrEqual(40);
   });
 
-  test('should have navbar height of 56px', async ({ page }) => {
-    const navbar = page.locator('.header-navbar');
+  test('should have top bar height of 56px', async ({ page }) => {
+    const navbar = page.locator('.editor-top-bar');
     await expect(navbar).toHaveCSS('height', '56px');
   });
 });
@@ -191,8 +191,8 @@ test.describe('Mobile Layout (375px)', () => {
     expect(box.height).toBeLessThanOrEqual(36);
   });
 
-  test('should have navbar height of 56px', async ({ page }) => {
-    const navbar = page.locator('.header-navbar');
+  test('should have top bar height of 56px', async ({ page }) => {
+    const navbar = page.locator('.editor-top-bar');
     await expect(navbar).toHaveCSS('height', '56px');
   });
 
@@ -273,19 +273,9 @@ test.describe('Small Mobile Layout (360px)', () => {
     expect(gridColumns.split(' ').length).toBe(3);
   });
 
-  test('should have navbar height of 56px', async ({ page }) => {
-    const navbar = page.locator('.header-navbar');
+  test('should have top bar height of 56px', async ({ page }) => {
+    const navbar = page.locator('.editor-top-bar');
     await expect(navbar).toHaveCSS('height', '56px');
-  });
-
-  test('should show smaller navbar title', async ({ page }) => {
-    const title = page.locator('.navbar-title');
-
-    // Title should have reduced font size on very small screens
-    const fontSize = await title.evaluate(el => {
-      return window.getComputedStyle(el).fontSize;
-    });
-    expect(parseInt(fontSize)).toBeLessThanOrEqual(20);
   });
 });
 
