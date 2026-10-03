@@ -21,5 +21,8 @@
 /* The editor: top bar, plate, captions, icon buttons */
 @import './plate.css';
 
+/* The key under the chart */
+@import './key.css';
+
 /* Responsive styles - mobile and tablet adjustments */
 @import './responsive.css';

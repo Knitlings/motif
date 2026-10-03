@@ -2,8 +2,6 @@
 // CANVAS INTERACTIONS MODULE
 // ============================================
 
-import { CONFIG } from '../config.js';
-
 /**
  * Setup canvas interaction events
  * @param {Object} deps - Dependencies object
@@ -41,16 +39,11 @@ export function setupCanvasInteractions(deps) {
     } = deps;
 
     /**
-     * Hide canvas instructions after first interaction
+     * Remember that the pattern has been painted (restores undo history after a reload)
      */
-    function hideCanvasInstructions() {
+    function markInteracted() {
         if (!getHasInteracted()) {
             setHasInteracted(true);
-            const instructions = document.getElementById('canvasInstructions');
-            instructions.classList.add('fade-out');
-            setTimeout(() => {
-                instructions.style.display = 'none';
-            }, CONFIG.INSTRUCTIONS_FADE_TIME);
         }
     }
 
@@ -59,7 +52,7 @@ export function setupCanvasInteractions(deps) {
      */
     function setupCanvasEvents() {
         canvasManager.editCanvas.addEventListener('mousedown', (e) => {
-            hideCanvasInstructions();
+            markInteracted();
             setIsDrawing(true);
             const { row, col } = canvasManager.getCellFromMouse(e, getGridWidth(), getGridHeight());
 
@@ -100,7 +93,7 @@ export function setupCanvasInteractions(deps) {
     }
 
     return {
-        hideCanvasInstructions,
+        markInteracted,
         setupCanvasEvents
     };
 }

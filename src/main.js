@@ -19,8 +19,6 @@ import {
     validateFileSize,
     validateFileType
 } from './utils/validation.js';
-import deleteSvg from './assets/delete.svg';
-import editSvg from './assets/edit.svg';
 import {
     showError,
     handleStorageError,
@@ -37,6 +35,7 @@ import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
 import { applyDimensionInput } from './ui/handlers.js';
 import { setupTooltips } from './ui/tooltip.js';
+import { createKey } from './ui/key.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -85,6 +84,7 @@ let customPalette = null; // Array of color strings when custom palette exists
 
 // Browser capabilities (set during initialization)
 let browserCapabilities = null;
+let key = null; // The key under the chart, created at initialisation
 
 // ============================================
 // STATE HELPERS
@@ -211,7 +211,11 @@ function updateCanvas() {
  * @param {{stacked: boolean, previewWidth: number, outlined: boolean}} layout
  */
 function applyPlateLayout(layout) {
-    document.getElementById('plate').classList.toggle('is-stacked', layout.stacked);
+    const plate = document.getElementById('plate');
+    const wasStacked = plate.classList.contains('is-stacked');
+    plate.classList.toggle('is-stacked', layout.stacked);
+    // The key's row has one place fewer when stacked
+    if (wasStacked !== layout.stacked) renderKey();
     document.getElementById('previewCaptionLine').style.setProperty('--preview-width', `${layout.previewWidth}px`);
     document.getElementById('previewTotal').textContent =
         `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
@@ -233,46 +237,6 @@ function scheduleCanvasUpdate() {
 // ============================================
 // UI FUNCTIONS
 // ============================================
-
-function updateNavbarSvgs() {
-    const activeSwatch = document.getElementById('navbarActiveColorSwatch');
-    const bgSwatch = document.getElementById('navbarBgColorSwatch');
-
-    if (activeSwatch && bgSwatch) {
-        const activeColor = patternColors[activePatternIndex];
-        activeSwatch.style.backgroundColor = activeColor;
-        bgSwatch.style.backgroundColor = backgroundColor;
-    }
-}
-
-function updateNavbarColorPreview() {
-    const previewContainer = document.getElementById('navbarColorPreview');
-
-    if (!previewContainer) return;
-
-    if (patternColors.length >= 2) {
-        previewContainer.innerHTML = '';
-
-        patternColors.forEach((color, index) => {
-            const circle = document.createElement('div');
-            circle.className = 'navbar-color-circle';
-            circle.style.backgroundColor = color;
-            circle.title = `Pattern ${index + 1}: ${color}`;
-            previewContainer.appendChild(circle);
-        });
-
-        previewContainer.classList.add('visible');
-    } else {
-        previewContainer.classList.remove('visible');
-        previewContainer.innerHTML = '';
-    }
-}
-
-function updateColorIndicators() {
-    updateNavbarSvgs();
-    updateNavbarColorPreview();
-}
-
 
 function showConfirmDialog(title, message, confirmText, onConfirm) {
     const dialog = document.getElementById('mergeDialog');
@@ -348,8 +312,7 @@ function deletePatternColor(colorIndex) {
     }
 
     saveToHistory();
-    updateActiveColorUI();
-    createNavbarColorButtons();
+    renderKey();
     updateCanvas();
 }
 
@@ -396,46 +359,16 @@ function mergePatternColors(sourceIndex, targetIndex) {
         }
 
         saveToHistory();
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
     });
 }
 
-function updateActiveColorUI() {
-    updateColorIndicators();
-    updateNavbarButtonStates();
-}
-
 /**
- * Update navbar button visual states (active pattern color and background color)
+ * Redraw the key (colours, background, palette) and its hint line
  */
-function updateNavbarButtonStates() {
-    // Background is "active" if: mobile long-press active OR shift key held on desktop
-    const backgroundIsCurrentlyActive = isBackgroundActive || isShiftKeyHeld;
-
-    // Update pattern color buttons
-    document.querySelectorAll('.navbar-color-btn.round').forEach((btn) => {
-        const index = parseInt(btn.getAttribute('data-index'));
-        if (!isNaN(index)) {
-            // Remove active class if background is active, or if this isn't the active pattern
-            if (backgroundIsCurrentlyActive || index !== activePatternIndex) {
-                btn.classList.remove('active');
-            } else {
-                btn.classList.add('active');
-            }
-        }
-    });
-
-    // Update background button
-    const bgBtn = document.querySelector('.navbar-color-btn.square');
-    if (bgBtn) {
-        if (backgroundIsCurrentlyActive) {
-            bgBtn.classList.add('active');
-        } else {
-            bgBtn.classList.remove('active');
-        }
-    }
+function renderKey() {
+    if (key) key.render();
 }
 
 // ============================================
@@ -727,8 +660,7 @@ document.getElementById('undoBtn').onclick = () => {
             saveToLocalStorage();
         }
 
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
         updatePreviewRepeatStatus();
         announceToScreenReader('Undo successful');
@@ -773,8 +705,7 @@ document.getElementById('redoBtn').onclick = () => {
             saveToLocalStorage();
         }
 
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
         updatePreviewRepeatStatus();
         announceToScreenReader('Redo successful');
@@ -1670,10 +1601,9 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
                     if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
                     if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
-                                    createNavbarColorButtons();
-                    updateActiveColorUI();
+                                    renderKey();
                     updatePaletteUI();
-                    updateNavbarPaletteName();
+                    renderKey();
 
                     saveToHistory();
                     updateCanvas();
@@ -1814,20 +1744,10 @@ function updateUIDisplaysForSharedPattern() {
 
     // Re-render UI with shared pattern data
     updatePaletteUI();
-    createNavbarColorButtons();
-    updateActiveColorUI();
-    updateColorIndicators();
-    updateNavbarPaletteName();
-    updateNavbarPalettePreview();
+    renderKey();
 
     // Re-initialize grid with shared data
     initGrid();
-
-    // Hide instructions if pattern was shared with interaction
-    if (hasInteracted) {
-        const instructions = document.getElementById('canvasInstructions');
-        if (instructions) instructions.style.display = 'none';
-    }
 }
 
 // Check for shared pattern in URL (takes priority over localStorage)
@@ -1944,12 +1864,11 @@ const paletteManager = createPaletteManager({
     setBackgroundColor: (color) => { backgroundColor = color; },
     saveToLocalStorage,
     updateCanvas,
-    updateColorIndicators,
-    updateActiveColorUI
+    updateColorIndicators: renderKey,
+    updateActiveColorUI: renderKey
 });
 
 // Expose palette functions globally for button handlers
-const renderPalette = paletteManager.renderPalette;
 const switchPalette = paletteManager.switchPalette;
 const updatePaletteUI = paletteManager.updatePaletteUI;
 
@@ -1964,11 +1883,12 @@ setupKeyboardShortcuts({
         activePatternIndex = index;
         isBackgroundActive = false; // Deactivate background when selecting pattern color via keyboard
     },
-    updateActiveColorUI,
-    createNavbarColorButtons,
+    updateActiveColorUI: renderKey,
+    createNavbarColorButtons: renderKey,
     setShiftKeyState: (isHeld) => {
+        if (isShiftKeyHeld === isHeld) return;
         isShiftKeyHeld = isHeld;
-        updateNavbarButtonStates();
+        if (key) key.refreshSelection();
     }
 });
 
@@ -1993,27 +1913,139 @@ const canvasInteractions = setupCanvasInteractions({
 // Set up canvas event listeners
 canvasInteractions.setupCanvasEvents();
 
+// What the key's controls do to the pattern
+const keyActions = {
+    selectColor(index) {
+        activePatternIndex = index;
+        isBackgroundActive = false;
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    addColor() {
+        if (patternColors.length >= CONFIG.MAX_PATTERN_COLORS) return;
+        patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
+        activePatternIndex = patternColors.length - 1;
+        isBackgroundActive = false;
+        renderKey();
+        updateCanvas();
+        saveToLocalStorage();
+        announceToScreenReader(`Colour ${patternColors.length} added`);
+    },
+
+    changeColor(index, hex) {
+        if (!validateColor(hex)) return;
+        patternColors[index] = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    removeColor(index) {
+        showDeleteColorDialog(index);
+    },
+
+    mergeColors(sourceIndex, targetIndex) {
+        mergePatternColors(sourceIndex, targetIndex);
+    },
+
+    swapWithBackground(index) {
+        if (index < 0 || index >= patternColors.length) return;
+        const previousBackground = backgroundColor;
+        backgroundColor = patternColors[index];
+        patternColors[index] = previousBackground;
+        saveToHistory();
+        renderKey();
+        updateCanvas();
+        announceToScreenReader(`Swapped colour ${index + 1} with the background`);
+    },
+
+    setBackground(hex) {
+        if (!validateColor(hex)) return;
+        backgroundColor = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    toggleBackgroundActive() {
+        isBackgroundActive = !isBackgroundActive;
+        renderKey();
+    },
+
+    giveActiveColour(hex) {
+        patternColors[activePatternIndex] = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    switchPalette(paletteId) {
+        switchPalette(paletteId);
+        renderKey();
+    },
+
+    loadPalette() {
+        const palette = getCurrentPaletteColors();
+        if (!palette || palette.length === 0) return;
+        patternColors = palette.slice(0, CONFIG.MAX_PATTERN_COLORS);
+        if (activePatternIndex >= patternColors.length) {
+            activePatternIndex = 0;
+        }
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+        announceToScreenReader(`Loaded the ${activePaletteId} palette into the key`);
+    },
+
+    addCustomColour() {
+        if (!customPalette) {
+            customPalette = ['#000000'];
+        } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+            customPalette.push('#000000');
+        }
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    editCustomColour(index, hex) {
+        if (!customPalette || !validateColor(hex)) return;
+        customPalette[index] = hex;
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    deleteCustomColour(index) {
+        if (!customPalette || customPalette.length <= CONFIG.MIN_PALETTE_COLORS) return;
+        customPalette.splice(index, 1);
+        renderKey();
+        saveToLocalStorage();
+    }
+};
+
+// The key under the chart
+key = createKey({
+    getState: () => ({
+        patternColors,
+        activePatternIndex,
+        backgroundColor,
+        activePaletteId,
+        customPalette,
+        isBackgroundActive,
+        isShiftKeyHeld
+    }),
+    actions: keyActions,
+    isStacked: () => document.getElementById('plate').classList.contains('is-stacked'),
+    isTouch: () => window.matchMedia('(hover: none) and (pointer: coarse)').matches
+});
+
 // Initialize UI
 updatePaletteUI();
-createNavbarColorButtons();
-updateActiveColorUI();
 initGrid();
+renderKey();
 
-// Initialize navbar components
 setupHamburgerMenu();
 setupTooltips();
-setupNavbarPaletteDropdown();
-updateNavbarPaletteName();
-updateNavbarPalettePreview();
-
-// Initialize color toggle on page load
-updateColorIndicators();
-
-// Hide canvas instructions if user has already interacted
-if (hasInteracted) {
-    const instructions = document.getElementById('canvasInstructions');
-    instructions.style.display = 'none';
-}
 
 // Aspect Ratio controls
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
@@ -2200,7 +2232,6 @@ if (cellAspectRatioToggle && cellAspectRatioSection) {
 
 // Window resize handler
 // Debounced resize handler to recreate navbar buttons when viewport changes
-let resizeTimeout;
 let lastKnownWidth = window.innerWidth;
 let lastKnownHeight = window.innerHeight;
 
@@ -2224,12 +2255,6 @@ window.addEventListener('resize', () => {
         lastKnownHeight = currentHeight;
         updateCanvas();
     }
-
-    // Debounce navbar button recreation
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        createNavbarColorButtons();
-    }, UI_CONSTANTS.DEBOUNCE_DELAY);
 });
 
 // Canvas edge resize handlers
@@ -2407,741 +2432,6 @@ document.addEventListener('touchcancel', () => {
 
 // Keyboard shortcuts - Moved to src/ui/keyboard.js
 
-// ============================================
-// NAVBAR UI COMPONENTS
-// ============================================
-
-// Track currently open color menus
-let currentColorMenu = null; // For overflow menu (grid of color buttons)
-let currentColorActionMenu = null; // For edit/delete menu
-
-/**
- * Show menu for color button with Set Active, Edit, Delete options
- */
-function showColorButtonMenu(buttonElement, colorIndex, color) {
-    // Close any existing action menu (but keep overflow menu open if it exists)
-    closeColorActionMenu();
-
-    // Create menu
-    const menu = document.createElement('div');
-    menu.className = 'navbar-color-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Select option (if not already active)
-    if (colorIndex !== activePatternIndex) {
-        const selectBtn = document.createElement('button');
-        selectBtn.className = 'navbar-color-menu-item';
-        selectBtn.textContent = 'Select';
-        selectBtn.setAttribute('role', 'menuitem');
-        selectBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            activePatternIndex = colorIndex;
-            isBackgroundActive = false; // Deactivate background when selecting pattern color
-            updateActiveColorUI();
-            createNavbarColorButtons();
-            saveToLocalStorage();
-            closeColorActionMenu();
-        });
-        menu.appendChild(selectBtn);
-    }
-
-    // Edit option (text changes based on whether it's already active)
-    const editBtn = document.createElement('button');
-    editBtn.className = 'navbar-color-menu-item';
-    editBtn.textContent = colorIndex === activePatternIndex ? 'Edit' : 'Edit and select';
-    editBtn.setAttribute('role', 'menuitem');
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Set as active first (if not already)
-        if (colorIndex !== activePatternIndex) {
-            activePatternIndex = colorIndex;
-            isBackgroundActive = false; // Deactivate background when selecting pattern color
-            updateActiveColorUI();
-            createNavbarColorButtons();
-            saveToLocalStorage();
-        }
-        // Then open color picker
-        openColorPicker(colorIndex, color);
-        closeColorActionMenu();
-    });
-    menu.appendChild(editBtn);
-
-    // Delete option (only for colors beyond the first one)
-    if (colorIndex > 0) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.setAttribute('role', 'menuitem');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showDeleteColorDialog(colorIndex);
-            closeColorActionMenu();
-        });
-        menu.appendChild(deleteBtn);
-    }
-
-    // Position menu below button
-    const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${rect.bottom + 8}px`;
-
-    // Calculate horizontal position, ensuring menu stays within viewport
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
-    let leftPos = rect.left + rect.width / 2;
-
-    // Check if menu would overflow on the right
-    if (leftPos + menuWidth / 2 > window.innerWidth) {
-        leftPos = window.innerWidth - menuWidth / 2 - 8;
-    }
-    // Check if menu would overflow on the left
-    if (leftPos - menuWidth / 2 < 0) {
-        leftPos = menuWidth / 2 + 8;
-    }
-
-    menu.style.left = `${leftPos}px`;
-    menu.style.transform = 'translateX(-50%)';
-    currentColorActionMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closeColorActionMenu);
-    }, 0);
-}
-
-/**
- * Close the color action menu (edit/delete menu)
- */
-function closeColorActionMenu() {
-    if (currentColorActionMenu) {
-        document.removeEventListener('click', closeColorActionMenu);
-        currentColorActionMenu.remove();
-        currentColorActionMenu = null;
-    }
-}
-
-/**
- * Close the color button menu (overflow menu and action menu)
- */
-function closeColorButtonMenu() {
-    closeColorActionMenu();
-    if (currentColorMenu) {
-        document.removeEventListener('click', closeColorButtonMenu);
-        currentColorMenu.remove();
-        currentColorMenu = null;
-    }
-}
-
-/**
- * Show overflow menu with hidden colors on mobile
- */
-function showOverflowColorsMenu(buttonElement, startIndex) {
-    // Close any existing menu
-    closeColorButtonMenu();
-
-    // Create menu container
-    const menu = document.createElement('div');
-    menu.className = 'navbar-color-menu navbar-overflow-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Add color buttons for overflow colors
-    for (let i = startIndex; i < patternColors.length; i++) {
-        const color = patternColors[i];
-        const colorBtn = document.createElement('button');
-        colorBtn.className = 'navbar-overflow-color-btn';
-        colorBtn.style.backgroundColor = color;
-        colorBtn.setAttribute('role', 'menuitem');
-        colorBtn.setAttribute('aria-label', `Pattern color ${i + 1}: ${color}`);
-
-        if (i === activePatternIndex) {
-            colorBtn.style.border = '3px solid var(--color-primary)';
-        }
-
-        colorBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Show the regular color menu for this color
-            // Don't close the overflow menu - just show the edit/delete menu on top
-            showColorButtonMenu(colorBtn, i, color);
-        });
-
-        menu.appendChild(colorBtn);
-    }
-
-    // Position menu below navbar (navbar is fixed at top, so menu should be too)
-    // Get the navbar element to calculate its height
-    const navbar = document.querySelector('.header-navbar');
-    const navbarHeight = navbar ? navbar.offsetHeight : 64;
-    const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${navbarHeight + 8}px`;
-
-    // Calculate horizontal position, ensuring menu stays within viewport
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
-    let leftPos = rect.left + rect.width / 2;
-
-    // Check if menu would overflow on the right
-    if (leftPos + menuWidth / 2 > window.innerWidth) {
-        leftPos = window.innerWidth - menuWidth / 2 - 8;
-    }
-    // Check if menu would overflow on the left
-    if (leftPos - menuWidth / 2 < 0) {
-        leftPos = menuWidth / 2 + 8;
-    }
-
-    menu.style.left = `${leftPos}px`;
-    menu.style.transform = 'translateX(-50%)';
-    currentColorMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closeColorButtonMenu);
-    }, 0);
-}
-
-/**
- * Calculate how many color buttons can fit in the navbar
- * Uses viewport-based estimates for reliability
- */
-function calculateMaxVisibleColors() {
-    const viewportWidth = window.innerWidth;
-
-    // Conservative estimates based on viewport size
-    // These account for: navbar padding, branding (desktop), palette dropdown,
-    // background button, add button, and gaps
-    let maxVisible;
-
-    if (viewportWidth <= 370) {
-        // Very small mobile: ~320-370px viewport
-        maxVisible = 4;
-    } else if (viewportWidth <= 480) {
-        // Small mobile: ~375-480px viewport
-        maxVisible = 5;
-    } else if (viewportWidth <= 768) {
-        // Tablet portrait: ~600-768px viewport
-        maxVisible = 8;
-    } else if (viewportWidth <= 1024) {
-        // Tablet landscape / small desktop
-        maxVisible = 12;
-    } else {
-        // Desktop: 1024px+ (no overflow needed - max 20 colors can fit)
-        maxVisible = 20;
-    }
-
-    // Return the calculated max, but don't exceed actual color count
-    return Math.min(maxVisible, patternColors.length);
-}
-
-/**
- * Create color buttons in navbar
- * Includes pattern colors, add button, and background color button
- */
-function createNavbarColorButtons() {
-    const container = document.getElementById('navbarColorButtons');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Calculate how many colors can fit dynamically
-    const maxVisibleColors = calculateMaxVisibleColors();
-    const needsOverflow = patternColors.length > maxVisibleColors;
-
-    // Create pattern color buttons
-    patternColors.forEach((color, index) => {
-        // Skip colors beyond max visible if overflow is needed
-        if (needsOverflow && index >= maxVisibleColors) {
-            return;
-        }
-        const btn = document.createElement('div');
-        btn.className = 'navbar-color-btn round';
-        btn.style.backgroundColor = color;
-        btn.setAttribute('data-index', index);
-        btn.setAttribute('draggable', 'true');
-        btn.setAttribute('aria-label', `Pattern color ${index + 1}`);
-
-        if (index === activePatternIndex) {
-            btn.classList.add('active');
-        }
-
-        // Click to show menu
-        let dragStarted = false;
-        let touchDragInProgress = false;
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        btn.addEventListener('mousedown', () => {
-            dragStarted = false;
-        });
-
-        btn.addEventListener('click', (e) => {
-            if (!dragStarted && !touchDragInProgress) {
-                e.stopPropagation();
-                showColorButtonMenu(btn, index, color);
-            }
-        });
-
-        // Drag and drop for merging
-        btn.addEventListener('dragstart', (e) => {
-            dragStarted = true;
-
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', index.toString());
-
-            // Add visual feedback to the dragged button
-            btn.classList.add('dragging');
-        });
-
-        btn.addEventListener('dragend', () => {
-            btn.classList.remove('dragging');
-        });
-
-        btn.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const draggedData = e.dataTransfer.getData('text/plain');
-
-            if (draggedData === 'background') {
-                // Dragging background to pattern color - show swap indicator
-                btn.style.boxShadow = '0 0 0 3px var(--color-primary)';
-            } else {
-                const draggedIndex = parseInt(draggedData);
-                if (!isNaN(draggedIndex) && draggedIndex !== index) {
-                    // Dragging pattern color to pattern color - show merge indicator
-                    btn.style.backgroundColor = patternColors[draggedIndex];
-                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                }
-            }
-        });
-
-        btn.addEventListener('dragleave', () => {
-            btn.style.backgroundColor = color;
-            btn.style.boxShadow = '';
-        });
-
-        btn.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            btn.style.backgroundColor = color;
-            btn.style.boxShadow = '';
-
-            const draggedData = e.dataTransfer.getData('text/plain');
-
-            if (draggedData === 'background') {
-                // Swap pattern color with background
-                const temp = backgroundColor;
-                backgroundColor = patternColors[index];
-                patternColors[index] = temp;
-
-                saveToHistory();
-                createNavbarColorButtons();
-                updateCanvas();
-                updateColorIndicators();
-                saveToLocalStorage();
-                announceToScreenReader(`Swapped background color with pattern color ${index + 1}`);
-            } else {
-                // Merge pattern colors
-                const draggedIndex = parseInt(draggedData);
-                const targetIndex = index;
-
-                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
-                    mergePatternColors(draggedIndex, targetIndex);
-                }
-            }
-        });
-
-        // Touch drag support
-        let touchDraggedIndex = null;
-
-        btn.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            touchDragInProgress = false;
-        }, { passive: true });
-
-        btn.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            const deltaX = Math.abs(touch.clientX - touchStartX);
-            const deltaY = Math.abs(touch.clientY - touchStartY);
-
-            // If moved more than 5px, start drag
-            if (deltaX > 5 || deltaY > 5) {
-                if (!touchDragInProgress) {
-                    touchDragInProgress = true;
-                    touchDraggedIndex = index;
-                    btn.style.opacity = '0.5';
-                }
-
-                // Find element under touch point
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const isBackground = elementUnder.classList.contains('square');
-                    if (isBackground) {
-                        // Dragging to background - show swap indicator
-                        elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
-                    } else {
-                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                        if (!isNaN(targetIndex)) {
-                            // Dragging to pattern color - show merge indicator
-                            elementUnder.style.backgroundColor = patternColors[index];
-                            elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                        }
-                    }
-                } else {
-                    // Reset all buttons
-                    document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                        const btnIndex = parseInt(b.getAttribute('data-index'));
-                        if (!isNaN(btnIndex) && b !== btn) {
-                            b.style.backgroundColor = patternColors[btnIndex];
-                            b.style.boxShadow = '';
-                        }
-                        if (b.classList.contains('square')) {
-                            b.style.boxShadow = '';
-                        }
-                    });
-                }
-            }
-        }, { passive: true });
-
-        btn.addEventListener('touchend', (e) => {
-            if (touchDragInProgress) {
-                e.preventDefault(); // Prevent click event
-                btn.style.opacity = '1';
-
-                const touch = e.changedTouches[0];
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-
-                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const isBackground = elementUnder.classList.contains('square');
-                    if (isBackground) {
-                        // Swap with background
-                        const temp = backgroundColor;
-                        backgroundColor = patternColors[index];
-                        patternColors[index] = temp;
-
-                        saveToHistory();
-                        createNavbarColorButtons();
-                        updateCanvas();
-                        updateColorIndicators();
-                        saveToLocalStorage();
-                        announceToScreenReader(`Swapped pattern color ${index + 1} with background color`);
-                    } else {
-                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                        if (!isNaN(targetIndex) && targetIndex !== index) {
-                            mergePatternColors(index, targetIndex);
-                        }
-                    }
-                }
-
-                // Reset all buttons
-                document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                    const btnIndex = parseInt(b.getAttribute('data-index'));
-                    if (!isNaN(btnIndex)) {
-                        b.style.backgroundColor = patternColors[btnIndex];
-                        b.style.boxShadow = '';
-                    }
-                });
-
-                // Reset flag after a short delay to prevent accidental menu opening
-                setTimeout(() => {
-                    touchDragInProgress = false;
-                }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-            }
-        });
-
-        btn.addEventListener('touchcancel', () => {
-            btn.style.opacity = '1';
-            touchDragInProgress = false;
-            // Reset all buttons
-            document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                const btnIndex = parseInt(b.getAttribute('data-index'));
-                if (!isNaN(btnIndex)) {
-                    b.style.backgroundColor = patternColors[btnIndex];
-                    b.style.boxShadow = '';
-                }
-            });
-        });
-
-        container.appendChild(btn);
-    });
-
-    // Overflow button (...) for hidden colors on mobile
-    if (needsOverflow) {
-        const overflowBtn = document.createElement('div');
-        overflowBtn.className = 'navbar-color-btn round overflow-btn';
-        overflowBtn.textContent = '•••';
-        overflowBtn.setAttribute('aria-label', `${patternColors.length - maxVisibleColors} more colors`);
-        overflowBtn.style.fontSize = '14px';
-        overflowBtn.style.fontWeight = 'bold';
-        overflowBtn.style.display = 'flex';
-        overflowBtn.style.alignItems = 'center';
-        overflowBtn.style.justifyContent = 'center';
-        overflowBtn.style.background = 'var(--color-bg-secondary)';
-        overflowBtn.style.border = '2px solid var(--color-border-dark)';
-        overflowBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showOverflowColorsMenu(overflowBtn, maxVisibleColors);
-        });
-        container.appendChild(overflowBtn);
-    }
-
-    // Add button (+)
-    if (patternColors.length < CONFIG.MAX_PATTERN_COLORS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'navbar-color-btn round add-btn';
-        addBtn.textContent = '+';
-        addBtn.setAttribute('aria-label', 'Add new pattern color');
-        addBtn.addEventListener('click', () => {
-            patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
-            activePatternIndex = patternColors.length - 1;
-            createNavbarColorButtons();
-            updateActiveColorUI();
-            updateCanvas();
-            saveToLocalStorage();
-        });
-        container.appendChild(addBtn);
-    }
-
-    // Background color button (square)
-    const bgBtn = document.createElement('div');
-    bgBtn.className = 'navbar-color-btn square';
-    bgBtn.style.backgroundColor = backgroundColor;
-    bgBtn.setAttribute('aria-label', 'Background color');
-    bgBtn.setAttribute('draggable', 'true');
-    bgBtn.setAttribute('data-type', 'background');
-
-    let bgDragStarted = false;
-
-    bgBtn.addEventListener('mousedown', () => {
-        bgDragStarted = false;
-    });
-
-    bgBtn.addEventListener('click', () => {
-        if (!bgDragStarted) {
-            openBackgroundColorPicker();
-        }
-    });
-
-    // Make background draggable
-    bgBtn.addEventListener('dragstart', (e) => {
-        bgDragStarted = true;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'background');
-        bgBtn.classList.add('dragging');
-    });
-
-    bgBtn.addEventListener('dragend', () => {
-        bgBtn.classList.remove('dragging');
-    });
-
-    // Accept pattern color drops to swap
-    bgBtn.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const draggedData = e.dataTransfer.getData('text/plain');
-        if (draggedData !== 'background') {
-            bgBtn.style.boxShadow = '0 0 0 3px var(--color-primary)';
-        }
-    });
-
-    bgBtn.addEventListener('dragleave', () => {
-        bgBtn.style.boxShadow = '';
-    });
-
-    bgBtn.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        bgBtn.style.boxShadow = '';
-
-        const draggedData = e.dataTransfer.getData('text/plain');
-        if (draggedData !== 'background') {
-            // Swapping pattern color with background
-            const patternIndex = parseInt(draggedData);
-            if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < patternColors.length) {
-                const temp = backgroundColor;
-                backgroundColor = patternColors[patternIndex];
-                patternColors[patternIndex] = temp;
-
-                saveToHistory();
-                createNavbarColorButtons();
-                updateCanvas();
-                updateColorIndicators();
-                saveToLocalStorage();
-                announceToScreenReader(`Swapped pattern color ${patternIndex + 1} with background color`);
-            }
-        }
-    });
-
-    // Touch drag support and long-press for background button
-    let bgTouchDragInProgress = false;
-    let bgTouchStartX = 0;
-    let bgTouchStartY = 0;
-    let bgLongPressTimer = null;
-    let bgIsLongPress = false;
-
-    bgBtn.addEventListener('touchstart', (e) => {
-        bgTouchStartX = e.touches[0].clientX;
-        bgTouchStartY = e.touches[0].clientY;
-        bgTouchDragInProgress = false;
-        bgIsLongPress = false;
-
-        // Start long-press timer
-        bgLongPressTimer = setTimeout(() => {
-            bgIsLongPress = true;
-            // Toggle background as active drawing color
-            isBackgroundActive = !isBackgroundActive;
-            updateActiveColorUI();
-            // Provide haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-        }, 500); // 500ms for long press
-    }, { passive: true });
-
-    bgBtn.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        const deltaX = Math.abs(touch.clientX - bgTouchStartX);
-        const deltaY = Math.abs(touch.clientY - bgTouchStartY);
-
-        if (deltaX > 5 || deltaY > 5) {
-            // Cancel long-press if user starts dragging
-            if (bgLongPressTimer) {
-                clearTimeout(bgLongPressTimer);
-                bgLongPressTimer = null;
-            }
-
-            if (!bgTouchDragInProgress) {
-                bgTouchDragInProgress = true;
-                bgBtn.style.opacity = '0.5';
-            }
-
-            // Find element under touch point
-            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                elementUnder !== bgBtn && !elementUnder.classList.contains('add-btn') &&
-                !elementUnder.classList.contains('square')) {
-                // Highlight pattern color button for swap
-                elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
-            } else {
-                // Reset all pattern buttons
-                document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                    if (!b.classList.contains('square') && !b.classList.contains('add-btn')) {
-                        b.style.boxShadow = '';
-                    }
-                });
-            }
-        }
-    }, { passive: true });
-
-    bgBtn.addEventListener('touchend', (e) => {
-        // Clear long-press timer
-        if (bgLongPressTimer) {
-            clearTimeout(bgLongPressTimer);
-            bgLongPressTimer = null;
-        }
-
-        // If it was a long press, prevent normal click behavior
-        if (bgIsLongPress) {
-            e.preventDefault();
-            bgIsLongPress = false;
-            return;
-        }
-
-        if (bgTouchDragInProgress) {
-            e.preventDefault();
-            bgBtn.style.opacity = '1';
-
-            const touch = e.changedTouches[0];
-            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-
-            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                !elementUnder.classList.contains('add-btn') && !elementUnder.classList.contains('square')) {
-                const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                if (!isNaN(targetIndex)) {
-                    // Swap background with pattern color
-                    const temp = backgroundColor;
-                    backgroundColor = patternColors[targetIndex];
-                    patternColors[targetIndex] = temp;
-
-                    saveToHistory();
-                    createNavbarColorButtons();
-                    updateCanvas();
-                    updateColorIndicators();
-                    saveToLocalStorage();
-                    announceToScreenReader(`Swapped background color with pattern color ${targetIndex + 1}`);
-                }
-            }
-
-            // Reset all buttons
-            document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                b.style.boxShadow = '';
-            });
-
-            bgTouchDragInProgress = false;
-        }
-    });
-
-    container.appendChild(bgBtn);
-}
-
-/**
- * Open color picker for a specific pattern color
- */
-function openColorPicker(colorIndex, currentColor) {
-    // Create a temporary color input
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = currentColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            patternColors[colorIndex] = newColor;
-            createNavbarColorButtons();
-                    updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        }
-        document.body.removeChild(input);
-    });
-
-    input.click();
-}
-
-/**
- * Open color picker for background color
- */
-function openBackgroundColorPicker() {
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = backgroundColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            backgroundColor = newColor;
-            createNavbarColorButtons();
-            updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        }
-        document.body.removeChild(input);
-    });
-
-    input.click();
-}
-
 /**
  * Set up hamburger menu toggle
  */
@@ -3172,465 +2462,6 @@ function setupHamburgerMenu() {
             hamburgerMenu.classList.remove('open');
             hamburgerBtn.setAttribute('aria-expanded', 'false');
         }
-    });
-}
-
-/**
- * Set up navbar palette dropdown
- */
-function setupNavbarPaletteDropdown() {
-    const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
-    const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
-    const paletteGrid = document.getElementById('navbarPaletteGrid');
-    const loadBtn = document.getElementById('navbarLoadPaletteBtn');
-    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
-
-    if (!dropdownBtn || !dropdownContainer) return;
-
-    // Toggle dropdown
-    dropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = dropdownContainer.classList.toggle('open');
-        dropdownBtn.setAttribute('aria-expanded', isOpen);
-        if (isOpen) {
-            renderNavbarPalette();
-        }
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!dropdownContainer.contains(e.target)) {
-            dropdownContainer.classList.remove('open');
-            dropdownBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    // Load palette button
-    if (loadBtn) {
-        loadBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-            const currentPalette = builtInPalette ? builtInPalette.colors : customPalette;
-            if (currentPalette) {
-                patternColors = [...currentPalette];
-                if (activePatternIndex >= patternColors.length) {
-                    activePatternIndex = 0;
-                }
-                createNavbarColorButtons();
-                            updateActiveColorUI();
-                updateCanvas();
-                saveToHistory();
-                saveToLocalStorage();
-                announceToScreenReader(`Loaded ${activePaletteId} palette to pattern colors`);
-            }
-        });
-    }
-
-    // Palette selector options
-    paletteOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.preventDefault();
-            const paletteId = option.getAttribute('data-palette');
-            switchPalette(paletteId);
-            renderNavbarPalette();
-            updateNavbarPaletteName();
-            updateNavbarPalettePreview();
-
-            // Update active state
-            paletteOptions.forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-        });
-    });
-}
-
-/**
- * Render palette grid in navbar dropdown
- */
-function renderNavbarPalette() {
-    const paletteGrid = document.getElementById('navbarPaletteGrid');
-    if (!paletteGrid) return;
-
-    paletteGrid.innerHTML = '';
-    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
-    const isCustomPalette = !builtInPalette;
-
-    currentPalette.forEach((color, index) => {
-        const colorDiv = document.createElement('div');
-        colorDiv.className = 'navbar-palette-color';
-        colorDiv.style.backgroundColor = color;
-        colorDiv.setAttribute('aria-label', `Palette color ${index + 1}: ${color}`);
-
-        // Long press support for touch devices
-        let pressTimer = null;
-        let isLongPress = false;
-
-        const setBackgroundColorValue = () => {
-            backgroundColor = color;
-            createNavbarColorButtons();
-            updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        };
-
-        // For custom palette, clicking shows menu. For built-in, clicking applies color
-        // Shift-click or long press sets background color
-        if (isCustomPalette) {
-            colorDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Ignore if this was a long press (already handled)
-                if (isLongPress) {
-                    isLongPress = false;
-                    return;
-                }
-
-                if (e.shiftKey) {
-                    // Shift-click sets background color
-                    setBackgroundColorValue();
-                } else {
-                    // Regular click shows menu
-                    showPaletteColorMenu(colorDiv, index, color);
-                }
-            });
-
-            // Touch long press for background color
-            colorDiv.addEventListener('touchstart', (e) => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    setBackgroundColorValue();
-                    // Haptic feedback if available
-                    if (navigator.vibrate) {
-                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-                    }
-                }, UI_CONSTANTS.LONG_PRESS_DURATION);
-            }, { passive: true });
-
-            colorDiv.addEventListener('touchend', (e) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                // If it was a long press, prevent the click event
-                if (isLongPress) {
-                    e.preventDefault();
-                    setTimeout(() => {
-                        isLongPress = false;
-                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-                }
-            });
-
-            colorDiv.addEventListener('touchmove', () => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                isLongPress = false;
-            }, { passive: true });
-        } else {
-            colorDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Ignore if this was a long press (already handled)
-                if (isLongPress) {
-                    isLongPress = false;
-                    return;
-                }
-
-                if (e.shiftKey) {
-                    // Shift-click sets background color
-                    setBackgroundColorValue();
-                } else {
-                    // Regular click sets active pattern color
-                    patternColors[activePatternIndex] = color;
-                    createNavbarColorButtons();
-                                    updateActiveColorUI();
-                    updateCanvas();
-                    saveToHistory();
-                    saveToLocalStorage();
-                }
-            });
-
-            // Touch long press for background color (built-in palettes)
-            colorDiv.addEventListener('touchstart', (e) => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    setBackgroundColorValue();
-                    // Haptic feedback if available
-                    if (navigator.vibrate) {
-                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-                    }
-                }, UI_CONSTANTS.LONG_PRESS_DURATION);
-            }, { passive: true });
-
-            colorDiv.addEventListener('touchend', (e) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                // If it was a long press, prevent the click event
-                if (isLongPress) {
-                    e.preventDefault();
-                    setTimeout(() => {
-                        isLongPress = false;
-                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-                }
-            });
-
-            colorDiv.addEventListener('touchmove', () => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                isLongPress = false;
-            }, { passive: true });
-        }
-
-        paletteGrid.appendChild(colorDiv);
-    });
-
-    // Add "+" button for custom palette (if not at max)
-    if (isCustomPalette && currentPalette.length < CONFIG.MAX_PALETTE_COLORS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'navbar-palette-color navbar-palette-add-btn';
-        addBtn.textContent = '+';
-        addBtn.setAttribute('aria-label', 'Add palette color');
-        addBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            addCustomPaletteColor();
-        });
-        paletteGrid.appendChild(addBtn);
-    }
-}
-
-/**
- * Show menu for custom palette color with Select/Edit/Delete options
- */
-function showPaletteColorMenu(colorElement, colorIndex, color) {
-    // Close any existing menu
-    closePaletteColorMenu();
-
-    const menu = document.createElement('div');
-    menu.className = 'navbar-palette-color-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Select option - apply this color to active pattern color
-    const selectBtn = document.createElement('button');
-    selectBtn.className = 'navbar-color-menu-item';
-    selectBtn.textContent = 'Select';
-    selectBtn.setAttribute('role', 'menuitem');
-    selectBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        patternColors[activePatternIndex] = color;
-        createNavbarColorButtons();
-            updateActiveColorUI();
-        updateCanvas();
-        saveToHistory();
-        saveToLocalStorage();
-        closePaletteColorMenu();
-    });
-    menu.appendChild(selectBtn);
-
-    // Edit option
-    const editBtn = document.createElement('button');
-    editBtn.className = 'navbar-color-menu-item';
-    editBtn.textContent = 'Edit';
-    editBtn.setAttribute('role', 'menuitem');
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Get dropdown elements before opening picker
-        const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
-        const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
-
-        // Open color picker FIRST (while user gesture is active)
-        editCustomPaletteColor(colorIndex, color, () => {
-            // Reopen dropdown after color picker closes
-            if (dropdownContainer) {
-                dropdownContainer.classList.add('open');
-            }
-            if (dropdownBtn) {
-                dropdownBtn.setAttribute('aria-expanded', 'true');
-            }
-        });
-
-        // THEN close menu and dropdown
-        closePaletteColorMenu();
-        if (dropdownContainer) {
-            dropdownContainer.classList.remove('open');
-        }
-        if (dropdownBtn) {
-            dropdownBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-    menu.appendChild(editBtn);
-
-    // Delete option (only if not the last color)
-    if (customPalette && customPalette.length > 1) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.setAttribute('role', 'menuitem');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteCustomPaletteColor(colorIndex);
-            closePaletteColorMenu();
-            // Keep the palette dropdown open after delete
-        });
-        menu.appendChild(deleteBtn);
-    }
-
-    // Position menu below color
-    const rect = colorElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${rect.bottom + 8}px`;
-    menu.style.left = `${rect.left + rect.width / 2}px`;
-    menu.style.transform = 'translateX(-50%)';
-
-    document.body.appendChild(menu);
-    currentPaletteColorMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closePaletteColorMenu);
-    }, 0);
-}
-
-// Track currently open palette color menu
-let currentPaletteColorMenu = null;
-
-/**
- * Close the palette color menu
- */
-function closePaletteColorMenu() {
-    if (currentPaletteColorMenu) {
-        document.removeEventListener('click', closePaletteColorMenu);
-        currentPaletteColorMenu.remove();
-        currentPaletteColorMenu = null;
-    }
-}
-
-/**
- * Add a new color to custom palette
- */
-function addCustomPaletteColor() {
-    if (!customPalette) {
-        customPalette = ['#000000'];
-    } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
-        customPalette.push('#000000');
-    }
-    renderNavbarPalette();
-    updateNavbarPalettePreview();
-    saveToLocalStorage();
-}
-
-/**
- * Edit a custom palette color
- * @param {number} colorIndex - Index of the color to edit
- * @param {string} currentColor - Current color value
- * @param {Function} onComplete - Optional callback when color picker closes
- */
-function editCustomPaletteColor(colorIndex, currentColor, onComplete) {
-    if (!customPalette) return;
-
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = currentColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    const cleanup = () => {
-        document.body.removeChild(input);
-        if (onComplete) {
-            onComplete();
-        }
-    };
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            customPalette[colorIndex] = newColor;
-            renderNavbarPalette();
-            updateNavbarPalettePreview();
-            saveToLocalStorage();
-        }
-        cleanup();
-    });
-
-    // Handle cancel (when user closes picker without selecting)
-    input.addEventListener('cancel', () => {
-        cleanup();
-    });
-
-    input.click();
-}
-
-/**
- * Delete a custom palette color
- */
-function deleteCustomPaletteColor(colorIndex) {
-    if (!customPalette || customPalette.length <= 1) return;
-
-    customPalette.splice(colorIndex, 1);
-    renderNavbarPalette();
-    updateNavbarPalettePreview();
-    saveToLocalStorage();
-}
-
-/**
- * Update navbar palette name display and preview
- */
-function updateNavbarPaletteName() {
-    const paletteNameEl = document.getElementById('navbarPaletteName');
-    if (paletteNameEl) {
-        const capitalizedName = activePaletteId.charAt(0).toUpperCase() + activePaletteId.slice(1);
-        paletteNameEl.textContent = capitalizedName;
-    }
-
-    // Update active state of palette options
-    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
-    paletteOptions.forEach(option => {
-        if (option.getAttribute('data-palette') === activePaletteId) {
-            option.classList.add('active');
-        } else {
-            option.classList.remove('active');
-        }
-    });
-
-    // Update 2x2 palette preview
-    updateNavbarPalettePreview();
-}
-
-/**
- * Update the 2x2 palette preview in the navbar
- */
-function updateNavbarPalettePreview() {
-    const previewContainer = document.getElementById('navbarPalettePreview');
-    if (!previewContainer) return;
-
-    previewContainer.innerHTML = '';
-
-    // Get current palette colors
-    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
-
-    // Show first 4 colors (or defaults if fewer)
-    const defaultColor = '#cccccc';
-    const previewColors = [
-        currentPalette[0] || defaultColor,
-        currentPalette[1] || defaultColor,
-        currentPalette[2] || defaultColor,
-        currentPalette[3] || defaultColor
-    ];
-
-    // Create 2x2 grid
-    previewColors.forEach(color => {
-        const colorDiv = document.createElement('div');
-        colorDiv.className = 'navbar-palette-preview-color';
-        colorDiv.style.backgroundColor = color;
-        previewContainer.appendChild(colorDiv);
     });
 }
 

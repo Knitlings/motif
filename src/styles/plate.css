@@ -406,11 +406,6 @@
         max-width: 100%;
     }
 
-    /* The pattern colours still sit in the top bar here, so the wordmark makes way */
-    .editor-top-bar .wordmark {
-        display: none;
-    }
-
     .caption-line-chart,
     .caption-line-preview {
         width: 100%;

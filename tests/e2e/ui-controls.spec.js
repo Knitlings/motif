@@ -22,56 +22,6 @@ test.describe('UI Controls', () => {
     await expect(widthDisplay).toHaveValue('10');
   });
 
-  test('should open palette dropdown', async ({ page }) => {
-    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
-    const paletteMenu = page.locator('#navbarPaletteMenu');
-
-    // Wait for palette button to be visible
-    await paletteBtn.waitFor({ state: 'visible' });
-
-    // Click to open palette dropdown
-    await paletteBtn.click();
-
-    // Verify dropdown menu is visible
-    await expect(paletteMenu).toBeVisible();
-
-    // Verify palette grid is visible
-    const paletteGrid = page.locator('#navbarPaletteGrid');
-    await expect(paletteGrid).toBeVisible();
-  });
-
-  test('should change active pattern color from navbar', async ({ page }) => {
-    const canvas = page.locator('#editCanvas');
-
-    // Click on a color button in the navbar
-    const colorBtn = page.locator('.navbar-color-btn').first();
-    await colorBtn.waitFor({ state: 'visible' });
-
-    // Color button should be visible and have active class initially
-    await expect(colorBtn).toHaveClass(/active/);
-
-    // Canvas should still be visible
-    await expect(canvas).toBeVisible();
-  });
-
-  test('should add new pattern color', async ({ page }) => {
-    // Click the add button (+ button) in the navbar
-    const addBtn = page.locator('.navbar-color-btn.add-btn');
-
-    // Wait for add button to be visible
-    await addBtn.first().waitFor({ state: 'visible' });
-
-    // Get initial count of color buttons
-    const initialCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
-
-    // Click add button
-    await addBtn.click();
-
-    // Verify a new color button was added
-    const newCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
-    expect(newCount).toBe(initialCount + 1);
-  });
-
   test('should clear canvas with confirmation', async ({ page }) => {
     const canvas = page.locator('#editCanvas');
     const clearBtn = page.locator('#clearBtn');
@@ -92,40 +42,6 @@ test.describe('UI Controls', () => {
 
     // Dialog should close
     await expect(dialog).not.toBeVisible();
-  });
-
-  test('should switch between palettes', async ({ page }) => {
-    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
-    const paletteMenu = page.locator('#navbarPaletteMenu');
-
-    // Open palette dropdown
-    await paletteBtn.click();
-    await expect(paletteMenu).toBeVisible();
-
-    // Click on a different palette option
-    const warmPaletteOption = page.locator('.navbar-palette-option[data-palette="warm"]');
-    await warmPaletteOption.click();
-
-    // Palette should have switched (menu may stay open - that's okay)
-    // The important thing is that the palette selection worked
-    const paletteGrid = page.locator('#navbarPaletteGrid');
-    await expect(paletteGrid).toBeVisible();
-  });
-
-  test('should load palette colors to pattern', async ({ page }) => {
-    const paletteBtn = page.locator('#navbarPaletteDropdownBtn');
-    const loadPaletteBtn = page.locator('#navbarLoadPaletteBtn');
-
-    // Open palette dropdown
-    await paletteBtn.click();
-
-    // Click load palette button
-    await loadPaletteBtn.waitFor({ state: 'visible' });
-    await loadPaletteBtn.click();
-
-    // Verify color buttons were updated (at least one should exist)
-    const colorBtnCount = await page.locator('.navbar-color-btn:not(.add-btn)').count();
-    expect(colorBtnCount).toBeGreaterThanOrEqual(1);
   });
 
   test('hamburger menu should toggle', async ({ page }) => {
