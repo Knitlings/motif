@@ -52,7 +52,7 @@ test.describe('Dialogs', () => {
     const clearBtn = page.locator('#clearBtn');
     await clearBtn.focus();
     await page.keyboard.press('Enter');
-    const dialog = page.getByRole('dialog', { name: 'Clear canvas?' });
+    const dialog = page.getByRole('dialog', { name: 'Clear pattern?' });
     await expect(dialog).toBeVisible();
     await expect(page.locator('#mergeCancelBtn')).toBeFocused();
 

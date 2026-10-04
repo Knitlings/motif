@@ -782,7 +782,7 @@ document.getElementById('redoBtn').onclick = () => {
 
 document.getElementById('clearBtn').onclick = () => {
     showConfirmDialog(
-        'Clear canvas?',
+        'Clear pattern?',
         'This will erase all painted cells. This action can be undone.',
         'Clear',
         (confirmed) => {
@@ -790,7 +790,7 @@ document.getElementById('clearBtn').onclick = () => {
                 grid = createEmptyGrid(gridWidth, gridHeight);
                 saveToHistory();
                 updateCanvas();
-                announceToScreenReader('Canvas cleared');
+                announceToScreenReader('Pattern cleared');
             }
         }
     );
