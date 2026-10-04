@@ -71,3 +71,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 MIT License - see [LICENSE](LICENSE) for details.
 
+Icons from [Phosphor Icons](https://phosphoricons.com) (Light weight), MIT License.
+
