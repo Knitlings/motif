@@ -23,7 +23,7 @@ Motif uses the Knitlings design system. Its tokens are defined in `variables.css
 custom properties:
 
 - **Colour**: `--ink`, `--ink-secondary`, `--ink-muted`, `--surface`, `--ground`, `--rule`,
-  `--accent` (links, focus, wordmark only), `--signal-error`
+  `--accent` (links, focus, wordmark mark only), `--signal-error`
 - **Spacing**: `--space-1` to `--space-8` (4px base)
 - **Line**: `--line-hairline` to `--line-heavy`; corners are always square
 - **Type**: Spectral only (self-hosted in `src/assets/fonts/`), as `font` shorthands
