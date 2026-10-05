@@ -157,6 +157,35 @@ export const CanvasManager = {
     },
 
     /**
+     * The phone's window height, held while the width stays the same so the chart doesn't
+     * jump when the browser's address bar slides in or out
+     * @param {number} width - The window width it is held for
+     */
+    phoneViewportHeight(width) {
+        if (this.phoneHeightFor !== width) {
+            this.phoneHeightFor = width;
+            this.phoneHeight = window.innerHeight;
+        }
+        return this.phoneHeight;
+    },
+
+    /**
+     * Squares as large as fit in the given room, never below the 20px floor (a chart held
+     * at the floor may then be larger than the room)
+     * @returns {{width: number, height: number}} Cell dimensions in pixels
+     */
+    fitCells(gridWidth, gridHeight, aspectRatio, maxWidth, maxHeight) {
+        let width = Math.min(maxWidth / gridWidth, maxHeight / gridHeight / aspectRatio);
+        let height = width * aspectRatio;
+        const floor = Math.max(CONFIG.MIN_CELL_SIZE / width, CONFIG.MIN_CELL_SIZE / height);
+        if (floor > 1) {
+            width *= floor;
+            height *= floor;
+        }
+        return { width, height };
+    },
+
+    /**
      * Update canvas sizes and redraw both edit and preview canvases
      * Handles responsive layout (side-by-side or stacked) based on available space
      * @param {number} gridWidth - Number of columns in grid
@@ -167,8 +196,15 @@ export const CanvasManager = {
      * @param {number[][]} grid - 2D array of cell values (0=background, 1-20=color indices)
      * @param {string[]} patternColors - Array of hex color strings
      * @param {string} backgroundColor - Hex color for empty cells
+     * @param {Object} [options]
+     * @param {{left: number, right: number, top: number, bottom: number}|null} [options.surroundings]
+     *   - Surrounding stitches being chosen on a 3 x 3 preview (replaces the one-repeat outline)
+     * @returns {{stacked: boolean, previewWidth: number, outlined: boolean, framed: boolean,
+     *   frameWidth: number|null, frameHeight: number|null, cellWidth: number, cellHeight: number,
+     *   stitchNumberEvery: number, rowNumberEvery: number}} The layout chosen
      */
-    update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor) {
+    update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor, options = {}) {
+        const { surroundings = null } = options;
         // Calculate viewport constraints - adjust for mobile vs desktop
         // Use cached dimensions if available for consistency
         const currentWidth = window.innerWidth;
@@ -181,54 +217,58 @@ export const CanvasManager = {
 
         const isLandscape = effectiveWidth > currentHeight;
         const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
-        const isSmallMobile = effectiveWidth <= CONFIG.SMALL_MOBILE_BREAKPOINT;
 
-        // On mobile, panels are overlays (not side-by-side), so ignore panel width
-        const collapsedPanelWidth = isMobile ? 0 : CONFIG.COLLAPSED_PANEL_WIDTH;
-
-        // Adjust padding based on screen size and orientation
-        let paddingHorizontal;
-        if (isSmallMobile && !isLandscape) {
-            paddingHorizontal = CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE;
-        } else if (isMobile) {
-            // In landscape, use minimal padding to maximize canvas space (like mini-desktop)
-            paddingHorizontal = isLandscape ? CONFIG.PADDING_HORIZONTAL_SMALL_MOBILE : CONFIG.PADDING_HORIZONTAL_MOBILE;
-        } else {
-            paddingHorizontal = CONFIG.PADDING_HORIZONTAL_DESKTOP;
-        }
-
-        // Gap between canvases - smaller in landscape to encourage side-by-side layout
-        const gap = (isMobile && isLandscape) ? CONFIG.CANVAS_GAP_MOBILE_LANDSCAPE : (isMobile ? CONFIG.CANVAS_GAP_MOBILE : CONFIG.CANVAS_GAP_DESKTOP);
-
-        // Calculate available width using effectiveWidth for consistency
-        const availableWidth = effectiveWidth - (collapsedPanelWidth * 2) - paddingHorizontal;
-
-        // First, try to calculate cell sizes assuming side-by-side layout
-        // Available width for each canvas when side-by-side
-        const widthPerCanvas = (availableWidth - gap) / 2;
-
-        // Calculate cell size for edit canvas with half the available width
-        const cellSizeSideBySide = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, widthPerCanvas);
-
-        // Calculate what the canvas dimensions would be with these cell sizes
-        const editCanvasWidthSideBySide = gridWidth * cellSizeSideBySide.width;
-        const previewWidthSideBySide = gridWidth * cellSizeSideBySide.width * previewRepeatX * CONFIG.PREVIEW_SCALE;
-
-        // Check if both canvases can actually fit side-by-side
-        const totalWidthSideBySide = editCanvasWidthSideBySide + previewWidthSideBySide + gap;
-        const canFitSideBySide = totalWidthSideBySide <= availableWidth;
-
-        // Decide on final layout and calculate cell sizes accordingly
-        // Force stacking on mobile portrait to maximize grid size
         let cellSize, shouldStack;
-        if (canFitSideBySide && !(isMobile && !isLandscape)) {
-            // Use the side-by-side cell size
-            cellSize = cellSizeSideBySide;
-            shouldStack = false;
-        } else {
-            // Recalculate with full available width for stacked layout
-            cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, availableWidth);
+        let framed = false;
+        let frameWidth = null;
+        let frameHeight = null;
+        const isPhone = effectiveWidth <= CONFIG.PHONE_BREAKPOINT;
+        const plateWidth = effectiveWidth - 2 * (isMobile ? CONFIG.PLATE_PADDING_NARROW : CONFIG.PLATE_PADDING_DESKTOP);
+        if (isPhone) {
+            // Phone: the chart takes the page's width and leaves the caption, key and hint on
+            // the first screen. Too large for that at 20px squares, it scrolls in a frame as
+            // wide as the page and as tall as what is left of the first screen.
+            const roomHeight = Math.max(CONFIG.MIN_FRAME_HEIGHT,
+                this.phoneViewportHeight(effectiveWidth) - CONFIG.PHONE_CHART_TOP - CONFIG.PHONE_CHART_RESERVE);
+            const maxChartWidth = plateWidth - CONFIG.PHONE_NUMBERS_WIDTH - 2;
+            const maxChartHeight = roomHeight - CONFIG.PHONE_NUMBERS_HEIGHT - 2;
+            cellSize = this.fitCells(gridWidth, gridHeight, aspectRatio, maxChartWidth, maxChartHeight);
+            const chartWidth = gridWidth * cellSize.width;
+            const chartHeight = gridHeight * cellSize.height;
             shouldStack = true;
+            if (chartWidth > maxChartWidth + 0.5 || chartHeight > maxChartHeight + 0.5) {
+                framed = true;
+                // In the frame the numbers sit in 30px and 20px strips; phone scrollbars overlay
+                frameWidth = Math.min(chartWidth + 30 + 2, plateWidth);
+                frameHeight = Math.min(chartHeight + 20 + 2, roomHeight);
+            }
+        } else {
+            // Desktop plate: the chart fills its column, as wide as the key. The column widens
+            // with a chart held at the 20px floor; chart and preview stay side by side while
+            // both fit at their natural sizes. Tablets always stack.
+            const headerHeight = isMobile ? CONFIG.HEADER_HEIGHT_MOBILE : CONFIG.HEADER_HEIGHT_DESKTOP;
+            cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, CONFIG.CHART_COLUMN_WIDTH);
+            const chartWidth = gridWidth * cellSize.width;
+            const chartHeight = gridHeight * cellSize.height;
+            const chartColumnWidth = Math.max(CONFIG.CHART_COLUMN_MIN_WIDTH, chartWidth + CONFIG.CHART_COLUMN_RESERVE);
+            const previewNaturalWidth = chartWidth * previewRepeatX * CONFIG.PREVIEW_SCALE;
+            shouldStack = isMobile || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
+
+            // Too large for the page at the 20px floor: the chart keeps its squares and
+            // scrolls in a frame as wide as the page, leaving room for caption and key
+            const pageHeight = window.innerHeight - headerHeight - 2 * CONFIG.PLATE_PADDING_VERTICAL;
+            const numbered = { width: chartWidth + CONFIG.CHART_NUMBERS_WIDTH + 2, height: chartHeight + CONFIG.CHART_NUMBERS_HEIGHT + 2 };
+            if (numbered.width > plateWidth || numbered.height > pageHeight) {
+                framed = true;
+                shouldStack = true;
+                // In the frame the numbers sit in 30px and 20px strips; leave room for a scrollbar
+                const scrollbar = 16;
+                frameWidth = Math.min(chartWidth + 30 + 2 + scrollbar, plateWidth);
+                frameHeight = Math.min(
+                    chartHeight + 20 + 2 + scrollbar,
+                    Math.max(CONFIG.MIN_FRAME_HEIGHT, window.innerHeight - headerHeight - CONFIG.CHART_FRAME_RESERVE)
+                );
+            }
         }
 
         // Calculate final canvas dimensions
@@ -241,7 +281,12 @@ export const CanvasManager = {
 
         // Calculate final preview size
         let previewWidth, previewHeight;
-        if (shouldStack) {
+        if (framed) {
+            // A framed chart's preview is scaled to fit the page instead
+            const scale = Math.min(1, plateWidth / previewNaturalWidth);
+            previewWidth = previewNaturalWidth * scale;
+            previewHeight = previewNaturalHeight * scale;
+        } else if (shouldStack) {
             // When stacked, preview should not exceed edit canvas width for alignment
             if (previewNaturalWidth > editCanvasWidth) {
                 const scale = editCanvasWidth / previewNaturalWidth;
@@ -271,6 +316,86 @@ export const CanvasManager = {
         this.drawEdit(gridWidth, gridHeight, cellSize.width, cellSize.height, grid, patternColors, backgroundColor);
         this.drawPreview(gridWidth, gridHeight, previewCellWidth, previewCellHeight,
                         previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor);
+
+        // Choosing surrounding stitches: veil all but the download, thin frame on the centre repeat
+        let surroundingsArea = null;
+        if (surroundings) {
+            surroundingsArea = this.drawSurroundings(gridWidth, gridHeight, previewCellWidth, previewCellHeight, surroundings);
+        }
+
+        // Outline one repeat: the centre one, or the one before the centre for even counts
+        const outlined = !surroundings && (previewRepeatX > 1 || previewRepeatY > 1);
+        if (outlined) {
+            this.drawRepeatOutline(
+                Math.floor((previewRepeatX - 1) / 2) * gridWidth * previewCellWidth,
+                Math.floor((previewRepeatY - 1) / 2) * gridHeight * previewCellHeight,
+                gridWidth * previewCellWidth,
+                gridHeight * previewCellHeight
+            );
+        }
+
+        return {
+            stacked: shouldStack,
+            previewWidth,
+            outlined,
+            framed,
+            frameWidth,
+            frameHeight,
+            cellWidth: cellSize.width,
+            cellHeight: cellSize.height,
+            stitchNumberEvery: gridWidth > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1,
+            rowNumberEvery: gridHeight > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1,
+            surroundingsArea
+        };
+    },
+
+    /**
+     * Mark surrounding stitches on a 3 x 3 preview: everything outside the download lies
+     * under a veil of paper, and a thin ink frame marks the centre repeat. The heavy frame
+     * around the download is drawn by the page, with its grips.
+     * @returns {{x: number, y: number, width: number, height: number, cellWidth: number,
+     *   cellHeight: number}} The download's area on the preview, in canvas pixels
+     */
+    drawSurroundings(gridWidth, gridHeight, cellWidth, cellHeight, surroundings) {
+        const ctx = this.previewCtx;
+        const { width: canvasWidth, height: canvasHeight } = this.previewCanvas;
+        const repeatX = gridWidth * cellWidth;
+        const repeatY = gridHeight * cellHeight;
+        const x = repeatX - surroundings.left * cellWidth;
+        const y = repeatY - surroundings.top * cellHeight;
+        const width = repeatX + (surroundings.left + surroundings.right) * cellWidth;
+        const height = repeatY + (surroundings.top + surroundings.bottom) * cellHeight;
+
+        ctx.save();
+        ctx.fillStyle = CONFIG.SURROUNDINGS_VEIL;
+        ctx.fillRect(0, 0, canvasWidth, y);
+        ctx.fillRect(0, y + height, canvasWidth, canvasHeight - y - height);
+        ctx.fillRect(0, y, x, height);
+        ctx.fillRect(x + width, y, canvasWidth - x - width, height);
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_COLOR;
+        ctx.strokeRect(repeatX + 0.5, repeatY + 0.5, repeatX - 1, repeatY - 1);
+        ctx.restore();
+
+        return { x, y, width, height, cellWidth, cellHeight };
+    },
+
+    /**
+     * Frame one repeat on the preview: a heavy ink line with a thin paper line around it,
+     * so it reads on any colour
+     */
+    drawRepeatOutline(x, y, width, height) {
+        const ctx = this.previewCtx;
+        const heavy = CONFIG.REPEAT_OUTLINE_WIDTH;
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_HALO;
+        ctx.strokeRect(x - 0.5, y - 0.5, width + 1, height + 1);
+        ctx.lineWidth = heavy;
+        ctx.strokeStyle = CONFIG.REPEAT_OUTLINE_COLOR;
+        ctx.strokeRect(x + heavy / 2, y + heavy / 2, width - heavy, height - heavy);
+        ctx.restore();
     },
 
     /**
@@ -301,6 +426,29 @@ export const CanvasManager = {
                 this.editCtx.strokeStyle = CONFIG.GRID_STROKE_COLOR;
                 this.editCtx.strokeRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
             }
+        }
+
+        // Larger charts: a darker rule every tenth stitch and row, counted from the right and bottom
+        const ruleStitches = gridWidth > CONFIG.NUMBER_EVERY_UP_TO;
+        const ruleRows = gridHeight > CONFIG.NUMBER_EVERY_UP_TO;
+        if (ruleStitches || ruleRows) {
+            const ctx = this.editCtx;
+            ctx.save();
+            ctx.strokeStyle = CONFIG.TENTH_RULE_COLOR;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let n = 10; ruleStitches && n < gridWidth; n += 10) {
+                const x = Math.round((gridWidth - n) * cellWidth) + 0.5;
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, gridHeight * cellHeight);
+            }
+            for (let n = 10; ruleRows && n < gridHeight; n += 10) {
+                const y = Math.round((gridHeight - n) * cellHeight) + 0.5;
+                ctx.moveTo(0, y);
+                ctx.lineTo(gridWidth * cellWidth, y);
+            }
+            ctx.stroke();
+            ctx.restore();
         }
     },
 

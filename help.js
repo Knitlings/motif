@@ -1,7 +1,7 @@
-// Input mode toggle functionality
+// Desktop / Touch instructions choice
 (function() {
     const STORAGE_KEY = 'motif-help-input-mode';
-    const buttons = document.querySelectorAll('.input-mode-btn');
+    const radios = document.querySelectorAll('input[name="input-mode"]');
     const body = document.body;
 
     // Detect if device is primarily a touch device (mobile/tablet)
@@ -15,26 +15,34 @@
         return isMobileScreen && hasTouchPoints;
     }
 
+    function readSavedMode() {
+        try {
+            return localStorage.getItem(STORAGE_KEY);
+        } catch {
+            return null;
+        }
+    }
+
     // Load saved preference or default based on device type
     const defaultMode = isTouchDevice() ? 'touch' : 'desktop';
-    const savedMode = localStorage.getItem(STORAGE_KEY) || defaultMode;
-    setMode(savedMode);
+    const savedMode = readSavedMode();
+    setMode(savedMode === 'touch' || savedMode === 'desktop' ? savedMode : defaultMode);
 
-    // Add click handlers to toggle buttons
-    buttons.forEach(button => {
-        button.addEventListener('click', () => {
-            const mode = button.dataset.mode;
-            setMode(mode);
-            localStorage.setItem(STORAGE_KEY, mode);
+    radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (!radio.checked) return;
+            setMode(radio.value);
+            try {
+                localStorage.setItem(STORAGE_KEY, radio.value);
+            } catch {
+                // Choice still applies for this visit
+            }
         });
     });
 
     function setMode(mode) {
-        // Update button states
-        buttons.forEach(btn => {
-            const isActive = btn.dataset.mode === mode;
-            btn.classList.toggle('active', isActive);
-            btn.setAttribute('aria-selected', isActive);
+        radios.forEach(radio => {
+            radio.checked = radio.value === mode;
         });
 
         // Set data attribute on body for CSS targeting

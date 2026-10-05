@@ -19,8 +19,6 @@ import {
     validateFileSize,
     validateFileType
 } from './utils/validation.js';
-import deleteSvg from './assets/delete.svg';
-import editSvg from './assets/edit.svg';
 import {
     showError,
     handleStorageError,
@@ -28,14 +26,17 @@ import {
     handleCanvasError,
     handleJSONError,
     setupGlobalErrorHandler,
+    setErrorPresenter,
     ErrorType
 } from './utils/errorHandler.js';
 import { checkBrowserCompatibility } from './utils/featureDetection.js';
 import { createPaletteManager } from './ui/palette.js';
-import { setupDropdowns } from './ui/panels.js';
 import { setupKeyboardShortcuts } from './ui/keyboard.js';
 import { setupCanvasInteractions } from './ui/interactions.js';
 import { applyDimensionInput } from './ui/handlers.js';
+import { setupTooltips } from './ui/tooltip.js';
+import { createKey } from './ui/key.js';
+import { createNotes, showDialogNote } from './ui/notes.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -84,6 +85,19 @@ let customPalette = null; // Array of color strings when custom palette exists
 
 // Browser capabilities (set during initialization)
 let browserCapabilities = null;
+let key = null; // The key under the chart, created at initialisation
+
+// The phone layout (the max-width: 600px rules in the styles)
+const phoneLayout = window.matchMedia(`(max-width: ${CONFIG.PHONE_BREAKPOINT}px)`);
+
+// Status, warning and error notes in the top bar, or in the hint's place on a phone
+const notes = createNotes({
+    slot: document.getElementById('noteSlot'),
+    phoneSlot: document.getElementById('noteSlotPhone'),
+    phone: phoneLayout,
+    announce: (text) => announceToScreenReader(text)
+});
+setErrorPresenter((message) => notes.error(message));
 
 // ============================================
 // STATE HELPERS
@@ -144,21 +158,35 @@ function announceToScreenReader(message) {
     }
 }
 
-// Show loading overlay
-function showLoading(message = 'Processing...') {
-    const overlay = document.getElementById('loadingOverlay');
-    const messageEl = document.getElementById('loadingMessage');
-    if (overlay && messageEl) {
-        messageEl.textContent = message;
-        overlay.style.display = 'flex';
-    }
+/**
+ * Open a dialog modally. Focus goes to its first control, Escape closes it, and focus
+ * returns to the control that opened it.
+ * @param {HTMLDialogElement} dialog
+ */
+function openDialog(dialog) {
+    const opener = document.activeElement;
+    dialog.querySelectorAll('.dialog-note').forEach(note => note.replaceChildren());
+    dialog.showModal();
+    dialog.addEventListener('close', () => {
+        if (opener && opener.isConnected) opener.focus();
+    }, { once: true });
 }
 
-// Hide loading overlay
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
+/**
+ * Show a button as working on its own task: unavailable, reading "Preparing…"
+ * @param {HTMLButtonElement} button
+ * @param {boolean} busy
+ */
+function setBusy(button, busy) {
+    if (busy) {
+        button.dataset.label = button.textContent;
+        button.textContent = 'Preparing…';
+        button.setAttribute('aria-disabled', 'true');
+        button.classList.add('is-busy');
+    } else {
+        button.textContent = button.dataset.label || button.textContent;
+        button.removeAttribute('aria-disabled');
+        button.classList.remove('is-busy');
     }
 }
 
@@ -193,13 +221,83 @@ function updateButtons() {
 }
 
 function updateCanvas() {
+    if (visualContextSelectionActive && !keepSurroundingsInReach()) {
+        // The chart has grown too large for a 3 x 3 preview; leaving redraws without the picker
+        exitVisualContextSelection();
+        return;
+    }
     try {
-        CanvasManager.update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY,
-                            grid, patternColors, backgroundColor);
+        const layout = CanvasManager.update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY,
+                            grid, patternColors, backgroundColor,
+                            { surroundings: visualContextSelectionActive ? contextSelection : null });
+        applyPlateLayout(layout);
+        placePickerFrame(layout.surroundingsArea);
         updateButtons();
     } catch (error) {
         handleCanvasError(error, 'update canvas');
     }
+}
+
+/**
+ * Arrange the plate for the layout the canvas manager chose, and keep the preview's
+ * caption in step with it
+ * @param {{stacked: boolean, previewWidth: number, outlined: boolean}} layout
+ */
+function applyPlateLayout(layout) {
+    const plate = document.getElementById('plate');
+    const wasStacked = plate.classList.contains('is-stacked');
+    plate.classList.toggle('is-stacked', layout.stacked);
+    // The key's row has one place fewer when stacked
+    if (wasStacked !== layout.stacked) renderKey();
+    // Both of the preview's caption lines (its own and the surroundings picker's) are as wide as it
+    document.querySelector('.plate-preview').style.setProperty('--preview-width', `${layout.previewWidth}px`);
+    document.getElementById('previewTotal').textContent =
+        `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
+    document.getElementById('previewOutlineNote').hidden = !layout.outlined;
+    applyChartFrame(layout);
+}
+
+let chartNumbersDrawn = '';
+
+/**
+ * Frame a chart too large for the page, and number its stitches and rows from the
+ * right and the bottom (each one up to 20, every fifth beyond)
+ */
+function applyChartFrame(layout) {
+    const frame = document.getElementById('chartFrame');
+    frame.classList.toggle('is-framed', layout.framed);
+    frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
+    frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
+    if (layout.framed) {
+        // The frame scrolls, so it takes keyboard focus and says so
+        frame.setAttribute('tabindex', '0');
+        frame.setAttribute('role', 'group');
+        frame.setAttribute('aria-label', `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows. It scrolls in both directions`);
+    } else {
+        frame.removeAttribute('tabindex');
+        frame.removeAttribute('role');
+        frame.removeAttribute('aria-label');
+    }
+
+    const signature = [gridWidth, gridHeight, layout.cellWidth, layout.cellHeight].join(',');
+    if (signature === chartNumbersDrawn) return;
+    chartNumbersDrawn = signature;
+
+    const label = (n, every) => (n % every === 0 ? String(n) : '');
+    const rows = document.getElementById('chartRowNumbers');
+    rows.style.gridAutoRows = `${layout.cellHeight}px`;
+    rows.replaceChildren(...Array.from({ length: gridHeight }, (_, i) => {
+        const span = document.createElement('span');
+        span.textContent = label(gridHeight - i, layout.rowNumberEvery);
+        return span;
+    }));
+    const stitches = document.getElementById('chartStitchNumbers');
+    stitches.style.gridTemplateColumns = `repeat(${gridWidth}, ${layout.cellWidth}px)`;
+    stitches.replaceChildren(...Array.from({ length: gridWidth }, (_, i) => {
+        const span = document.createElement('span');
+        span.textContent = label(gridWidth - i, layout.stitchNumberEvery);
+        return span;
+    }));
 }
 
 // Optimized canvas update using requestAnimationFrame
@@ -218,72 +316,31 @@ function scheduleCanvasUpdate() {
 // UI FUNCTIONS
 // ============================================
 
-function updateNavbarSvgs() {
-    const activeSwatch = document.getElementById('navbarActiveColorSwatch');
-    const bgSwatch = document.getElementById('navbarBgColorSwatch');
-
-    if (activeSwatch && bgSwatch) {
-        const activeColor = patternColors[activePatternIndex];
-        activeSwatch.style.backgroundColor = activeColor;
-        bgSwatch.style.backgroundColor = backgroundColor;
-    }
-}
-
-function updateNavbarColorPreview() {
-    const previewContainer = document.getElementById('navbarColorPreview');
-
-    if (!previewContainer) return;
-
-    if (patternColors.length >= 2) {
-        previewContainer.innerHTML = '';
-
-        patternColors.forEach((color, index) => {
-            const circle = document.createElement('div');
-            circle.className = 'navbar-color-circle';
-            circle.style.backgroundColor = color;
-            circle.title = `Pattern ${index + 1}: ${color}`;
-            previewContainer.appendChild(circle);
-        });
-
-        previewContainer.classList.add('visible');
-    } else {
-        previewContainer.classList.remove('visible');
-        previewContainer.innerHTML = '';
-    }
-}
-
-function updateColorIndicators() {
-    updateNavbarSvgs();
-    updateNavbarColorPreview();
-}
-
-
 function showConfirmDialog(title, message, confirmText, onConfirm) {
     const dialog = document.getElementById('mergeDialog');
-    const titleEl = document.getElementById('mergeDialogTitle');
-    const text = document.getElementById('mergeDialogText');
+    document.getElementById('mergeDialogTitle').textContent = title;
+    document.getElementById('mergeDialogText').textContent = message;
     const confirmBtn = document.getElementById('mergeConfirmBtn');
     const cancelBtn = document.getElementById('mergeCancelBtn');
-
-    titleEl.textContent = title;
-    text.textContent = message;
     confirmBtn.textContent = confirmText;
-    dialog.style.display = 'flex';
 
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    const newCancelBtn = cancelBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    let confirmed = false;
+    const onConfirmClick = () => {
+        confirmed = true;
+        dialog.close();
+    };
+    const onCancelClick = () => dialog.close();
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
 
-    newConfirmBtn.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        onConfirm(true);
-    });
+    // Escape, Cancel and the action all end in close
+    dialog.addEventListener('close', () => {
+        confirmBtn.removeEventListener('click', onConfirmClick);
+        cancelBtn.removeEventListener('click', onCancelClick);
+        onConfirm(confirmed);
+    }, { once: true });
 
-    newCancelBtn.addEventListener('click', () => {
-        dialog.style.display = 'none';
-        onConfirm(false);
-    });
+    openDialog(dialog);
 }
 
 function showDeleteColorDialog(colorIndex) {
@@ -300,10 +357,10 @@ function showDeleteColorDialog(colorIndex) {
     }
 
     const message = colorIsUsed
-        ? `All cells using this color will be cleared to background.`
-        : `This color will be removed from your palette.`;
+        ? 'All cells using this colour will be cleared to background.'
+        : 'This colour will be removed from your palette.';
 
-    showConfirmDialog('Remove color?', message, 'Remove', (confirmed) => {
+    showConfirmDialog('Remove colour?', message, 'Remove', (confirmed) => {
         if (confirmed) {
             deletePatternColor(colorIndex);
         }
@@ -332,8 +389,7 @@ function deletePatternColor(colorIndex) {
     }
 
     saveToHistory();
-    updateActiveColorUI();
-    createNavbarColorButtons();
+    renderKey();
     updateCanvas();
 }
 
@@ -380,46 +436,16 @@ function mergePatternColors(sourceIndex, targetIndex) {
         }
 
         saveToHistory();
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
     });
 }
 
-function updateActiveColorUI() {
-    updateColorIndicators();
-    updateNavbarButtonStates();
-}
-
 /**
- * Update navbar button visual states (active pattern color and background color)
+ * Redraw the key (colours, background, palette) and its hint line
  */
-function updateNavbarButtonStates() {
-    // Background is "active" if: mobile long-press active OR shift key held on desktop
-    const backgroundIsCurrentlyActive = isBackgroundActive || isShiftKeyHeld;
-
-    // Update pattern color buttons
-    document.querySelectorAll('.navbar-color-btn.round').forEach((btn) => {
-        const index = parseInt(btn.getAttribute('data-index'));
-        if (!isNaN(index)) {
-            // Remove active class if background is active, or if this isn't the active pattern
-            if (backgroundIsCurrentlyActive || index !== activePatternIndex) {
-                btn.classList.remove('active');
-            } else {
-                btn.classList.add('active');
-            }
-        }
-    });
-
-    // Update background button
-    const bgBtn = document.querySelector('.navbar-color-btn.square');
-    if (bgBtn) {
-        if (backgroundIsCurrentlyActive) {
-            bgBtn.classList.add('active');
-        } else {
-            bgBtn.classList.remove('active');
-        }
-    }
+function renderKey() {
+    if (key) key.render();
 }
 
 // ============================================
@@ -484,20 +510,11 @@ function getMaxPreviewRepeat(width, height) {
 }
 
 /**
- * Show toast notification over preview canvas
+ * Report that the preview's repeats were reduced
  * @param {string} message - Message to display
  */
 function showPreviewToast(message) {
-    const toast = document.getElementById('previewToast');
-    if (!toast) return;
-
-    toast.textContent = message;
-    toast.classList.add('show');
-
-    // Hide after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    notes.status(message);
 }
 
 /**
@@ -543,14 +560,14 @@ function applyGridResize(newWidth, newHeight) {
     if (previewRepeatX > maxRepeat) {
         previewRepeatX = maxRepeat;
         const display = document.getElementById('previewRepeatXDisplay');
-        if (display) display.textContent = previewRepeatX;
+        if (display) display.value = previewRepeatX;
         repeatReduced = true;
     }
 
     if (previewRepeatY > maxRepeat) {
         previewRepeatY = maxRepeat;
         const display = document.getElementById('previewRepeatYDisplay');
-        if (display) display.textContent = previewRepeatY;
+        if (display) display.value = previewRepeatY;
         repeatReduced = true;
     }
 
@@ -584,8 +601,8 @@ function applyGridResizeFromEdge(direction, delta) {
 
     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
     // Check if preview repeats need to be reduced due to larger pattern
     const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -594,14 +611,14 @@ function applyGridResizeFromEdge(direction, delta) {
     if (previewRepeatX > maxRepeat) {
         previewRepeatX = maxRepeat;
         const display = document.getElementById('previewRepeatXDisplay');
-        if (display) display.textContent = previewRepeatX;
+        if (display) display.value = previewRepeatX;
         repeatReduced = true;
     }
 
     if (previewRepeatY > maxRepeat) {
         previewRepeatY = maxRepeat;
         const display = document.getElementById('previewRepeatYDisplay');
-        if (display) display.textContent = previewRepeatY;
+        if (display) display.value = previewRepeatY;
         repeatReduced = true;
     }
 
@@ -613,7 +630,6 @@ function applyGridResizeFromEdge(direction, delta) {
     saveToHistory();
     updateCanvas();
     updatePreviewRepeatStatus();
-    if (typeof updateChevronStates === 'function') updateChevronStates();
 }
 
 function paintCell(row, col, isShiftKey, useInitialState = false) {
@@ -686,8 +702,8 @@ document.getElementById('undoBtn').onclick = () => {
         // Update grid dimension displays
         const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
         const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+        if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
         // Check if preview repeats need to be reduced due to larger pattern
         const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -696,14 +712,14 @@ document.getElementById('undoBtn').onclick = () => {
         if (previewRepeatX > maxRepeat) {
             previewRepeatX = maxRepeat;
             const display = document.getElementById('previewRepeatXDisplay');
-            if (display) display.textContent = previewRepeatX;
+            if (display) display.value = previewRepeatX;
             repeatReduced = true;
         }
 
         if (previewRepeatY > maxRepeat) {
             previewRepeatY = maxRepeat;
             const display = document.getElementById('previewRepeatYDisplay');
-            if (display) display.textContent = previewRepeatY;
+            if (display) display.value = previewRepeatY;
             repeatReduced = true;
         }
 
@@ -712,8 +728,7 @@ document.getElementById('undoBtn').onclick = () => {
             saveToLocalStorage();
         }
 
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
         updatePreviewRepeatStatus();
         announceToScreenReader('Undo successful');
@@ -732,8 +747,8 @@ document.getElementById('redoBtn').onclick = () => {
         // Update grid dimension displays
         const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
         const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-        if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-        if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+        if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+        if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
         // Check if preview repeats need to be reduced due to larger pattern
         const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
@@ -742,14 +757,14 @@ document.getElementById('redoBtn').onclick = () => {
         if (previewRepeatX > maxRepeat) {
             previewRepeatX = maxRepeat;
             const display = document.getElementById('previewRepeatXDisplay');
-            if (display) display.textContent = previewRepeatX;
+            if (display) display.value = previewRepeatX;
             repeatReduced = true;
         }
 
         if (previewRepeatY > maxRepeat) {
             previewRepeatY = maxRepeat;
             const display = document.getElementById('previewRepeatYDisplay');
-            if (display) display.textContent = previewRepeatY;
+            if (display) display.value = previewRepeatY;
             repeatReduced = true;
         }
 
@@ -758,8 +773,7 @@ document.getElementById('redoBtn').onclick = () => {
             saveToLocalStorage();
         }
 
-        updateActiveColorUI();
-            createNavbarColorButtons();
+        renderKey();
         updateCanvas();
         updatePreviewRepeatStatus();
         announceToScreenReader('Redo successful');
@@ -782,15 +796,6 @@ document.getElementById('clearBtn').onclick = () => {
     );
 };
 
-// Palette controls - dropdown menu items
-document.querySelectorAll('.palette-option').forEach(option => {
-    option.addEventListener('click', (e) => {
-        e.preventDefault();
-        const paletteId = e.target.dataset.palette;
-        switchPalette(paletteId);
-    });
-});
-
 
 // Share modal controls
 const shareModal = document.getElementById('shareModal');
@@ -802,30 +807,16 @@ const shareWarning = document.getElementById('shareWarning');
 
 // Open share modal and generate share URL
 shareBtn.onclick = async () => {
-    showLoading('Generating share link...');
-
     const result = await generateShareUrl(getState());
-
-    hideLoading();
 
     if (!result.success) {
         showError(result.error || 'Failed to generate share URL');
         return;
     }
 
-    // Show modal
-    shareModal.style.display = 'flex';
-
-    // Populate URL
     shareUrlInput.value = result.url;
-
-    // Show warning if present
-    if (result.warning) {
-        shareWarning.textContent = result.warning;
-        shareWarning.style.display = 'block';
-    } else {
-        shareWarning.style.display = 'none';
-    }
+    openDialog(shareModal);
+    showDialogNote(shareWarning, 'warning', result.warning || null);
 
     // Select URL for easy copying
     shareUrlInput.select();
@@ -834,36 +825,20 @@ shareBtn.onclick = async () => {
 
 // Copy share URL to clipboard
 copyShareUrlBtn.onclick = async () => {
-    const url = shareUrlInput.value;
-    const success = await copyToClipboard(url);
+    const success = await copyToClipboard(shareUrlInput.value);
 
     if (success) {
-        // Visual feedback
         copyShareUrlBtn.textContent = 'Copied!';
-        copyShareUrlBtn.classList.add('btn-success');
         announceToScreenReader('Share URL copied to clipboard');
-
-        // Reset button after delay
         setTimeout(() => {
             copyShareUrlBtn.textContent = 'Copy to clipboard';
-            copyShareUrlBtn.classList.remove('btn-success');
         }, 2000);
     } else {
         showError('Failed to copy to clipboard. Please copy manually.');
     }
 };
 
-// Close share modal
-shareModalCancelBtn.onclick = () => {
-    shareModal.style.display = 'none';
-};
-
-// Close modal on backdrop click
-shareModal.onclick = (e) => {
-    if (e.target === shareModal) {
-        shareModal.style.display = 'none';
-    }
-};
+shareModalCancelBtn.onclick = () => shareModal.close();
 
 // Download modal controls
 const downloadModal = document.getElementById('downloadModal');
@@ -879,13 +854,9 @@ sourceRadios.forEach(radio => {
         if (radio.value === 'pattern-with-context' && radio.checked) {
             // Only show form controls if pattern is too large for visual selection (3x3 preview)
             const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
-            if (maxRepeat < 3) {
-                contextControls.style.display = 'flex';
-            } else {
-                contextControls.style.display = 'none';
-            }
+            contextControls.hidden = maxRepeat >= 3;
         } else {
-            contextControls.style.display = 'none';
+            contextControls.hidden = true;
         }
         updateSizePreview();
     });
@@ -903,10 +874,8 @@ const currentSizeLabel = document.getElementById('currentSizeLabel');
 const formatRadios = document.querySelectorAll('input[name="format"]');
 formatRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-        if (radio.value === 'png' && radio.checked) {
-            sizeControls.style.display = 'block';
-        } else {
-            sizeControls.style.display = 'none';
+        if (radio.checked) {
+            sizeControls.hidden = radio.value !== 'png';
         }
     });
 });
@@ -915,11 +884,9 @@ formatRadios.forEach(radio => {
 const sizeRadios = document.querySelectorAll('input[name="size"]');
 sizeRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-        if (radio.value === 'custom' && radio.checked) {
-            customSizeControls.style.display = 'block';
+        if (radio.checked) {
+            customSizeControls.hidden = radio.value !== 'custom';
             updateSizePreview();
-        } else {
-            customSizeControls.style.display = 'none';
         }
     });
 });
@@ -1072,7 +1039,7 @@ contextInputs.forEach(id => {
 
 // Open download modal
 downloadBtn.onclick = () => {
-    downloadModal.style.display = 'flex';
+    openDialog(downloadModal);
 
     // Update context input max values based on current pattern size
     const contextLeftInput = document.getElementById('contextLeft');
@@ -1088,12 +1055,7 @@ downloadBtn.onclick = () => {
     // Update context controls visibility based on current pattern size
     const patternWithContextRadio = document.querySelector('input[name="source"][value="pattern-with-context"]');
     if (patternWithContextRadio && patternWithContextRadio.checked) {
-        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
-        if (maxRepeat < 3) {
-            contextControls.style.display = 'flex';
-        } else {
-            contextControls.style.display = 'none';
-        }
+        contextControls.hidden = getMaxPreviewRepeat(gridWidth, gridHeight) >= 3;
     }
 
     // Update size controls
@@ -1101,33 +1063,13 @@ downloadBtn.onclick = () => {
     updateCurrentDisplayLabel();
 };
 
-// Close download modal
-downloadModalCancelBtn.onclick = () => {
-    downloadModal.style.display = 'none';
-};
-
-// Close modal on backdrop click
-downloadModal.onclick = (e) => {
-    if (e.target === downloadModal) {
-        downloadModal.style.display = 'none';
-    }
-};
-
-// Close modals on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        if (shareModal.style.display === 'flex') {
-            shareModal.style.display = 'none';
-        }
-        if (downloadModal.style.display === 'flex') {
-            downloadModal.style.display = 'none';
-        }
-    }
-});
+downloadModalCancelBtn.onclick = () => downloadModal.close();
 
 // Handle download form submission
+const downloadSubmitBtn = document.getElementById('downloadModalSubmitBtn');
 downloadForm.onsubmit = async (e) => {
     e.preventDefault();
+    if (downloadSubmitBtn.getAttribute('aria-disabled') === 'true') return;
 
     const formData = new FormData(downloadForm);
     const source = formData.get('source');
@@ -1135,91 +1077,69 @@ downloadForm.onsubmit = async (e) => {
     const includeRowCounts = formData.get('rowCounts') === 'on';
     const sizeMode = formData.get('size');
     const customCellSize = sizeMode === 'custom' ? parseInt(cellSizeInput.value) : null;
+    const pickOnPreview = source === 'pattern-with-context' && getMaxPreviewRepeat(gridWidth, gridHeight) >= 3;
 
-    // Close modal
-    downloadModal.style.display = 'none';
+    // Surrounding stitches are chosen on the preview next
+    if (pickOnPreview) {
+        // Focus goes to the first of the picker's numbers once the dialog has handed it back
+        downloadModal.addEventListener('close', () => pickerFields[0].focus(), { once: true });
+        downloadModal.close();
+        enterVisualContextSelection(format, includeRowCounts, customCellSize);
+        return;
+    }
 
-    // If pattern-with-context is selected, check if we can use visual selection
-    if (source === 'pattern-with-context') {
-        const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    // The button shows the work; the dialog stays until the file is ready
+    setBusy(downloadSubmitBtn, true);
+    try {
+        // Let the button repaint before the work blocks
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Use visual selection if pattern supports 3x3 preview
-        if (maxRepeat >= 3) {
-            enterVisualContextSelection(format, includeRowCounts, customCellSize);
-            return;
-        } else {
-            // Pattern too large - use form values
+        let blob, filename;
+        if (source === 'pattern-with-context') {
+            // Pattern too large for a 3 x 3 preview: the dialog's fields
             const context = {
                 left: parseInt(formData.get('contextLeft')) || 0,
                 right: parseInt(formData.get('contextRight')) || 0,
                 top: parseInt(formData.get('contextTop')) || 0,
                 bottom: parseInt(formData.get('contextBottom')) || 0
             };
-
-            try {
-                showLoading(`Exporting ${format.toUpperCase()}...`);
-                await new Promise(resolve => setTimeout(resolve, 50));
-
-                let blob, filename;
-                if (format === 'svg') {
-                    blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
-                } else {
-                    blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
-                    filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
-                }
-
-                downloadFile(blob, filename);
-                announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
-            } catch (error) {
-                handleFileError(error, `${format.toUpperCase()} export`);
-            } finally {
-                hideLoading();
+            if (format === 'svg') {
+                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+            } else {
+                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
             }
-            return;
-        }
-    }
-
-    try {
-        showLoading(`Exporting ${format.toUpperCase()}...`);
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        let blob;
-        let filename;
-
-        if (source === 'pattern') {
+            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`;
+        } else if (source === 'pattern') {
             if (format === 'svg') {
                 blob = exportSvg(getState(), includeRowCounts);
-                filename = `motif-pattern-${gridWidth}x${gridHeight}.svg`;
             } else {
                 blob = await exportPng(getState(), includeRowCounts, customCellSize);
-                filename = `motif-pattern-${gridWidth}x${gridHeight}.png`;
             }
+            filename = `motif-pattern-${gridWidth}x${gridHeight}.${format}`;
         } else {
-            // Preview export
             if (format === 'svg') {
                 blob = exportPreviewSvg(getState(), includeRowCounts);
-                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.svg`;
             } else {
                 blob = await exportPreviewPng(getState(), includeRowCounts, customCellSize);
-                filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.png`;
             }
+            filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.${format}`;
         }
 
         downloadFile(blob, filename);
         announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
+        setBusy(downloadSubmitBtn, false);
+        downloadModal.close();
     } catch (error) {
+        setBusy(downloadSubmitBtn, false);
         handleFileError(error, `${format.toUpperCase()} export`);
-    } finally {
-        hideLoading();
     }
 };
 
 // ============================================
 // VISUAL CONTEXT SELECTION
+// Surrounding stitches for a download, chosen on a 3 x 3 preview
 // ============================================
 
-// Visual context selection state
 let visualContextSelectionActive = false;
 let savedPreviewRepeatX = 3;
 let savedPreviewRepeatY = 3;
@@ -1227,14 +1147,69 @@ let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
 let selectionFormat = 'png';
 let selectionIncludeRowCounts = false;
 let selectionCustomCellSize = null;
-let draggingEdge = null;
-let dragStartPos = { x: 0, y: 0 };
+let pickerArea = null;
+
+const previewCanvas = document.getElementById('previewCanvas');
+const previewCaptionLine = document.getElementById('previewCaptionLine');
+const pickerCaptionLine = document.getElementById('pickerCaptionLine');
+const pickerFrame = document.getElementById('pickerFrame');
+const pickerFields = [...pickerCaptionLine.querySelectorAll('.picker-field')];
+const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
+const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
+
+/** Up to one stitch (or row) short of a full repeat */
+function maxSurrounding(side) {
+    return (side === 'left' || side === 'right' ? gridWidth : gridHeight) - 1;
+}
 
 /**
- * Enter visual context selection mode
+ * Hold the surroundings within reach of the current chart, which can change while they are
+ * being chosen
+ * @returns {boolean} false when the chart no longer fits a 3 x 3 preview
  */
+function keepSurroundingsInReach() {
+    if (getMaxPreviewRepeat(gridWidth, gridHeight) < 3) return false;
+    for (const side of Object.keys(contextSelection)) {
+        contextSelection[side] = Math.min(contextSelection[side], maxSurrounding(side));
+    }
+    syncPickerFields();
+    return true;
+}
+
+function syncPickerFields() {
+    pickerFields.forEach(field => {
+        if (document.activeElement !== field) field.value = contextSelection[field.dataset.side];
+    });
+}
+
+function setSurrounding(side, value) {
+    contextSelection[side] = Utils.clampInt(value, 0, maxSurrounding(side), 0);
+    updateCanvas();
+}
+
+function announceSurroundings() {
+    const { left, right, top, bottom } = contextSelection;
+    announceToScreenReader(`Surrounding stitches: ${left} left, ${right} right, ${top} top, ${bottom} bottom`);
+}
+
+/**
+ * Lay the heavy frame over the download's area on the preview
+ * @param {{x: number, y: number, width: number, height: number}|null} area - In canvas pixels
+ */
+function placePickerFrame(area) {
+    pickerArea = area;
+    pickerFrame.hidden = !area;
+    if (!area) return;
+    // The canvas sits inside its own 1px frame; the heavy line lies outside the stitches
+    const heavy = parseFloat(getComputedStyle(pickerFrame).borderTopWidth);
+    const inset = previewCanvas.clientLeft;
+    pickerFrame.style.left = `${inset + area.x - heavy}px`;
+    pickerFrame.style.top = `${inset + area.y - heavy}px`;
+    pickerFrame.style.width = `${area.width + 2 * heavy}px`;
+    pickerFrame.style.height = `${area.height + 2 * heavy}px`;
+}
+
 function enterVisualContextSelection(format, includeRowCounts, customCellSize = null) {
-    // Save current state
     savedPreviewRepeatX = previewRepeatX;
     savedPreviewRepeatY = previewRepeatY;
     selectionFormat = format;
@@ -1243,328 +1218,136 @@ function enterVisualContextSelection(format, includeRowCounts, customCellSize = 
     contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
     visualContextSelectionActive = true;
 
-    // Switch to 3x3 preview
     previewRepeatX = 3;
     previewRepeatY = 3;
+    previewRepeatXDisplay.value = previewRepeatX;
+    previewRepeatYDisplay.value = previewRepeatY;
 
-    // Update preview repeat displays
-    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
-
-    // Show visual selection controls
-    const controls = document.getElementById('visualSelectionControls');
-    if (controls) controls.style.display = 'flex';
-
-    // Re-render preview
+    previewCaptionLine.hidden = true;
+    pickerCaptionLine.hidden = false;
     updateCanvas();
-
-    // Add visual selection overlay to preview canvas
-    renderVisualSelection();
 }
 
-/**
- * Exit visual context selection mode
- */
 function exitVisualContextSelection() {
+    const focusWasInPicker = pickerCaptionLine.contains(document.activeElement) ||
+        pickerFrame.contains(document.activeElement);
     visualContextSelectionActive = false;
 
-    // Hide visual selection controls
-    const controls = document.getElementById('visualSelectionControls');
-    if (controls) controls.style.display = 'none';
-
-    // Restore original preview repeat values
-    previewRepeatX = savedPreviewRepeatX;
-    previewRepeatY = savedPreviewRepeatY;
-
-    // Update preview repeat displays
-    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
-
-    // Re-render preview
-    updateCanvas();
-}
-
-/**
- * Render visual selection overlay on preview canvas
- */
-function renderVisualSelection() {
-    if (!visualContextSelectionActive) return;
-
-    const previewCanvas = document.getElementById('previewCanvas');
-    const ctx = previewCanvas.getContext('2d');
-
-    // Draw red box around the center repeat
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat is the middle one in the 3x3 grid
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerWidth = gridWidth * cellWidth;
-    const centerHeight = gridHeight * cellHeight;
-
-    // Calculate context box dimensions
-    const contextStartX = centerStartX - (contextSelection.left * cellWidth);
-    const contextStartY = centerStartY - (contextSelection.top * cellHeight);
-    const contextWidth = centerWidth + (contextSelection.left + contextSelection.right) * cellWidth;
-    const contextHeight = centerHeight + (contextSelection.top + contextSelection.bottom) * cellHeight;
-
-    // Draw grey overlay on areas outside the selection (like image crop tools)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-
-    // Top rectangle
-    ctx.fillRect(0, 0, previewCanvas.width, contextStartY);
-
-    // Bottom rectangle
-    ctx.fillRect(0, contextStartY + contextHeight, previewCanvas.width, previewCanvas.height - (contextStartY + contextHeight));
-
-    // Left rectangle (between top and bottom)
-    ctx.fillRect(0, contextStartY, contextStartX, contextHeight);
-
-    // Right rectangle (between top and bottom)
-    ctx.fillRect(contextStartX + contextWidth, contextStartY, previewCanvas.width - (contextStartX + contextWidth), contextHeight);
-
-    // Draw black box around center repeat
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(centerStartX, centerStartY, centerWidth, centerHeight);
-
-    // Draw context selection if any
-    if (contextSelection.left > 0 || contextSelection.right > 0 ||
-        contextSelection.top > 0 || contextSelection.bottom > 0) {
-
-        // Draw amber box for context area (thicker for visibility)
-        ctx.strokeStyle = '#FFA726';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(contextStartX, contextStartY, contextWidth, contextHeight);
+    // The chart may have grown while picking: hold the restored repeats to its limit
+    const maxRepeat = getMaxPreviewRepeat(gridWidth, gridHeight);
+    previewRepeatX = Math.min(savedPreviewRepeatX, maxRepeat);
+    previewRepeatY = Math.min(savedPreviewRepeatY, maxRepeat);
+    if (previewRepeatX < savedPreviewRepeatX || previewRepeatY < savedPreviewRepeatY) {
+        showPreviewToast(`Preview reduced to max for ${gridWidth}×${gridHeight} pattern (${maxRepeat}×${maxRepeat})`);
     }
+    previewRepeatXDisplay.value = previewRepeatX;
+    previewRepeatYDisplay.value = previewRepeatY;
 
-    // Draw drag handles (triangles) on the edges
-    const handleSize = 12;
-    ctx.fillStyle = '#FFA726';
-
-    // Left handle
-    const leftX = contextStartX;
-    const leftY = contextStartY + contextHeight / 2;
-    ctx.beginPath();
-    ctx.moveTo(leftX - handleSize, leftY);
-    ctx.lineTo(leftX, leftY - handleSize / 2);
-    ctx.lineTo(leftX, leftY + handleSize / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    // Right handle
-    const rightX = contextStartX + contextWidth;
-    const rightY = contextStartY + contextHeight / 2;
-    ctx.beginPath();
-    ctx.moveTo(rightX + handleSize, rightY);
-    ctx.lineTo(rightX, rightY - handleSize / 2);
-    ctx.lineTo(rightX, rightY + handleSize / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    // Top handle
-    const topX = contextStartX + contextWidth / 2;
-    const topY = contextStartY;
-    ctx.beginPath();
-    ctx.moveTo(topX, topY - handleSize);
-    ctx.lineTo(topX - handleSize / 2, topY);
-    ctx.lineTo(topX + handleSize / 2, topY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Bottom handle
-    const bottomX = contextStartX + contextWidth / 2;
-    const bottomY = contextStartY + contextHeight;
-    ctx.beginPath();
-    ctx.moveTo(bottomX, bottomY + handleSize);
-    ctx.lineTo(bottomX - handleSize / 2, bottomY);
-    ctx.lineTo(bottomX + handleSize / 2, bottomY);
-    ctx.closePath();
-    ctx.fill();
+    pickerCaptionLine.hidden = true;
+    previewCaptionLine.hidden = false;
+    updateCanvas();
+    if (focusWasInPicker || document.activeElement === document.body) downloadBtn.focus();
 }
 
-/**
- * Handle download with selected context
- */
 async function downloadWithContext() {
     const format = selectionFormat;
-    const includeRowCounts = selectionIncludeRowCounts;
-    const customCellSize = selectionCustomCellSize;
     const context = { ...contextSelection };
+    const button = visualSelectionDownloadBtn;
+    if (button.getAttribute('aria-disabled') === 'true') return;
 
-    // Exit visual selection mode
-    exitVisualContextSelection();
-
+    setBusy(button, true);
     try {
-        showLoading(`Exporting ${format.toUpperCase()}...`);
+        // Let the button repaint before the work blocks
         await new Promise(resolve => setTimeout(resolve, 50));
 
         let blob;
-        let filename;
-
         if (format === 'svg') {
-            blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
-            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.svg`;
+            blob = exportPatternWithContextSvg(getState(), context, selectionIncludeRowCounts);
         } else {
-            blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
-            filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.png`;
+            blob = await exportPatternWithContextPng(getState(), context, selectionIncludeRowCounts, selectionCustomCellSize);
         }
-
-        downloadFile(blob, filename);
+        downloadFile(blob, `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`);
         announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
     } catch (error) {
         handleFileError(error, `${format.toUpperCase()} export`);
     } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Handle mouse/touch events for dragging selection edges
- */
-function handleSelectionMouseDown(e) {
-    if (!visualContextSelectionActive) return;
-
-    const previewCanvas = document.getElementById('previewCanvas');
-    const rect = previewCanvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
-
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat bounds
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerEndX = centerStartX + gridWidth * cellWidth;
-    const centerEndY = centerStartY + gridHeight * cellHeight;
-
-    // Use larger touch target for touch events (30px) vs mouse (10px)
-    const threshold = e.touches ? 30 : 10;
-
-    // Check edges with context
-    const leftEdge = centerStartX - (contextSelection.left * cellWidth);
-    const rightEdge = centerEndX + (contextSelection.right * cellWidth);
-    const topEdge = centerStartY - (contextSelection.top * cellHeight);
-    const bottomEdge = centerEndY + (contextSelection.bottom * cellHeight);
-
-    if (Math.abs(x - leftEdge) < threshold && y >= topEdge && y <= bottomEdge) {
-        draggingEdge = 'left';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    } else if (Math.abs(x - rightEdge) < threshold && y >= topEdge && y <= bottomEdge) {
-        draggingEdge = 'right';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    } else if (Math.abs(y - topEdge) < threshold && x >= leftEdge && x <= rightEdge) {
-        draggingEdge = 'top';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    } else if (Math.abs(y - bottomEdge) < threshold && x >= leftEdge && x <= rightEdge) {
-        draggingEdge = 'bottom';
-        dragStartPos = { x, y };
-        e.preventDefault();
-    }
-}
-
-function handleSelectionMouseMove(e) {
-    if (!visualContextSelectionActive || !draggingEdge) return;
-
-    const previewCanvas = document.getElementById('previewCanvas');
-    const rect = previewCanvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0].clientY) - rect.top;
-
-    const cellWidth = previewCanvas.width / (gridWidth * 3);
-    const cellHeight = previewCanvas.height / (gridHeight * 3);
-
-    // Center repeat bounds
-    const centerStartX = gridWidth * cellWidth;
-    const centerStartY = gridHeight * cellHeight;
-    const centerEndX = centerStartX + gridWidth * cellWidth;
-    const centerEndY = centerStartY + gridHeight * cellHeight;
-
-    // Calculate new context values based on drag
-    if (draggingEdge === 'left') {
-        const deltaStitches = Math.round((centerStartX - x) / cellWidth);
-        contextSelection.left = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
-    } else if (draggingEdge === 'right') {
-        const deltaStitches = Math.round((x - centerEndX) / cellWidth);
-        contextSelection.right = Math.max(0, Math.min(gridWidth - 1, deltaStitches));
-    } else if (draggingEdge === 'top') {
-        const deltaStitches = Math.round((centerStartY - y) / cellHeight);
-        contextSelection.top = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
-    } else if (draggingEdge === 'bottom') {
-        const deltaStitches = Math.round((y - centerEndY) / cellHeight);
-        contextSelection.bottom = Math.max(0, Math.min(gridHeight - 1, deltaStitches));
-    }
-
-    // Re-render
-    updateCanvas();
-    renderVisualSelection();
-
-    e.preventDefault();
-}
-
-function handleSelectionMouseUp(e) {
-    draggingEdge = null;
-    dragStartPos = { x: 0, y: 0 };
-}
-
-// Add event listeners for visual selection
-const previewCanvas = document.getElementById('previewCanvas');
-previewCanvas.addEventListener('mousedown', handleSelectionMouseDown);
-previewCanvas.addEventListener('touchstart', handleSelectionMouseDown, { passive: false });
-document.addEventListener('mousemove', handleSelectionMouseMove);
-document.addEventListener('touchmove', handleSelectionMouseMove, { passive: false });
-document.addEventListener('mouseup', handleSelectionMouseUp);
-document.addEventListener('touchend', handleSelectionMouseUp);
-
-// Modify updateCanvas to call renderVisualSelection after rendering preview
-const originalUpdateCanvas = updateCanvas;
-function updateCanvasWithSelection() {
-    originalUpdateCanvas();
-    if (visualContextSelectionActive) {
-        renderVisualSelection();
-    }
-}
-// Replace updateCanvas reference
-updateCanvas = updateCanvasWithSelection;
-
-// Wire up visual selection control buttons
-const visualSelectionCancelBtn = document.getElementById('visualSelectionCancelBtn');
-const visualSelectionDownloadBtn = document.getElementById('visualSelectionDownloadBtn');
-
-if (visualSelectionCancelBtn) {
-    visualSelectionCancelBtn.onclick = () => {
+        setBusy(button, false);
         exitVisualContextSelection();
-    };
+    }
 }
 
-if (visualSelectionDownloadBtn) {
-    visualSelectionDownloadBtn.onclick = () => {
-        downloadWithContext();
-    };
-}
+// The numbers in the caption: the keyboard way to set the surroundings
+pickerFields.forEach(field => {
+    const side = field.dataset.side;
+    setupCaptionField(field, value => setSurrounding(side, value), 0, () => maxSurrounding(side));
+});
 
-// Handle Escape key to exit visual selection mode
+// Edge grips: drag out by whole stitches, or arrow keys one at a time
+pickerFrame.querySelectorAll('.edge-grip').forEach(grip => {
+    const side = grip.dataset.side;
+
+    grip.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        // Take focus from the caption's numbers (Safari doesn't focus buttons on click), so
+        // the field for this side follows the drag
+        grip.focus({ preventScroll: true });
+        grip.setPointerCapture(e.pointerId);
+        pickerFrame.classList.add('is-dragging');
+    });
+
+    grip.addEventListener('pointermove', (e) => {
+        if (!grip.hasPointerCapture(e.pointerId) || !pickerArea) return;
+        // Measured from the centre repeat's edge on this side, in whole stitches or rows
+        const rect = previewCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left - previewCanvas.clientLeft;
+        const y = e.clientY - rect.top - previewCanvas.clientTop;
+        const { cellWidth, cellHeight } = pickerArea;
+        const distance = {
+            left: gridWidth * cellWidth - x,
+            right: x - 2 * gridWidth * cellWidth,
+            top: gridHeight * cellHeight - y,
+            bottom: y - 2 * gridHeight * cellHeight
+        }[side];
+        const stitches = Math.round(distance / (side === 'left' || side === 'right' ? cellWidth : cellHeight));
+        const value = Utils.clampInt(stitches, 0, maxSurrounding(side), 0);
+        if (value !== contextSelection[side]) setSurrounding(side, value);
+    });
+
+    const endDrag = (e) => {
+        if (!grip.hasPointerCapture(e.pointerId)) return;
+        grip.releasePointerCapture(e.pointerId);
+        pickerFrame.classList.remove('is-dragging');
+        announceSurroundings();
+    };
+    grip.addEventListener('pointerup', endDrag);
+    grip.addEventListener('pointercancel', endDrag);
+
+    grip.addEventListener('keydown', (e) => {
+        const outward = { top: 'ArrowUp', bottom: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[side];
+        const inward = { top: 'ArrowDown', bottom: 'ArrowUp', left: 'ArrowRight', right: 'ArrowLeft' }[side];
+        if (e.key !== outward && e.key !== inward) return;
+        e.preventDefault();
+        setSurrounding(side, contextSelection[side] + (e.key === outward ? 1 : -1));
+        announceSurroundings();
+    });
+});
+
+visualSelectionCancelBtn.addEventListener('click', exitVisualContextSelection);
+visualSelectionDownloadBtn.addEventListener('click', downloadWithContext);
+
+// Escape cancels, unless it is closing something else first (the Menu, a dialog)
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && visualContextSelectionActive) {
-        exitVisualContextSelection();
-    }
+    if (e.key !== 'Escape' || !visualContextSelectionActive || e.defaultPrevented) return;
+    if (document.querySelector('dialog[open]')) return;
+    exitVisualContextSelection();
 });
 
 // ============================================
 // END VISUAL CONTEXT SELECTION
 // ============================================
 
-document.getElementById('navbarExportJsonBtn').onclick = (e) => {
-    e.preventDefault();
+document.getElementById('navbarExportJsonBtn').onclick = () => {
     try {
         const blob = exportJson(getState());
         downloadFile(blob, `motif-${gridWidth}x${gridHeight}.json`);
@@ -1572,6 +1355,11 @@ document.getElementById('navbarExportJsonBtn').onclick = (e) => {
     } catch (error) {
         handleFileError(error, 'JSON export');
     }
+};
+
+// Import JSON: the menu row opens the file picker
+document.getElementById('navbarImportJsonBtn').onclick = () => {
+    document.getElementById('navbarImportJsonInput').click();
 };
 
 document.getElementById('navbarImportJsonInput').onchange = (e) => {
@@ -1594,82 +1382,74 @@ document.getElementById('navbarImportJsonInput').onchange = (e) => {
         return;
     }
 
-    showLoading('Importing pattern...');
-
-    // Use setTimeout to allow loading UI to render
     setTimeout(() => {
         importJson(
             file,
             (importedData) => {
-                try {
-                    // Validate imported data
-                    const dataValidation = validateImportData(importedData);
-                    if (!dataValidation.valid) {
-                        showError(dataValidation.error, ErrorType.VALIDATION);
-                        return;
-                    }
-
-                    gridWidth = importedData.gridWidth;
-                    gridHeight = importedData.gridHeight;
-                    aspectRatio = importedData.aspectRatio;
-                    grid = importedData.grid;
-                    backgroundColor = importedData.backgroundColor;
-                    patternColors = importedData.patternColors;
-
-                    if (importedData.previewRepeatX) {
-                        previewRepeatX = importedData.previewRepeatX;
-                    }
-                    if (importedData.previewRepeatY) {
-                        previewRepeatY = importedData.previewRepeatY;
-                    }
-
-                    // Import palette settings
-                    if (importedData.activePaletteId) {
-                        activePaletteId = importedData.activePaletteId;
-                    }
-                    if (importedData.customPalette) {
-                        customPalette = importedData.customPalette;
-                    }
-
-                    if (activePatternIndex >= patternColors.length) {
-                        activePatternIndex = 0;
-                    }
-
-                    // Ensure preview repeats don't exceed max for imported pattern size
-                    const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
-                    if (previewRepeatX > maxRepeatImport) {
-                        previewRepeatX = maxRepeatImport;
-                    }
-                    if (previewRepeatY > maxRepeatImport) {
-                        previewRepeatY = maxRepeatImport;
-                    }
-
-                    // Update all UI elements
-                    const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
-                    const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-                    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-                    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
-
-                    const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
-                    const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-                    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-                    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
-
-                                    createNavbarColorButtons();
-                    updateActiveColorUI();
-                    updatePaletteUI();
-                    updateNavbarPaletteName();
-
-                    saveToHistory();
-                    updateCanvas();
-                    updatePreviewRepeatStatus();
-                    announceToScreenReader('Pattern imported successfully');
-                } finally {
-                    hideLoading();
+                // Validate imported data
+                const dataValidation = validateImportData(importedData);
+                if (!dataValidation.valid) {
+                    showError(dataValidation.error, ErrorType.VALIDATION);
+                    return;
                 }
+
+                gridWidth = importedData.gridWidth;
+                gridHeight = importedData.gridHeight;
+                aspectRatio = importedData.aspectRatio;
+                grid = importedData.grid;
+                backgroundColor = importedData.backgroundColor;
+                patternColors = importedData.patternColors;
+
+                if (importedData.previewRepeatX) {
+                    previewRepeatX = importedData.previewRepeatX;
+                }
+                if (importedData.previewRepeatY) {
+                    previewRepeatY = importedData.previewRepeatY;
+                }
+
+                // Import palette settings
+                if (importedData.activePaletteId) {
+                    activePaletteId = importedData.activePaletteId;
+                }
+                if (importedData.customPalette) {
+                    customPalette = importedData.customPalette;
+                }
+
+                if (activePatternIndex >= patternColors.length) {
+                    activePatternIndex = 0;
+                }
+
+                // Ensure preview repeats don't exceed max for imported pattern size
+                const maxRepeatImport = getMaxPreviewRepeat(gridWidth, gridHeight);
+                if (previewRepeatX > maxRepeatImport) {
+                    previewRepeatX = maxRepeatImport;
+                }
+                if (previewRepeatY > maxRepeatImport) {
+                    previewRepeatY = maxRepeatImport;
+                }
+
+                // Update all UI elements
+                const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
+                const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
+                if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+                if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
+
+                const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
+                const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
+                if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+                if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
+
+                updatePaletteUI();
+                renderKey();
+                customRatioChosen = false;
+                syncAspectRatioControls();
+
+                saveToHistory();
+                updateCanvas();
+                updatePreviewRepeatStatus();
+                announceToScreenReader('Pattern imported successfully');
             },
             (errorMessage) => {
-                hideLoading();
                 showError(errorMessage, ErrorType.FILE_IO);
             }
         );
@@ -1690,8 +1470,7 @@ function applyGridWidth(value) {
         defaultValue: CONFIG.MIN_GRID_SIZE,
         displayElementId: 'gridWidthDisplay',
         applyFunction: (val) => applyGridResize(val, gridHeight),
-        getCurrentValue: () => gridWidth,
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        getCurrentValue: () => gridWidth
     });
 }
 
@@ -1703,8 +1482,7 @@ function applyGridHeight(value) {
         defaultValue: CONFIG.MIN_GRID_SIZE,
         displayElementId: 'gridHeightDisplay',
         applyFunction: (val) => applyGridResize(gridWidth, val),
-        getCurrentValue: () => gridHeight,
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        getCurrentValue: () => gridHeight
     });
 }
 
@@ -1721,8 +1499,7 @@ function applyPreviewRepeatX(value) {
             updateCanvas();
             updatePreviewRepeatStatus();
             saveToLocalStorage();
-        },
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        }
     });
 }
 
@@ -1739,8 +1516,7 @@ function applyPreviewRepeatY(value) {
             updateCanvas();
             updatePreviewRepeatStatus();
             saveToLocalStorage();
-        },
-        updateChevronStates: typeof updateChevronStates === 'function' ? updateChevronStates : null
+        }
     });
 }
 
@@ -1793,30 +1569,22 @@ function updateUIDisplaysForSharedPattern() {
     // Update inline displays
     const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
     const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-    if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-    if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+    if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+    if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
     const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
     const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
-    if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-    if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+    if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+    if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
     // Re-render UI with shared pattern data
     updatePaletteUI();
-    createNavbarColorButtons();
-    updateActiveColorUI();
-    updateColorIndicators();
-    updateNavbarPaletteName();
-    updateNavbarPalettePreview();
+    renderKey();
+    customRatioChosen = false;
+    syncAspectRatioControls();
 
     // Re-initialize grid with shared data
     initGrid();
-
-    // Hide instructions if pattern was shared with interaction
-    if (hasInteracted) {
-        const instructions = document.getElementById('canvasInstructions');
-        if (instructions) instructions.style.display = 'none';
-    }
 }
 
 // Check for shared pattern in URL (takes priority over localStorage)
@@ -1893,8 +1661,8 @@ if (!shareUrlResult.success) {
 
 const inlineWidthDisplay = document.getElementById('gridWidthDisplay');
 const inlineHeightDisplay = document.getElementById('gridHeightDisplay');
-if (inlineWidthDisplay) inlineWidthDisplay.textContent = gridWidth;
-if (inlineHeightDisplay) inlineHeightDisplay.textContent = gridHeight;
+if (inlineWidthDisplay) inlineWidthDisplay.value = gridWidth;
+if (inlineHeightDisplay) inlineHeightDisplay.value = gridHeight;
 
 const inlineRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const inlineRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
@@ -1908,8 +1676,8 @@ if (previewRepeatY > maxRepeatOnLoad) {
     previewRepeatY = maxRepeatOnLoad;
 }
 
-if (inlineRepeatXDisplay) inlineRepeatXDisplay.textContent = previewRepeatX;
-if (inlineRepeatYDisplay) inlineRepeatYDisplay.textContent = previewRepeatY;
+if (inlineRepeatXDisplay) inlineRepeatXDisplay.value = previewRepeatX;
+if (inlineRepeatYDisplay) inlineRepeatYDisplay.value = previewRepeatY;
 
 // Initialize canvas manager
 CanvasManager.init('editCanvas', 'previewCanvas');
@@ -1933,17 +1701,13 @@ const paletteManager = createPaletteManager({
     setBackgroundColor: (color) => { backgroundColor = color; },
     saveToLocalStorage,
     updateCanvas,
-    updateColorIndicators,
-    updateActiveColorUI
+    updateColorIndicators: renderKey,
+    updateActiveColorUI: renderKey
 });
 
 // Expose palette functions globally for button handlers
-const renderPalette = paletteManager.renderPalette;
 const switchPalette = paletteManager.switchPalette;
 const updatePaletteUI = paletteManager.updatePaletteUI;
-
-// Initialize dropdowns
-setupDropdowns();
 
 // Initialize keyboard shortcuts
 setupKeyboardShortcuts({
@@ -1953,11 +1717,12 @@ setupKeyboardShortcuts({
         activePatternIndex = index;
         isBackgroundActive = false; // Deactivate background when selecting pattern color via keyboard
     },
-    updateActiveColorUI,
-    createNavbarColorButtons,
+    updateActiveColorUI: renderKey,
+    createNavbarColorButtons: renderKey,
     setShiftKeyState: (isHeld) => {
+        if (isShiftKeyHeld === isHeld) return;
         isShiftKeyHeld = isHeld;
-        updateNavbarButtonStates();
+        if (key) key.refreshSelection();
     }
 });
 
@@ -1982,146 +1747,232 @@ const canvasInteractions = setupCanvasInteractions({
 // Set up canvas event listeners
 canvasInteractions.setupCanvasEvents();
 
+// What the key's controls do to the pattern
+const keyActions = {
+    selectColor(index) {
+        activePatternIndex = index;
+        isBackgroundActive = false;
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    addColor() {
+        if (patternColors.length >= CONFIG.MAX_PATTERN_COLORS) return;
+        patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
+        activePatternIndex = patternColors.length - 1;
+        isBackgroundActive = false;
+        renderKey();
+        updateCanvas();
+        saveToLocalStorage();
+        announceToScreenReader(`Colour ${patternColors.length} added`);
+    },
+
+    changeColor(index, hex) {
+        if (!validateColor(hex)) return;
+        patternColors[index] = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    removeColor(index) {
+        showDeleteColorDialog(index);
+    },
+
+    mergeColors(sourceIndex, targetIndex) {
+        mergePatternColors(sourceIndex, targetIndex);
+    },
+
+    swapWithBackground(index) {
+        if (index < 0 || index >= patternColors.length) return;
+        const previousBackground = backgroundColor;
+        backgroundColor = patternColors[index];
+        patternColors[index] = previousBackground;
+        saveToHistory();
+        renderKey();
+        updateCanvas();
+        announceToScreenReader(`Swapped colour ${index + 1} with the background`);
+    },
+
+    setBackground(hex) {
+        if (!validateColor(hex)) return;
+        backgroundColor = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    toggleBackgroundActive() {
+        isBackgroundActive = !isBackgroundActive;
+        renderKey();
+    },
+
+    giveActiveColour(hex) {
+        patternColors[activePatternIndex] = hex;
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+    },
+
+    switchPalette(paletteId) {
+        switchPalette(paletteId);
+        renderKey();
+    },
+
+    loadPalette() {
+        const palette = getCurrentPaletteColors();
+        if (!palette || palette.length === 0) return;
+        patternColors = palette.slice(0, CONFIG.MAX_PATTERN_COLORS);
+        if (activePatternIndex >= patternColors.length) {
+            activePatternIndex = 0;
+        }
+        renderKey();
+        updateCanvas();
+        saveToHistory();
+        announceToScreenReader(`Loaded the ${activePaletteId} palette into the key`);
+    },
+
+    addCustomColour() {
+        if (!customPalette) {
+            customPalette = ['#000000'];
+        } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
+            customPalette.push('#000000');
+        }
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    editCustomColour(index, hex) {
+        if (!customPalette || !validateColor(hex)) return;
+        customPalette[index] = hex;
+        renderKey();
+        saveToLocalStorage();
+    },
+
+    deleteCustomColour(index) {
+        if (!customPalette || customPalette.length <= CONFIG.MIN_PALETTE_COLORS) return;
+        customPalette.splice(index, 1);
+        renderKey();
+        saveToLocalStorage();
+    }
+};
+
+// The key under the chart
+key = createKey({
+    getState: () => ({
+        patternColors,
+        activePatternIndex,
+        backgroundColor,
+        activePaletteId,
+        customPalette,
+        isBackgroundActive,
+        isShiftKeyHeld
+    }),
+    actions: keyActions,
+    isStacked: () => document.getElementById('plate').classList.contains('is-stacked'),
+    isPhone: () => phoneLayout.matches,
+    isTouch: () => window.matchMedia('(hover: none) and (pointer: coarse)').matches
+});
+// The phone's key is laid out differently
+phoneLayout.addEventListener('change', () => renderKey());
+
 // Initialize UI
 updatePaletteUI();
-createNavbarColorButtons();
-updateActiveColorUI();
 initGrid();
+renderKey();
 
-// Initialize navbar components
 setupHamburgerMenu();
-setupNavbarPaletteDropdown();
-updateNavbarPaletteName();
-updateNavbarPalettePreview();
+setupTooltips();
 
-// Initialize color toggle on page load
-updateColorIndicators();
-
-// Hide canvas instructions if user has already interacted
-if (hasInteracted) {
-    const instructions = document.getElementById('canvasInstructions');
-    instructions.style.display = 'none';
+// What this browser can't do, said where it matters
+if (!browserCapabilities.localStorage) {
+    notes.warning("Motif can't save your work in this browser. Export the pattern from the Menu to keep it.");
+}
+if (!browserCapabilities.fileReader) {
+    document.getElementById('navbarImportJsonBtn').disabled = true;
+    document.getElementById('importUnavailable').hidden = false;
 }
 
-// Grid dimension controls - now handled by contenteditable spans
-// (gridWidthDisplay and gridHeightDisplay elements)
-
-// Aspect Ratio controls
+// Aspect Ratio controls (in the Menu: presets, or Custom with a ratio field and slider)
 const ratioDisplay2 = document.getElementById('ratioDisplay2');
 const ratioPresetButtons = document.querySelectorAll('.ratio-preset-btn');
 const customRatioControls = document.getElementById('customRatioControls');
 const aspectRatioSlider = document.getElementById('aspectRatio2');
+const aspectRatioValue = document.getElementById('cellAspectRatioValue');
+let customRatioChosen = false;
 
-const switchToCustomRatio = () => {
-    ratioPresetButtons.forEach(b => b.classList.remove('active'));
-    const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-    if (customBtn) {
-        customBtn.classList.add('active');
-        if (customRatioControls) customRatioControls.style.display = 'block';
+/**
+ * Show the current aspect ratio in the Menu: the chosen preset, the ratio field and
+ * slider, and the value on the "Cell aspect ratio" row
+ */
+function syncAspectRatioControls({ updateField = true } = {}) {
+    let preset = null;
+    if (!customRatioChosen) {
+        ratioPresetButtons.forEach(btn => {
+            const ratio = btn.dataset.ratio;
+            if (ratio !== 'custom' && Math.abs(aspectRatio - parseFloat(ratio)) < 0.01) preset = btn;
+        });
     }
-};
+    const chosen = preset || document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
+    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn === chosen)));
+
+    const isCustom = chosen.dataset.ratio === 'custom';
+    customRatioControls.hidden = !isCustom;
+    aspectRatioSlider.value = aspectRatio;
+    if (updateField) ratioDisplay2.value = Utils.aspectRatioToDisplay(aspectRatio);
+    aspectRatioValue.textContent = isCustom ? `Custom ${Utils.aspectRatioToDisplay(aspectRatio)}` : chosen.textContent;
+}
+
+function setAspectRatio(value, options) {
+    aspectRatio = Utils.clamp(value, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
+    syncAspectRatioControls(options);
+    updateCanvas();
+    saveToLocalStorage();
+}
 
 ratioPresetButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-        const ratio = btn.getAttribute('data-ratio');
-
-        ratioPresetButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        if (ratio !== 'custom') {
-            const ratioValue = parseFloat(ratio);
-            aspectRatio = ratioValue;
-            if (aspectRatioSlider) aspectRatioSlider.value = ratioValue;
-            if (ratioDisplay2) ratioDisplay2.textContent = Utils.decimalToFraction(ratioValue);
-            if (customRatioControls) customRatioControls.style.display = 'none';
-            updateCanvas();
-            saveToLocalStorage();
+        const ratio = btn.dataset.ratio;
+        customRatioChosen = ratio === 'custom';
+        if (customRatioChosen) {
+            syncAspectRatioControls();
+            ratioDisplay2.focus();
+            ratioDisplay2.select();
         } else {
-            if (customRatioControls) customRatioControls.style.display = 'block';
+            setAspectRatio(parseFloat(ratio));
         }
     });
 });
 
-if (aspectRatioSlider) {
-    aspectRatioSlider.oninput = (e) => {
-        switchToCustomRatio();
-        aspectRatio = parseFloat(e.target.value);
-        if (ratioDisplay2) ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-        updateCanvas();
-        saveToLocalStorage();
-    };
-}
+aspectRatioSlider.addEventListener('input', () => {
+    customRatioChosen = true;
+    setAspectRatio(parseFloat(aspectRatioSlider.value));
+});
 
-if (ratioDisplay2) {
-    ratioDisplay2.addEventListener('focus', () => {
-        switchToCustomRatio();
-    });
+// Typing applies valid ratios at once; leaving the field tidies what was typed
+ratioDisplay2.addEventListener('input', () => {
+    const val = Utils.displayToAspectRatio(ratioDisplay2.value.trim());
+    if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
+        customRatioChosen = true;
+        setAspectRatio(val, { updateField: false });
+    }
+});
 
-    ratioDisplay2.addEventListener('input', (e) => {
-        const inputText = e.target.textContent.trim();
-        const val = Utils.displayToAspectRatio(inputText);
-        if (val !== null && val >= CONFIG.MIN_ASPECT_RATIO && val <= CONFIG.MAX_ASPECT_RATIO) {
-            aspectRatio = val;
-            if (aspectRatioSlider) aspectRatioSlider.value = val;
-            updateCanvas();
-            saveToLocalStorage();
-        }
-    });
+ratioDisplay2.addEventListener('change', () => {
+    const val = Utils.displayToAspectRatio(ratioDisplay2.value.trim());
+    setAspectRatio(val === null ? aspectRatio : val);
+});
 
-    ratioDisplay2.addEventListener('blur', (e) => {
-        const inputText = e.target.textContent.trim();
-        let val = Utils.displayToAspectRatio(inputText);
+ratioDisplay2.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        ratioDisplay2.dispatchEvent(new Event('change'));
+    }
+});
 
-        if (val === null) {
-            val = CONFIG.DEFAULT_ASPECT_RATIO;
-        }
-
-        val = Utils.clamp(val, CONFIG.MIN_ASPECT_RATIO, CONFIG.MAX_ASPECT_RATIO);
-
-        aspectRatio = val;
-        e.target.textContent = Utils.aspectRatioToDisplay(val);
-        if (aspectRatioSlider) aspectRatioSlider.value = val;
-        updateCanvas();
-        saveToLocalStorage();
-    });
-
-    ratioDisplay2.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            e.target.blur();
-        }
-    });
-
-    // Initialize button state and display based on current aspect ratio
-    (() => {
-        const currentRatio = aspectRatio;
-        let matchedPreset = false;
-
-        ratioPresetButtons.forEach(btn => {
-            const ratio = btn.getAttribute('data-ratio');
-            if (ratio !== 'custom') {
-                const ratioValue = parseFloat(ratio);
-                if (Math.abs(currentRatio - ratioValue) < 0.01) {
-                    btn.classList.add('active');
-                    if (customRatioControls) customRatioControls.style.display = 'none';
-                    matchedPreset = true;
-                } else {
-                    btn.classList.remove('active');
-                }
-            }
-        });
-
-        if (!matchedPreset) {
-            const customBtn = document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-            if (customBtn) {
-                customBtn.classList.add('active');
-                if (customRatioControls) customRatioControls.style.display = 'block';
-            }
-        }
-
-        ratioDisplay2.textContent = Utils.aspectRatioToDisplay(aspectRatio);
-    })();
-}
+customRatioChosen = !Array.from(ratioPresetButtons).some(btn =>
+    btn.dataset.ratio !== 'custom' && Math.abs(aspectRatio - parseFloat(btn.dataset.ratio)) < 0.01);
+syncAspectRatioControls();
 
 // Inline Grid Dimension Controls
 const gridWidthDisplay = document.getElementById('gridWidthDisplay');
@@ -2129,191 +1980,60 @@ const gridHeightDisplay = document.getElementById('gridHeightDisplay');
 const previewRepeatXDisplay = document.getElementById('previewRepeatXDisplay');
 const previewRepeatYDisplay = document.getElementById('previewRepeatYDisplay');
 
-// Helper function to setup contenteditable dimension displays
-function setupContenteditableDimension(element, applyFunc, min, max) {
+// Caption fields: numbers typed into the caption sentences, applied on Enter or leaving the field.
+// max may be a function, for limits that follow the chart.
+function setupCaptionField(element, applyFunc, min, max) {
     if (!element) return;
 
-    element.addEventListener('input', (e) => {
-        const text = e.target.textContent.trim();
-        const val = parseInt(text, 10);
-        if (!isNaN(val) && val >= min && val <= max) {
-            // Valid value, update immediately
-            element.dataset.lastValid = text;
-        }
+    element.addEventListener('focus', () => {
+        element.dataset.lastValid = element.value;
     });
 
-    element.addEventListener('blur', (e) => {
-        const text = e.target.textContent.trim();
-        let val = parseInt(text, 10);
+    element.addEventListener('change', () => {
+        let val = parseInt(element.value.trim(), 10);
 
         if (isNaN(val)) {
             val = element.dataset.lastValid ? parseInt(element.dataset.lastValid, 10) : min;
         }
 
-        val = Utils.clampInt(val, min, max, min);
-        e.target.textContent = val;
+        val = Utils.clampInt(val, min, typeof max === 'function' ? max() : max, min);
+        element.value = val;
         element.dataset.lastValid = val;
         applyFunc(val);
     });
 
     element.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
+            // Leaving the field applies it
             e.preventDefault();
-            e.target.blur();
-        }
-        // Prevent non-numeric input
-        if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            element.blur();
+        } else if (e.key === 'Escape') {
+            element.value = element.dataset.lastValid ?? element.value;
+            element.blur();
+        } else if (e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            // Digits only
             e.preventDefault();
         }
     });
-
-    // Initialize
-    element.dataset.lastValid = element.textContent.trim();
 }
 
 // Setup grid dimension displays
-setupContenteditableDimension(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
-setupContenteditableDimension(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
-setupContenteditableDimension(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
-setupContenteditableDimension(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+setupCaptionField(gridWidthDisplay, applyGridWidth, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupCaptionField(gridHeightDisplay, applyGridHeight, CONFIG.MIN_GRID_SIZE, CONFIG.MAX_GRID_SIZE);
+setupCaptionField(previewRepeatXDisplay, applyPreviewRepeatX, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
+setupCaptionField(previewRepeatYDisplay, applyPreviewRepeatY, CONFIG.MIN_PREVIEW_REPEAT, CONFIG.MAX_PREVIEW_REPEAT);
 
-// Grid chevron buttons
-const gridChevrons = document.querySelectorAll('.grid-chevron');
-gridChevrons.forEach(btn => {
-    let pressTimer = null;
-    let isLongPress = false;
-
-    btn.addEventListener('click', (e) => {
-        // Ignore if this was a long press (already handled)
-        if (isLongPress) {
-            isLongPress = false;
-            return;
-        }
-
-        const dimension = btn.getAttribute('data-dimension');
-        const direction = btn.getAttribute('data-direction');
-
-        // Grid arrows: add/remove from specific edge
-        // Normal click adds (+1), shift+click removes (-1)
-        const delta = e.shiftKey ? -1 : 1;
-
-        // Map data-direction to edge direction
-        let edgeDirection;
-        if (dimension === 'width') {
-            edgeDirection = direction === 'decrease' ? 'left' : 'right';
-        } else if (dimension === 'height') {
-            edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
-        }
-
-        applyGridResizeFromEdge(edgeDirection, delta);
-    });
-
-    // Touch long press for remove (same as shift+click)
-    btn.addEventListener('touchstart', (e) => {
-        isLongPress = false;
-        pressTimer = setTimeout(() => {
-            isLongPress = true;
-            const dimension = btn.getAttribute('data-dimension');
-            const direction = btn.getAttribute('data-direction');
-
-            // Map data-direction to edge direction
-            let edgeDirection;
-            if (dimension === 'width') {
-                edgeDirection = direction === 'decrease' ? 'left' : 'right';
-            } else if (dimension === 'height') {
-                edgeDirection = direction === 'decrease' ? 'top' : 'bottom';
-            }
-
-            applyGridResizeFromEdge(edgeDirection, -1); // Remove row/column
-
-            // Haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-            }
-        }, UI_CONSTANTS.LONG_PRESS_DURATION);
-    }, { passive: true });
-
-    btn.addEventListener('touchend', (e) => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-    });
-
-    btn.addEventListener('touchcancel', (e) => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-        isLongPress = false;
-    });
-});
-
-// Function to update chevron disabled states
-function updateChevronStates() {
-    gridChevrons.forEach(btn => {
-        const dimension = btn.getAttribute('data-dimension');
-        let shouldDisable = false;
-
-        // All arrows add in their direction, so disable when at max size
-        if (dimension === 'width') {
-            shouldDisable = gridWidth >= CONFIG.MAX_GRID_SIZE;
-        } else if (dimension === 'height') {
-            shouldDisable = gridHeight >= CONFIG.MAX_GRID_SIZE;
-        }
-
-        btn.disabled = shouldDisable;
-        btn.classList.toggle('disabled', shouldDisable);
-    });
-}
-
-// Helper functions to check if grid can shrink
-function canShrinkWidth() {
-    const result = resizeGrid({
-        grid,
-        gridWidth,
-        gridHeight,
-        newWidth: gridWidth - 1,
-        newHeight: gridHeight
-    });
-    return result !== false;
-}
-
-function canShrinkHeight() {
-    const result = resizeGrid({
-        grid,
-        gridWidth,
-        gridHeight,
-        newWidth: gridWidth,
-        newHeight: gridHeight - 1
-    });
-    return result !== false;
-}
-
-// Setup toggle for cell aspect ratio section
+// The "Cell aspect ratio" row opens its options inside the Menu
 const cellAspectRatioSection = document.getElementById('cellAspectRatioSection');
 const cellAspectRatioToggle = document.getElementById('cellAspectRatioToggle');
-if (cellAspectRatioToggle && cellAspectRatioSection) {
-    cellAspectRatioToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent hamburger menu from closing
-        const isExpanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
-        cellAspectRatioToggle.setAttribute('aria-expanded', !isExpanded);
-        cellAspectRatioSection.style.display = isExpanded ? 'none' : 'block';
-    });
-
-    // Prevent clicks inside the section from closing the hamburger menu
-    cellAspectRatioSection.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
-
-// Initialize chevron states
-updateChevronStates();
+cellAspectRatioToggle.addEventListener('click', () => {
+    const expanded = cellAspectRatioToggle.getAttribute('aria-expanded') === 'true';
+    cellAspectRatioToggle.setAttribute('aria-expanded', String(!expanded));
+    cellAspectRatioSection.hidden = expanded;
+});
 
 // Window resize handler
 // Debounced resize handler to recreate navbar buttons when viewport changes
-let resizeTimeout;
 let lastKnownWidth = window.innerWidth;
 let lastKnownHeight = window.innerHeight;
 
@@ -2337,12 +2057,6 @@ window.addEventListener('resize', () => {
         lastKnownHeight = currentHeight;
         updateCanvas();
     }
-
-    // Debounce navbar button recreation
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        createNavbarColorButtons();
-    }, UI_CONSTANTS.DEBOUNCE_DELAY);
 });
 
 // Canvas edge resize handlers
@@ -2368,7 +2082,7 @@ function startResize(handle, clientX, clientY) {
     resizeStartSize.cellWidth = cellWidth;
     resizeStartSize.cellHeight = cellHeight;
 
-    document.body.style.cursor = handle.style.cursor;
+    document.body.style.cursor = getComputedStyle(handle).cursor;
 
     // Add visual feedback class (especially useful for touch devices)
     const container = document.querySelector('.canvas-resize-container');
@@ -2383,6 +2097,17 @@ resizeHandles.forEach(handle => {
         e.preventDefault();
         e.stopPropagation();
         startResize(handle, e.clientX, e.clientY);
+    });
+
+    // Arrow keys add (outward) or remove (inward) one row or stitch at this edge
+    handle.addEventListener('keydown', (e) => {
+        const direction = handle.dataset.direction;
+        const outward = { top: 'ArrowUp', bottom: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }[direction];
+        const inward = { top: 'ArrowDown', bottom: 'ArrowUp', left: 'ArrowRight', right: 'ArrowLeft' }[direction];
+        if (e.key !== outward && e.key !== inward) return;
+        e.preventDefault();
+        applyGridResizeFromEdge(direction, e.key === outward ? 1 : -1);
+        announceToScreenReader(`${gridWidth} stitches by ${gridHeight} rows`);
     });
 
     // Touch events - delay resize start until we detect intentional drag
@@ -2509,1230 +2234,53 @@ document.addEventListener('touchcancel', () => {
 
 // Keyboard shortcuts - Moved to src/ui/keyboard.js
 
-// ============================================
-// NAVBAR UI COMPONENTS
-// ============================================
-
-// Track currently open color menus
-let currentColorMenu = null; // For overflow menu (grid of color buttons)
-let currentColorActionMenu = null; // For edit/delete menu
-
 /**
- * Show menu for color button with Set Active, Edit, Delete options
- */
-function showColorButtonMenu(buttonElement, colorIndex, color) {
-    // Close any existing action menu (but keep overflow menu open if it exists)
-    closeColorActionMenu();
-
-    // Create menu
-    const menu = document.createElement('div');
-    menu.className = 'navbar-color-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Select option (if not already active)
-    if (colorIndex !== activePatternIndex) {
-        const selectBtn = document.createElement('button');
-        selectBtn.className = 'navbar-color-menu-item';
-        selectBtn.textContent = 'Select';
-        selectBtn.setAttribute('role', 'menuitem');
-        selectBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            activePatternIndex = colorIndex;
-            isBackgroundActive = false; // Deactivate background when selecting pattern color
-            updateActiveColorUI();
-            createNavbarColorButtons();
-            saveToLocalStorage();
-            closeColorActionMenu();
-        });
-        menu.appendChild(selectBtn);
-    }
-
-    // Edit option (text changes based on whether it's already active)
-    const editBtn = document.createElement('button');
-    editBtn.className = 'navbar-color-menu-item';
-    editBtn.textContent = colorIndex === activePatternIndex ? 'Edit' : 'Edit and select';
-    editBtn.setAttribute('role', 'menuitem');
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Set as active first (if not already)
-        if (colorIndex !== activePatternIndex) {
-            activePatternIndex = colorIndex;
-            isBackgroundActive = false; // Deactivate background when selecting pattern color
-            updateActiveColorUI();
-            createNavbarColorButtons();
-            saveToLocalStorage();
-        }
-        // Then open color picker
-        openColorPicker(colorIndex, color);
-        closeColorActionMenu();
-    });
-    menu.appendChild(editBtn);
-
-    // Delete option (only for colors beyond the first one)
-    if (colorIndex > 0) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.setAttribute('role', 'menuitem');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showDeleteColorDialog(colorIndex);
-            closeColorActionMenu();
-        });
-        menu.appendChild(deleteBtn);
-    }
-
-    // Position menu below button
-    const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${rect.bottom + 8}px`;
-
-    // Calculate horizontal position, ensuring menu stays within viewport
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
-    let leftPos = rect.left + rect.width / 2;
-
-    // Check if menu would overflow on the right
-    if (leftPos + menuWidth / 2 > window.innerWidth) {
-        leftPos = window.innerWidth - menuWidth / 2 - 8;
-    }
-    // Check if menu would overflow on the left
-    if (leftPos - menuWidth / 2 < 0) {
-        leftPos = menuWidth / 2 + 8;
-    }
-
-    menu.style.left = `${leftPos}px`;
-    menu.style.transform = 'translateX(-50%)';
-    currentColorActionMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closeColorActionMenu);
-    }, 0);
-}
-
-/**
- * Close the color action menu (edit/delete menu)
- */
-function closeColorActionMenu() {
-    if (currentColorActionMenu) {
-        document.removeEventListener('click', closeColorActionMenu);
-        currentColorActionMenu.remove();
-        currentColorActionMenu = null;
-    }
-}
-
-/**
- * Close the color button menu (overflow menu and action menu)
- */
-function closeColorButtonMenu() {
-    closeColorActionMenu();
-    if (currentColorMenu) {
-        document.removeEventListener('click', closeColorButtonMenu);
-        currentColorMenu.remove();
-        currentColorMenu = null;
-    }
-}
-
-/**
- * Show overflow menu with hidden colors on mobile
- */
-function showOverflowColorsMenu(buttonElement, startIndex) {
-    // Close any existing menu
-    closeColorButtonMenu();
-
-    // Create menu container
-    const menu = document.createElement('div');
-    menu.className = 'navbar-color-menu navbar-overflow-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Add color buttons for overflow colors
-    for (let i = startIndex; i < patternColors.length; i++) {
-        const color = patternColors[i];
-        const colorBtn = document.createElement('button');
-        colorBtn.className = 'navbar-overflow-color-btn';
-        colorBtn.style.backgroundColor = color;
-        colorBtn.setAttribute('role', 'menuitem');
-        colorBtn.setAttribute('aria-label', `Pattern color ${i + 1}: ${color}`);
-
-        if (i === activePatternIndex) {
-            colorBtn.style.border = '3px solid var(--color-primary)';
-        }
-
-        colorBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Show the regular color menu for this color
-            // Don't close the overflow menu - just show the edit/delete menu on top
-            showColorButtonMenu(colorBtn, i, color);
-        });
-
-        menu.appendChild(colorBtn);
-    }
-
-    // Position menu below navbar (navbar is fixed at top, so menu should be too)
-    // Get the navbar element to calculate its height
-    const navbar = document.querySelector('.header-navbar');
-    const navbarHeight = navbar ? navbar.offsetHeight : 64;
-    const rect = buttonElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${navbarHeight + 8}px`;
-
-    // Calculate horizontal position, ensuring menu stays within viewport
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
-    let leftPos = rect.left + rect.width / 2;
-
-    // Check if menu would overflow on the right
-    if (leftPos + menuWidth / 2 > window.innerWidth) {
-        leftPos = window.innerWidth - menuWidth / 2 - 8;
-    }
-    // Check if menu would overflow on the left
-    if (leftPos - menuWidth / 2 < 0) {
-        leftPos = menuWidth / 2 + 8;
-    }
-
-    menu.style.left = `${leftPos}px`;
-    menu.style.transform = 'translateX(-50%)';
-    currentColorMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closeColorButtonMenu);
-    }, 0);
-}
-
-/**
- * Calculate how many color buttons can fit in the navbar
- * Uses viewport-based estimates for reliability
- */
-function calculateMaxVisibleColors() {
-    const viewportWidth = window.innerWidth;
-
-    // Conservative estimates based on viewport size
-    // These account for: navbar padding, branding (desktop), palette dropdown,
-    // background button, add button, and gaps
-    let maxVisible;
-
-    if (viewportWidth <= 370) {
-        // Very small mobile: ~320-370px viewport
-        maxVisible = 4;
-    } else if (viewportWidth <= 480) {
-        // Small mobile: ~375-480px viewport
-        maxVisible = 5;
-    } else if (viewportWidth <= 768) {
-        // Tablet portrait: ~600-768px viewport
-        maxVisible = 8;
-    } else if (viewportWidth <= 1024) {
-        // Tablet landscape / small desktop
-        maxVisible = 12;
-    } else {
-        // Desktop: 1024px+ (no overflow needed - max 20 colors can fit)
-        maxVisible = 20;
-    }
-
-    // Return the calculated max, but don't exceed actual color count
-    return Math.min(maxVisible, patternColors.length);
-}
-
-/**
- * Create color buttons in navbar
- * Includes pattern colors, add button, and background color button
- */
-function createNavbarColorButtons() {
-    const container = document.getElementById('navbarColorButtons');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Calculate how many colors can fit dynamically
-    const maxVisibleColors = calculateMaxVisibleColors();
-    const needsOverflow = patternColors.length > maxVisibleColors;
-
-    // Create pattern color buttons
-    patternColors.forEach((color, index) => {
-        // Skip colors beyond max visible if overflow is needed
-        if (needsOverflow && index >= maxVisibleColors) {
-            return;
-        }
-        const btn = document.createElement('div');
-        btn.className = 'navbar-color-btn round';
-        btn.style.backgroundColor = color;
-        btn.setAttribute('data-index', index);
-        btn.setAttribute('draggable', 'true');
-        btn.setAttribute('aria-label', `Pattern color ${index + 1}`);
-
-        if (index === activePatternIndex) {
-            btn.classList.add('active');
-        }
-
-        // Click to show menu
-        let dragStarted = false;
-        let touchDragInProgress = false;
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        btn.addEventListener('mousedown', () => {
-            dragStarted = false;
-        });
-
-        btn.addEventListener('click', (e) => {
-            if (!dragStarted && !touchDragInProgress) {
-                e.stopPropagation();
-                showColorButtonMenu(btn, index, color);
-            }
-        });
-
-        // Drag and drop for merging
-        btn.addEventListener('dragstart', (e) => {
-            dragStarted = true;
-
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', index.toString());
-
-            // Add visual feedback to the dragged button
-            btn.classList.add('dragging');
-        });
-
-        btn.addEventListener('dragend', () => {
-            btn.classList.remove('dragging');
-        });
-
-        btn.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const draggedData = e.dataTransfer.getData('text/plain');
-
-            if (draggedData === 'background') {
-                // Dragging background to pattern color - show swap indicator
-                btn.style.boxShadow = '0 0 0 3px var(--color-primary)';
-            } else {
-                const draggedIndex = parseInt(draggedData);
-                if (!isNaN(draggedIndex) && draggedIndex !== index) {
-                    // Dragging pattern color to pattern color - show merge indicator
-                    btn.style.backgroundColor = patternColors[draggedIndex];
-                    btn.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                }
-            }
-        });
-
-        btn.addEventListener('dragleave', () => {
-            btn.style.backgroundColor = color;
-            btn.style.boxShadow = '';
-        });
-
-        btn.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            btn.style.backgroundColor = color;
-            btn.style.boxShadow = '';
-
-            const draggedData = e.dataTransfer.getData('text/plain');
-
-            if (draggedData === 'background') {
-                // Swap pattern color with background
-                const temp = backgroundColor;
-                backgroundColor = patternColors[index];
-                patternColors[index] = temp;
-
-                saveToHistory();
-                createNavbarColorButtons();
-                updateCanvas();
-                updateColorIndicators();
-                saveToLocalStorage();
-                announceToScreenReader(`Swapped background color with pattern color ${index + 1}`);
-            } else {
-                // Merge pattern colors
-                const draggedIndex = parseInt(draggedData);
-                const targetIndex = index;
-
-                if (draggedIndex !== targetIndex && !isNaN(draggedIndex)) {
-                    mergePatternColors(draggedIndex, targetIndex);
-                }
-            }
-        });
-
-        // Touch drag support
-        let touchDraggedIndex = null;
-
-        btn.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            touchDragInProgress = false;
-        }, { passive: true });
-
-        btn.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            const deltaX = Math.abs(touch.clientX - touchStartX);
-            const deltaY = Math.abs(touch.clientY - touchStartY);
-
-            // If moved more than 5px, start drag
-            if (deltaX > 5 || deltaY > 5) {
-                if (!touchDragInProgress) {
-                    touchDragInProgress = true;
-                    touchDraggedIndex = index;
-                    btn.style.opacity = '0.5';
-                }
-
-                // Find element under touch point
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const isBackground = elementUnder.classList.contains('square');
-                    if (isBackground) {
-                        // Dragging to background - show swap indicator
-                        elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
-                    } else {
-                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                        if (!isNaN(targetIndex)) {
-                            // Dragging to pattern color - show merge indicator
-                            elementUnder.style.backgroundColor = patternColors[index];
-                            elementUnder.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
-                        }
-                    }
-                } else {
-                    // Reset all buttons
-                    document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                        const btnIndex = parseInt(b.getAttribute('data-index'));
-                        if (!isNaN(btnIndex) && b !== btn) {
-                            b.style.backgroundColor = patternColors[btnIndex];
-                            b.style.boxShadow = '';
-                        }
-                        if (b.classList.contains('square')) {
-                            b.style.boxShadow = '';
-                        }
-                    });
-                }
-            }
-        }, { passive: true });
-
-        btn.addEventListener('touchend', (e) => {
-            if (touchDragInProgress) {
-                e.preventDefault(); // Prevent click event
-                btn.style.opacity = '1';
-
-                const touch = e.changedTouches[0];
-                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-
-                if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                    elementUnder !== btn && !elementUnder.classList.contains('add-btn')) {
-                    const isBackground = elementUnder.classList.contains('square');
-                    if (isBackground) {
-                        // Swap with background
-                        const temp = backgroundColor;
-                        backgroundColor = patternColors[index];
-                        patternColors[index] = temp;
-
-                        saveToHistory();
-                        createNavbarColorButtons();
-                        updateCanvas();
-                        updateColorIndicators();
-                        saveToLocalStorage();
-                        announceToScreenReader(`Swapped pattern color ${index + 1} with background color`);
-                    } else {
-                        const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                        if (!isNaN(targetIndex) && targetIndex !== index) {
-                            mergePatternColors(index, targetIndex);
-                        }
-                    }
-                }
-
-                // Reset all buttons
-                document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                    const btnIndex = parseInt(b.getAttribute('data-index'));
-                    if (!isNaN(btnIndex)) {
-                        b.style.backgroundColor = patternColors[btnIndex];
-                        b.style.boxShadow = '';
-                    }
-                });
-
-                // Reset flag after a short delay to prevent accidental menu opening
-                setTimeout(() => {
-                    touchDragInProgress = false;
-                }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-            }
-        });
-
-        btn.addEventListener('touchcancel', () => {
-            btn.style.opacity = '1';
-            touchDragInProgress = false;
-            // Reset all buttons
-            document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                const btnIndex = parseInt(b.getAttribute('data-index'));
-                if (!isNaN(btnIndex)) {
-                    b.style.backgroundColor = patternColors[btnIndex];
-                    b.style.boxShadow = '';
-                }
-            });
-        });
-
-        container.appendChild(btn);
-    });
-
-    // Overflow button (...) for hidden colors on mobile
-    if (needsOverflow) {
-        const overflowBtn = document.createElement('div');
-        overflowBtn.className = 'navbar-color-btn round overflow-btn';
-        overflowBtn.textContent = '•••';
-        overflowBtn.setAttribute('aria-label', `${patternColors.length - maxVisibleColors} more colors`);
-        overflowBtn.style.fontSize = '14px';
-        overflowBtn.style.fontWeight = 'bold';
-        overflowBtn.style.display = 'flex';
-        overflowBtn.style.alignItems = 'center';
-        overflowBtn.style.justifyContent = 'center';
-        overflowBtn.style.background = 'var(--color-bg-secondary)';
-        overflowBtn.style.border = '2px solid var(--color-border-dark)';
-        overflowBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showOverflowColorsMenu(overflowBtn, maxVisibleColors);
-        });
-        container.appendChild(overflowBtn);
-    }
-
-    // Add button (+)
-    if (patternColors.length < CONFIG.MAX_PATTERN_COLORS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'navbar-color-btn round add-btn';
-        addBtn.textContent = '+';
-        addBtn.setAttribute('aria-label', 'Add new pattern color');
-        addBtn.addEventListener('click', () => {
-            patternColors.push(CONFIG.DEFAULT_ADD_COLOR);
-            activePatternIndex = patternColors.length - 1;
-            createNavbarColorButtons();
-            updateActiveColorUI();
-            updateCanvas();
-            saveToLocalStorage();
-        });
-        container.appendChild(addBtn);
-    }
-
-    // Background color button (square)
-    const bgBtn = document.createElement('div');
-    bgBtn.className = 'navbar-color-btn square';
-    bgBtn.style.backgroundColor = backgroundColor;
-    bgBtn.setAttribute('aria-label', 'Background color');
-    bgBtn.setAttribute('draggable', 'true');
-    bgBtn.setAttribute('data-type', 'background');
-
-    let bgDragStarted = false;
-
-    bgBtn.addEventListener('mousedown', () => {
-        bgDragStarted = false;
-    });
-
-    bgBtn.addEventListener('click', () => {
-        if (!bgDragStarted) {
-            openBackgroundColorPicker();
-        }
-    });
-
-    // Make background draggable
-    bgBtn.addEventListener('dragstart', (e) => {
-        bgDragStarted = true;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'background');
-        bgBtn.classList.add('dragging');
-    });
-
-    bgBtn.addEventListener('dragend', () => {
-        bgBtn.classList.remove('dragging');
-    });
-
-    // Accept pattern color drops to swap
-    bgBtn.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const draggedData = e.dataTransfer.getData('text/plain');
-        if (draggedData !== 'background') {
-            bgBtn.style.boxShadow = '0 0 0 3px var(--color-primary)';
-        }
-    });
-
-    bgBtn.addEventListener('dragleave', () => {
-        bgBtn.style.boxShadow = '';
-    });
-
-    bgBtn.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        bgBtn.style.boxShadow = '';
-
-        const draggedData = e.dataTransfer.getData('text/plain');
-        if (draggedData !== 'background') {
-            // Swapping pattern color with background
-            const patternIndex = parseInt(draggedData);
-            if (!isNaN(patternIndex) && patternIndex >= 0 && patternIndex < patternColors.length) {
-                const temp = backgroundColor;
-                backgroundColor = patternColors[patternIndex];
-                patternColors[patternIndex] = temp;
-
-                saveToHistory();
-                createNavbarColorButtons();
-                updateCanvas();
-                updateColorIndicators();
-                saveToLocalStorage();
-                announceToScreenReader(`Swapped pattern color ${patternIndex + 1} with background color`);
-            }
-        }
-    });
-
-    // Touch drag support and long-press for background button
-    let bgTouchDragInProgress = false;
-    let bgTouchStartX = 0;
-    let bgTouchStartY = 0;
-    let bgLongPressTimer = null;
-    let bgIsLongPress = false;
-
-    bgBtn.addEventListener('touchstart', (e) => {
-        bgTouchStartX = e.touches[0].clientX;
-        bgTouchStartY = e.touches[0].clientY;
-        bgTouchDragInProgress = false;
-        bgIsLongPress = false;
-
-        // Start long-press timer
-        bgLongPressTimer = setTimeout(() => {
-            bgIsLongPress = true;
-            // Toggle background as active drawing color
-            isBackgroundActive = !isBackgroundActive;
-            updateActiveColorUI();
-            // Provide haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-        }, 500); // 500ms for long press
-    }, { passive: true });
-
-    bgBtn.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        const deltaX = Math.abs(touch.clientX - bgTouchStartX);
-        const deltaY = Math.abs(touch.clientY - bgTouchStartY);
-
-        if (deltaX > 5 || deltaY > 5) {
-            // Cancel long-press if user starts dragging
-            if (bgLongPressTimer) {
-                clearTimeout(bgLongPressTimer);
-                bgLongPressTimer = null;
-            }
-
-            if (!bgTouchDragInProgress) {
-                bgTouchDragInProgress = true;
-                bgBtn.style.opacity = '0.5';
-            }
-
-            // Find element under touch point
-            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                elementUnder !== bgBtn && !elementUnder.classList.contains('add-btn') &&
-                !elementUnder.classList.contains('square')) {
-                // Highlight pattern color button for swap
-                elementUnder.style.boxShadow = '0 0 0 3px var(--color-primary)';
-            } else {
-                // Reset all pattern buttons
-                document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                    if (!b.classList.contains('square') && !b.classList.contains('add-btn')) {
-                        b.style.boxShadow = '';
-                    }
-                });
-            }
-        }
-    }, { passive: true });
-
-    bgBtn.addEventListener('touchend', (e) => {
-        // Clear long-press timer
-        if (bgLongPressTimer) {
-            clearTimeout(bgLongPressTimer);
-            bgLongPressTimer = null;
-        }
-
-        // If it was a long press, prevent normal click behavior
-        if (bgIsLongPress) {
-            e.preventDefault();
-            bgIsLongPress = false;
-            return;
-        }
-
-        if (bgTouchDragInProgress) {
-            e.preventDefault();
-            bgBtn.style.opacity = '1';
-
-            const touch = e.changedTouches[0];
-            const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
-
-            if (elementUnder && elementUnder.classList.contains('navbar-color-btn') &&
-                !elementUnder.classList.contains('add-btn') && !elementUnder.classList.contains('square')) {
-                const targetIndex = parseInt(elementUnder.getAttribute('data-index'));
-                if (!isNaN(targetIndex)) {
-                    // Swap background with pattern color
-                    const temp = backgroundColor;
-                    backgroundColor = patternColors[targetIndex];
-                    patternColors[targetIndex] = temp;
-
-                    saveToHistory();
-                    createNavbarColorButtons();
-                    updateCanvas();
-                    updateColorIndicators();
-                    saveToLocalStorage();
-                    announceToScreenReader(`Swapped background color with pattern color ${targetIndex + 1}`);
-                }
-            }
-
-            // Reset all buttons
-            document.querySelectorAll('.navbar-color-btn').forEach(b => {
-                b.style.boxShadow = '';
-            });
-
-            bgTouchDragInProgress = false;
-        }
-    });
-
-    container.appendChild(bgBtn);
-}
-
-/**
- * Open color picker for a specific pattern color
- */
-function openColorPicker(colorIndex, currentColor) {
-    // Create a temporary color input
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = currentColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            patternColors[colorIndex] = newColor;
-            createNavbarColorButtons();
-                    updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        }
-        document.body.removeChild(input);
-    });
-
-    input.click();
-}
-
-/**
- * Open color picker for background color
- */
-function openBackgroundColorPicker() {
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = backgroundColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            backgroundColor = newColor;
-            createNavbarColorButtons();
-            updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        }
-        document.body.removeChild(input);
-    });
-
-    input.click();
-}
-
-/**
- * Set up hamburger menu toggle
+ * The Menu: a button that shows a list of rows. Arrow keys move between the rows,
+ * Escape closes it and returns to the button.
  */
 function setupHamburgerMenu() {
-    const hamburgerBtn = document.getElementById('navbarHamburgerBtn');
-    const hamburgerMenu = document.getElementById('navbarHamburgerMenu');
+    const menuBtn = document.getElementById('navbarHamburgerBtn');
+    const menu = document.getElementById('navbarHamburgerMenu');
 
-    if (!hamburgerBtn || !hamburgerMenu) return;
+    const rows = () => [...menu.querySelectorAll('.menu-row, .menu-custom input')]
+        .filter(el => !el.disabled && el.offsetParent !== null);
 
-    hamburgerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = hamburgerMenu.classList.toggle('open');
-        hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    });
+    function setOpen(open, { focusButton = false } = {}) {
+        menu.classList.toggle('open', open);
+        menuBtn.setAttribute('aria-expanded', String(open));
+        if (open) rows()[0]?.focus();
+        if (!open && focusButton) menuBtn.focus();
+    }
 
-    // Close menu when clicking menu items (but not expandable ones)
-    const menuItems = hamburgerMenu.querySelectorAll('.navbar-hamburger-item:not(.navbar-hamburger-expandable)');
-    menuItems.forEach(item => {
-        item.addEventListener('click', () => {
-            hamburgerMenu.classList.remove('open');
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-        });
-    });
+    menuBtn.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
 
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!hamburgerMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
-            hamburgerMenu.classList.remove('open');
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-}
-
-/**
- * Set up navbar palette dropdown
- */
-function setupNavbarPaletteDropdown() {
-    const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
-    const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
-    const paletteGrid = document.getElementById('navbarPaletteGrid');
-    const loadBtn = document.getElementById('navbarLoadPaletteBtn');
-    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
-
-    if (!dropdownBtn || !dropdownContainer) return;
-
-    // Toggle dropdown
-    dropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isOpen = dropdownContainer.classList.toggle('open');
-        dropdownBtn.setAttribute('aria-expanded', isOpen);
-        if (isOpen) {
-            renderNavbarPalette();
-        }
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!dropdownContainer.contains(e.target)) {
-            dropdownContainer.classList.remove('open');
-            dropdownBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    // Load palette button
-    if (loadBtn) {
-        loadBtn.addEventListener('click', (e) => {
+    menu.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
             e.preventDefault();
-            const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-            const currentPalette = builtInPalette ? builtInPalette.colors : customPalette;
-            if (currentPalette) {
-                patternColors = [...currentPalette];
-                if (activePatternIndex >= patternColors.length) {
-                    activePatternIndex = 0;
-                }
-                createNavbarColorButtons();
-                            updateActiveColorUI();
-                updateCanvas();
-                saveToHistory();
-                saveToLocalStorage();
-                announceToScreenReader(`Loaded ${activePaletteId} palette to pattern colors`);
-            }
-        });
-    }
-
-    // Palette selector options
-    paletteOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.preventDefault();
-            const paletteId = option.getAttribute('data-palette');
-            switchPalette(paletteId);
-            renderNavbarPalette();
-            updateNavbarPaletteName();
-            updateNavbarPalettePreview();
-
-            // Update active state
-            paletteOptions.forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-        });
-    });
-}
-
-/**
- * Render palette grid in navbar dropdown
- */
-function renderNavbarPalette() {
-    const paletteGrid = document.getElementById('navbarPaletteGrid');
-    if (!paletteGrid) return;
-
-    paletteGrid.innerHTML = '';
-    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
-    const isCustomPalette = !builtInPalette;
-
-    currentPalette.forEach((color, index) => {
-        const colorDiv = document.createElement('div');
-        colorDiv.className = 'navbar-palette-color';
-        colorDiv.style.backgroundColor = color;
-        colorDiv.setAttribute('aria-label', `Palette color ${index + 1}: ${color}`);
-
-        // Long press support for touch devices
-        let pressTimer = null;
-        let isLongPress = false;
-
-        const setBackgroundColorValue = () => {
-            backgroundColor = color;
-            createNavbarColorButtons();
-            updateCanvas();
-            updateColorIndicators();
-            saveToHistory();
-            saveToLocalStorage();
-        };
-
-        // For custom palette, clicking shows menu. For built-in, clicking applies color
-        // Shift-click or long press sets background color
-        if (isCustomPalette) {
-            colorDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Ignore if this was a long press (already handled)
-                if (isLongPress) {
-                    isLongPress = false;
-                    return;
-                }
-
-                if (e.shiftKey) {
-                    // Shift-click sets background color
-                    setBackgroundColorValue();
-                } else {
-                    // Regular click shows menu
-                    showPaletteColorMenu(colorDiv, index, color);
-                }
-            });
-
-            // Touch long press for background color
-            colorDiv.addEventListener('touchstart', (e) => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    setBackgroundColorValue();
-                    // Haptic feedback if available
-                    if (navigator.vibrate) {
-                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-                    }
-                }, UI_CONSTANTS.LONG_PRESS_DURATION);
-            }, { passive: true });
-
-            colorDiv.addEventListener('touchend', (e) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                // If it was a long press, prevent the click event
-                if (isLongPress) {
-                    e.preventDefault();
-                    setTimeout(() => {
-                        isLongPress = false;
-                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-                }
-            });
-
-            colorDiv.addEventListener('touchmove', () => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                isLongPress = false;
-            }, { passive: true });
-        } else {
-            colorDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Ignore if this was a long press (already handled)
-                if (isLongPress) {
-                    isLongPress = false;
-                    return;
-                }
-
-                if (e.shiftKey) {
-                    // Shift-click sets background color
-                    setBackgroundColorValue();
-                } else {
-                    // Regular click sets active pattern color
-                    patternColors[activePatternIndex] = color;
-                    createNavbarColorButtons();
-                                    updateActiveColorUI();
-                    updateCanvas();
-                    saveToHistory();
-                    saveToLocalStorage();
-                }
-            });
-
-            // Touch long press for background color (built-in palettes)
-            colorDiv.addEventListener('touchstart', (e) => {
-                isLongPress = false;
-                pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    setBackgroundColorValue();
-                    // Haptic feedback if available
-                    if (navigator.vibrate) {
-                        navigator.vibrate(UI_CONSTANTS.HAPTIC_FEEDBACK_DURATION);
-                    }
-                }, UI_CONSTANTS.LONG_PRESS_DURATION);
-            }, { passive: true });
-
-            colorDiv.addEventListener('touchend', (e) => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                // If it was a long press, prevent the click event
-                if (isLongPress) {
-                    e.preventDefault();
-                    setTimeout(() => {
-                        isLongPress = false;
-                    }, UI_CONSTANTS.COLOR_PICKER_FADE_DELAY);
-                }
-            });
-
-            colorDiv.addEventListener('touchmove', () => {
-                if (pressTimer) {
-                    clearTimeout(pressTimer);
-                    pressTimer = null;
-                }
-                isLongPress = false;
-            }, { passive: true });
+            setOpen(false, { focusButton: true });
+            return;
         }
-
-        paletteGrid.appendChild(colorDiv);
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        // Up and down inside the ratio field and slider belong to them
+        if (e.target.matches('.menu-custom input')) return;
+        e.preventDefault();
+        const items = rows();
+        const at = items.indexOf(document.activeElement);
+        const next = e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+        items[next].focus();
     });
 
-    // Add "+" button for custom palette (if not at max)
-    if (isCustomPalette && currentPalette.length < CONFIG.MAX_PALETTE_COLORS) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'navbar-palette-color navbar-palette-add-btn';
-        addBtn.textContent = '+';
-        addBtn.setAttribute('aria-label', 'Add palette color');
-        addBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            addCustomPaletteColor();
-        });
-        paletteGrid.appendChild(addBtn);
-    }
-}
-
-/**
- * Show menu for custom palette color with Select/Edit/Delete options
- */
-function showPaletteColorMenu(colorElement, colorIndex, color) {
-    // Close any existing menu
-    closePaletteColorMenu();
-
-    const menu = document.createElement('div');
-    menu.className = 'navbar-palette-color-menu';
-    menu.setAttribute('role', 'menu');
-
-    // Select option - apply this color to active pattern color
-    const selectBtn = document.createElement('button');
-    selectBtn.className = 'navbar-color-menu-item';
-    selectBtn.textContent = 'Select';
-    selectBtn.setAttribute('role', 'menuitem');
-    selectBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        patternColors[activePatternIndex] = color;
-        createNavbarColorButtons();
-            updateActiveColorUI();
-        updateCanvas();
-        saveToHistory();
-        saveToLocalStorage();
-        closePaletteColorMenu();
-    });
-    menu.appendChild(selectBtn);
-
-    // Edit option
-    const editBtn = document.createElement('button');
-    editBtn.className = 'navbar-color-menu-item';
-    editBtn.textContent = 'Edit';
-    editBtn.setAttribute('role', 'menuitem');
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Get dropdown elements before opening picker
-        const dropdownContainer = document.querySelector('.navbar-palette-dropdown-container');
-        const dropdownBtn = document.getElementById('navbarPaletteDropdownBtn');
-
-        // Open color picker FIRST (while user gesture is active)
-        editCustomPaletteColor(colorIndex, color, () => {
-            // Reopen dropdown after color picker closes
-            if (dropdownContainer) {
-                dropdownContainer.classList.add('open');
-            }
-            if (dropdownBtn) {
-                dropdownBtn.setAttribute('aria-expanded', 'true');
-            }
-        });
-
-        // THEN close menu and dropdown
-        closePaletteColorMenu();
-        if (dropdownContainer) {
-            dropdownContainer.classList.remove('open');
-        }
-        if (dropdownBtn) {
-            dropdownBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-    menu.appendChild(editBtn);
-
-    // Delete option (only if not the last color)
-    if (customPalette && customPalette.length > 1) {
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'navbar-color-menu-item navbar-color-menu-item-danger';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.setAttribute('role', 'menuitem');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteCustomPaletteColor(colorIndex);
-            closePaletteColorMenu();
-            // Keep the palette dropdown open after delete
-        });
-        menu.appendChild(deleteBtn);
-    }
-
-    // Position menu below color
-    const rect = colorElement.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = `${rect.bottom + 8}px`;
-    menu.style.left = `${rect.left + rect.width / 2}px`;
-    menu.style.transform = 'translateX(-50%)';
-
-    document.body.appendChild(menu);
-    currentPaletteColorMenu = menu;
-
-    // Close menu when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', closePaletteColorMenu);
-    }, 0);
-}
-
-// Track currently open palette color menu
-let currentPaletteColorMenu = null;
-
-/**
- * Close the palette color menu
- */
-function closePaletteColorMenu() {
-    if (currentPaletteColorMenu) {
-        document.removeEventListener('click', closePaletteColorMenu);
-        currentPaletteColorMenu.remove();
-        currentPaletteColorMenu = null;
-    }
-}
-
-/**
- * Add a new color to custom palette
- */
-function addCustomPaletteColor() {
-    if (!customPalette) {
-        customPalette = ['#000000'];
-    } else if (customPalette.length < CONFIG.MAX_PALETTE_COLORS) {
-        customPalette.push('#000000');
-    }
-    renderNavbarPalette();
-    updateNavbarPalettePreview();
-    saveToLocalStorage();
-}
-
-/**
- * Edit a custom palette color
- * @param {number} colorIndex - Index of the color to edit
- * @param {string} currentColor - Current color value
- * @param {Function} onComplete - Optional callback when color picker closes
- */
-function editCustomPaletteColor(colorIndex, currentColor, onComplete) {
-    if (!customPalette) return;
-
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = currentColor;
-    input.style.position = 'absolute';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    document.body.appendChild(input);
-
-    const cleanup = () => {
-        document.body.removeChild(input);
-        if (onComplete) {
-            onComplete();
-        }
-    };
-
-    input.addEventListener('change', (e) => {
-        const newColor = e.target.value;
-        if (validateColor(newColor)) {
-            customPalette[colorIndex] = newColor;
-            renderNavbarPalette();
-            updateNavbarPalettePreview();
-            saveToLocalStorage();
-        }
-        cleanup();
+    // Actions and destinations close the menu; the aspect ratio row and its options don't
+    menu.querySelectorAll('#navbarImportJsonBtn, #navbarExportJsonBtn, a.menu-row').forEach(item => {
+        item.addEventListener('click', () => setOpen(false));
     });
 
-    // Handle cancel (when user closes picker without selecting)
-    input.addEventListener('cancel', () => {
-        cleanup();
+    // Close when clicking or tabbing outside
+    document.addEventListener('pointerdown', (e) => {
+        if (!menu.contains(e.target) && !menuBtn.contains(e.target)) setOpen(false);
     });
-
-    input.click();
-}
-
-/**
- * Delete a custom palette color
- */
-function deleteCustomPaletteColor(colorIndex) {
-    if (!customPalette || customPalette.length <= 1) return;
-
-    customPalette.splice(colorIndex, 1);
-    renderNavbarPalette();
-    updateNavbarPalettePreview();
-    saveToLocalStorage();
-}
-
-/**
- * Update navbar palette name display and preview
- */
-function updateNavbarPaletteName() {
-    const paletteNameEl = document.getElementById('navbarPaletteName');
-    if (paletteNameEl) {
-        const capitalizedName = activePaletteId.charAt(0).toUpperCase() + activePaletteId.slice(1);
-        paletteNameEl.textContent = capitalizedName;
-    }
-
-    // Update active state of palette options
-    const paletteOptions = document.querySelectorAll('.navbar-palette-option');
-    paletteOptions.forEach(option => {
-        if (option.getAttribute('data-palette') === activePaletteId) {
-            option.classList.add('active');
-        } else {
-            option.classList.remove('active');
-        }
-    });
-
-    // Update 2x2 palette preview
-    updateNavbarPalettePreview();
-}
-
-/**
- * Update the 2x2 palette preview in the navbar
- */
-function updateNavbarPalettePreview() {
-    const previewContainer = document.getElementById('navbarPalettePreview');
-    if (!previewContainer) return;
-
-    previewContainer.innerHTML = '';
-
-    // Get current palette colors
-    const builtInPalette = CONFIG.BUILT_IN_PALETTES[activePaletteId];
-    const currentPalette = builtInPalette ? builtInPalette.colors : (customPalette || []);
-
-    // Show first 4 colors (or defaults if fewer)
-    const defaultColor = '#cccccc';
-    const previewColors = [
-        currentPalette[0] || defaultColor,
-        currentPalette[1] || defaultColor,
-        currentPalette[2] || defaultColor,
-        currentPalette[3] || defaultColor
-    ];
-
-    // Create 2x2 grid
-    previewColors.forEach(color => {
-        const colorDiv = document.createElement('div');
-        colorDiv.className = 'navbar-palette-preview-color';
-        colorDiv.style.backgroundColor = color;
-        previewContainer.appendChild(colorDiv);
+    menu.addEventListener('focusout', (e) => {
+        if (e.relatedTarget && !menu.contains(e.relatedTarget) && e.relatedTarget !== menuBtn) setOpen(false);
     });
 }
 

@@ -3,17 +3,20 @@
  * Centralized imports for all CSS modules
  */
 
-/* CSS Variables and Design System */
+/* Knitlings design tokens */
 @import './variables.css';
 
 /* Base styles - reset, typography, accessibility */
 @import './base.css';
 
-/* Layout - main grid, panels, canvas areas */
-@import './layout.css';
+/* Button, Field, Choice, Slider, Menu, Dialog, Note */
+@import './controls.css';
 
-/* Components - buttons, inputs, dialogs, etc */
-@import './components.css';
+/* Top bar, help and about pages */
+@import './pages.css';
 
-/* Responsive styles - mobile and tablet adjustments */
-@import './responsive.css';
+/* The editor: top bar, plate, captions, icon buttons */
+@import './plate.css';
+
+/* The key under the chart */
+@import './key.css';

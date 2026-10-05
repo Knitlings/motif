@@ -6,57 +6,31 @@ This directory contains the modular CSS files for the Motif application.
 
 ```
 src/styles/
-├── main.css         # Main entry point - imports all modules
-├── variables.css    # CSS custom properties (design system)
-├── base.css         # Reset, typography, accessibility
-├── layout.css       # Main layout, panels, grid structure
-├── components.css   # Buttons, inputs, dialogs, etc.
-└── responsive.css   # Mobile and tablet responsive styles
+├── main.css       # Main entry point - imports all modules
+├── variables.css  # Knitlings design tokens as CSS custom properties
+├── base.css       # Reset, typography, focus, accessibility
+├── controls.css   # Button, Field, Choice, Slider, Menu, Dialog, Note
+├── pages.css      # Top bar, help and about pages
+├── plate.css      # The editor: plate layout, captions, icon buttons, edge grips
+└── key.css        # The key under the chart
 ```
 
-## Import Order
-
-The CSS files are imported in this specific order in `main.css`:
-
-1. **variables.css** - CSS custom properties must be loaded first
-2. **base.css** - Reset and base styles
-3. **layout.css** - Layout structure
-4. **components.css** - Component styles
-5. **responsive.css** - Responsive overrides for mobile and tablet
+Files are imported in this order in `main.css`; later files may refine earlier ones.
 
 ## Design System
 
-All design tokens are defined in `variables.css` as CSS custom properties:
+Motif uses the Knitlings design system. Its tokens are defined in `variables.css` as CSS
+custom properties:
 
-- **Colors**: Primary, danger, text, background, borders
-- **Spacing**: Base unit of 4px (--space-1 through --space-16)
-- **Typography**: Font families, sizes, weights, line heights
-- **Borders**: Widths and border-radius values
-- **Shadows**: Elevation levels
-- **Transitions**: Animation durations
-- **Layout**: Panel widths and breakpoints
+- **Colour**: `--ink`, `--ink-secondary`, `--ink-muted`, `--surface`, `--ground`, `--rule`,
+  `--accent` (links, focus, wordmark only), `--signal-error`
+- **Spacing**: `--space-1` to `--space-8` (4px base)
+- **Line**: `--line-hairline` to `--line-heavy`; corners are always square
+- **Type**: Spectral only (self-hosted in `src/assets/fonts/`), as `font` shorthands
+  `--text-display`, `--text-heading`, `--text-subhead`, `--text-body`, `--text-ui`,
+  `--text-caption`, `--text-figure-caption`
 
-## Usage in HTML
-
-The main stylesheet is imported in `index.html`:
-
-```html
-<link rel="stylesheet" href="/src/styles/main.css">
-```
-
-Vite automatically bundles and optimizes all @import statements during build.
-
-## Modifying Styles
-
-To change the app's appearance:
-
-1. **Design tokens**: Edit `variables.css`
-2. **Base styles**: Edit `base.css`
-3. **Layout**: Edit `layout.css`
-4. **Components**: Edit `components.css`
-5. **Responsive behavior**: Edit `responsive.css`
-
-Changes are automatically picked up by Vite's dev server with hot module replacement.
+No shadows or gradients: `box-shadow` only draws a ring.
 
 ## Best Practices
 

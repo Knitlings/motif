@@ -1,0 +1,745 @@
+/* ============================================
+   EDITOR TOP BAR
+   Wordmark, notes between, Menu at the right (see pages.css for the bar itself)
+   ============================================ */
+
+.editor-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+
+.top-bar-centre {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.top-bar-centre .navbar-center {
+    position: static;
+    transform: none;
+}
+
+.menu-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Button: square, outlined in ink, no fill */
+.menu-button {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 14px;
+    font: var(--text-ui);
+    color: var(--ink);
+    background: none;
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.menu-button:hover,
+.menu-button[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+/* ============================================
+   THE PLATE
+   A white page divided by rules: the chart's column, then the preview
+   ============================================ */
+
+.plate {
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 64px);
+    padding: var(--space-6) 64px;
+}
+
+.plate-chart {
+    flex: 0 0 auto;
+    min-width: 520px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--space-4);
+    padding-right: 48px;
+    border-right: var(--line-rule) solid var(--frame);
+}
+
+.plate-preview {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding-left: 48px;
+}
+
+/* Stacked: the chart above a rule, the preview below */
+.plate.is-stacked {
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-6) 32px;
+}
+
+.plate.is-stacked .plate-chart {
+    min-width: 0;
+    align-self: center;
+    align-items: center;
+    padding: 0 0 var(--space-6);
+    border-right: 0;
+    border-bottom: var(--line-rule) solid var(--frame);
+}
+
+.plate.is-stacked .plate-preview {
+    align-self: stretch;
+    justify-content: flex-start;
+    padding: var(--space-6) 0 0;
+}
+
+/* ============================================
+   CHART
+   ============================================ */
+
+.chart-area {
+    position: relative;
+}
+
+.canvas-resize-container {
+    position: relative;
+    display: inline-block;
+}
+
+#editCanvas,
+#previewCanvas {
+    display: block;
+    border: var(--line-rule) solid var(--frame);
+}
+
+#editCanvas {
+    cursor: crosshair;
+    /* A drag scrolls; no double-tap zoom holding up a tap */
+    touch-action: manipulation;
+}
+
+.canvas-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.preview-stage {
+    position: relative;
+}
+
+/* Choosing surrounding stitches: a heavy frame around the download, outside its stitches */
+.picker-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: var(--line-heavy) solid var(--ink);
+    pointer-events: none;
+}
+
+.picker-frame[hidden],
+.caption-line[hidden] {
+    display: none;
+}
+
+.picker-frame .edge-grip {
+    pointer-events: auto;
+}
+
+/* Grips centred on the heavy line rather than its inner edge */
+.picker-frame .edge-grip-top { top: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-bottom { bottom: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-left { left: calc(-6px - var(--line-heavy) / 2); }
+.picker-frame .edge-grip-right { right: calc(-6px - var(--line-heavy) / 2); }
+
+.picker-frame.is-dragging .edge-grip {
+    background: var(--ground);
+}
+
+/* The chart with its stitch and row numbers, counted from the right and the bottom */
+.chart-frame {
+    position: relative;
+    max-width: 100%;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: auto 24px;
+    grid-template-rows: auto 18px;
+    gap: var(--space-2);
+}
+
+.chart-row-numbers,
+.chart-stitch-numbers {
+    display: grid;
+    font: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-muted);
+    background: var(--surface);
+    user-select: none;
+}
+
+.chart-row-numbers {
+    grid-column: 2;
+    grid-row: 1;
+    align-content: start;
+    padding-top: var(--line-rule); /* the chart's frame */
+}
+
+.chart-row-numbers span {
+    display: flex;
+    align-items: center;
+}
+
+.chart-stitch-numbers {
+    grid-column: 1;
+    grid-row: 2;
+    justify-items: center;
+    padding: 0 var(--line-rule);
+    white-space: nowrap;
+}
+
+.chart-numbers-corner {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+/* Too large for the page: the chart scrolls in its frame, numbers held at the edges */
+.chart-frame.is-framed {
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-grid {
+    width: max-content;
+    grid-template-columns: auto 30px;
+    grid-template-rows: auto 20px;
+    gap: 0;
+}
+
+.chart-frame.is-framed #editCanvas {
+    border: 0;
+}
+
+.chart-frame.is-framed .chart-row-numbers {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    padding: 0 0 0 5px;
+    border-left: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-stitch-numbers {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    align-items: center;
+    padding: 0;
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.chart-frame.is-framed .chart-numbers-corner {
+    position: sticky;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--surface);
+    border-top: var(--line-rule) solid var(--frame);
+    border-left: var(--line-rule) solid var(--frame);
+}
+
+/* A framed chart has no edge grips: it is resized through its caption */
+.chart-frame.is-framed .edge-grip {
+    display: none;
+}
+
+/* Edge grip: a tab at the middle of each edge, straddling it */
+.edge-grip {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.edge-grip::before {
+    content: "";
+    border-color: var(--ink);
+    border-style: solid;
+}
+
+.edge-grip:hover,
+.canvas-resize-container.is-resizing .edge-grip {
+    background: var(--ground);
+}
+
+.edge-grip-top,
+.edge-grip-bottom {
+    left: 50%;
+    width: 40px;
+    height: 12px;
+    margin-left: -20px;
+    cursor: ns-resize;
+}
+
+.edge-grip-top::before,
+.edge-grip-bottom::before {
+    width: 16px;
+    height: 2px;
+    border-width: 1px 0;
+}
+
+.edge-grip-top { top: -6px; }
+.edge-grip-bottom { bottom: -6px; }
+
+.edge-grip-left,
+.edge-grip-right {
+    top: 50%;
+    width: 12px;
+    height: 40px;
+    margin-top: -20px;
+    cursor: ew-resize;
+}
+
+.edge-grip-left::before,
+.edge-grip-right::before {
+    width: 2px;
+    height: 16px;
+    border-width: 0 1px;
+}
+
+.edge-grip-left { left: -6px; }
+.edge-grip-right { right: -6px; }
+
+/* ============================================
+   CAPTION LINES
+   An italic sentence with editable numbers, then the icon buttons that act on it
+   ============================================ */
+
+.caption-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    max-width: 100%;
+}
+
+/* As wide as the key under the chart; as wide as the preview, up to 650px, above it */
+.caption-line-chart {
+    width: 421px;
+}
+
+.caption-line-preview {
+    width: clamp(421px, var(--preview-width, 650px), 650px);
+}
+
+.caption {
+    font: var(--text-figure-caption);
+    color: var(--ink);
+}
+
+.caption input.caption-field {
+    width: 36px;
+    min-height: 0;
+    margin: 0;
+    padding: 1px 5px;
+    font: var(--text-ui);
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    border-radius: 0;
+}
+
+.caption-line-preview input.caption-field {
+    width: 30px;
+}
+
+.caption input.caption-field:focus {
+    border-color: var(--ink);
+}
+
+.caption input.caption-field-invalid {
+    border: var(--line-emphasis) solid var(--signal-error);
+}
+
+/* Message under a caption sentence */
+.caption-message {
+    font: var(--text-caption);
+    color: var(--ink-muted);
+}
+
+.caption-message:empty {
+    display: none;
+}
+
+.caption-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 2px;
+    margin-right: -8px;
+}
+
+/* Icon button: one 14px line icon, no frame */
+.icon-button {
+    width: 30px;
+    height: 30px;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+    background: var(--ground);
+}
+
+.icon-button:disabled {
+    opacity: 1;
+    color: var(--ink-muted);
+    cursor: default;
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+
+.tooltip {
+    position: absolute;
+    z-index: 2000;
+    padding: 4px 8px;
+    font-family: var(--font-serif);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink);
+    background: var(--surface);
+    border: var(--line-rule) solid var(--ink);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.tooltip[hidden] {
+    display: none;
+}
+
+/* ============================================
+   TOUCH: 44px targets
+   ============================================ */
+
+@media (pointer: coarse) {
+    .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .icon-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .caption-actions {
+        gap: 0;
+        margin-right: -14px;
+    }
+
+    /* The grip looks the same; the button around it takes a 44 x 24 touch area */
+    .edge-grip {
+        background: transparent;
+        border: 0;
+    }
+
+    .edge-grip::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        background: var(--surface);
+        border: var(--line-rule) solid var(--ink);
+    }
+
+    .edge-grip-top,
+    .edge-grip-bottom {
+        width: 44px;
+        height: 24px;
+        margin-left: -22px;
+    }
+
+    .edge-grip-top { top: -12px; }
+    .edge-grip-bottom { bottom: -12px; }
+
+    .edge-grip-top::after,
+    .edge-grip-bottom::after {
+        width: 40px;
+        height: 12px;
+        box-sizing: border-box;
+    }
+
+    .edge-grip-left,
+    .edge-grip-right {
+        width: 24px;
+        height: 44px;
+        margin-top: -22px;
+    }
+
+    .edge-grip-left { left: -12px; }
+    .edge-grip-right { right: -12px; }
+
+    .edge-grip-left::after,
+    .edge-grip-right::after {
+        width: 12px;
+        height: 40px;
+        box-sizing: border-box;
+    }
+
+    .picker-frame .edge-grip-top { top: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-bottom { bottom: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-left { left: calc(-12px - var(--line-heavy) / 2); }
+    .picker-frame .edge-grip-right { right: calc(-12px - var(--line-heavy) / 2); }
+
+    .picker-frame.is-dragging .edge-grip {
+        background: transparent;
+    }
+
+    .edge-grip:hover::after,
+    .canvas-resize-container.is-resizing .edge-grip::after,
+    .picker-frame.is-dragging .edge-grip::after {
+        background: var(--ground);
+    }
+}
+
+/* Notes take the hint's place on a phone only */
+.note-slot-phone {
+    display: none;
+}
+
+/* ============================================
+   NARROW WINDOWS (tablet and phone)
+   ============================================ */
+
+@media (max-width: 1024px) {
+    .plate,
+    .plate.is-stacked {
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .plate-chart {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .caption-line-chart,
+    .caption-line-preview {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   PHONE
+   Stacked top to bottom: chart, caption, key, hint, then the preview's caption and the
+   preview. Short captions share their line with 44px icon buttons. Matches
+   CONFIG.PHONE_BREAKPOINT.
+   ============================================ */
+
+@media (max-width: 600px) {
+    /* The top bar scrolls away; notes sit under the key instead */
+    .editor-top-bar {
+        position: static;
+    }
+
+    .editor-top-bar .note-slot {
+        display: none;
+    }
+
+    .menu-button {
+        height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .plate,
+    .plate.is-stacked {
+        min-height: 0;
+        align-items: stretch;
+        padding: 20px var(--space-4) var(--space-6);
+    }
+
+    .plate.is-stacked .plate-chart {
+        align-self: stretch;
+        align-items: stretch;
+        gap: var(--space-4);
+        padding-bottom: var(--space-6);
+    }
+
+    .plate.is-stacked .plate-preview {
+        align-items: stretch;
+        gap: 12px;
+        padding-top: 20px;
+    }
+
+    .chart-area,
+    .canvas-wrapper {
+        align-self: center;
+    }
+
+    /* Row numbers closer beside the chart (CONFIG.PHONE_NUMBERS_WIDTH and _HEIGHT) */
+    .chart-grid {
+        grid-template-columns: auto 18px;
+        grid-template-rows: auto 16px;
+        gap: 4px 3px;
+    }
+
+    /* "[12] stitches by [12] rows": the sentence wraps rather than pushing the icons off */
+    .caption-line {
+        gap: var(--space-2);
+    }
+
+    .caption {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+        font-size: 16px;
+        line-height: 22px;
+        white-space: nowrap;
+    }
+
+    .caption-long {
+        display: none;
+    }
+
+    .caption input.caption-field {
+        width: 48px;
+        height: 44px;
+        padding: 0 8px;
+        font-size: 16px;
+        line-height: 22px;
+    }
+
+    .caption-line-preview input.caption-field {
+        width: 44px;
+    }
+
+    .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .icon-button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .caption-actions {
+        gap: 0;
+        margin-right: -14px;
+    }
+
+    .word-button {
+        height: 44px;
+        font-size: 15px;
+    }
+
+    /* The picker's caption on two lines: its title with Cancel and Download, then the numbers */
+    #pickerCaptionLine:not([hidden]) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        row-gap: var(--space-1);
+    }
+
+    #pickerCaptionLine .caption {
+        display: contents;
+    }
+
+    #pickerCaptionLine .picker-title {
+        grid-row: 1;
+        grid-column: 1;
+    }
+
+    #pickerCaptionLine .caption-actions {
+        grid-row: 1;
+        grid-column: 2;
+        margin-right: -8px;
+    }
+
+    #pickerCaptionLine .picker-numbers {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 6px;
+    }
+
+    #pickerCaptionLine input.caption-field {
+        width: 44px;
+    }
+
+    /* A note takes the hint's place, at the same height, so nothing below moves */
+    .note-slot-phone:not(:empty) {
+        display: block;
+    }
+
+    .note-slot-phone .note {
+        max-width: none;
+        min-height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .note-slot-phone:not(:empty) + .key-hint {
+        display: none;
+    }
+
+    .plate-chart .key-hint {
+        width: auto;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        line-height: 18px;
+    }
+
+    /* 15px controls, 16px inputs */
+    .button,
+    .menu-row,
+    .note-dismiss {
+        min-height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .field-input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+}

@@ -267,7 +267,6 @@ export function removeDragGhost(ghost) {
  * @param {string} options.displayElementId - ID of the inline display element
  * @param {Function} options.applyFunction - Function to apply the value (returns success boolean or void)
  * @param {Function} [options.getCurrentValue] - Function to get current value (for error display)
- * @param {Function} [options.updateChevronStates] - Optional function to update chevron states
  * @param {number} [options.errorFlashDuration=300] - Duration to flash error outline (ms)
  * @returns {boolean|void} Success status if applicable
  */
@@ -280,7 +279,6 @@ export function applyDimensionInput(options) {
         displayElementId,
         applyFunction,
         getCurrentValue,
-        updateChevronStates,
         errorFlashDuration = 300
     } = options;
 
@@ -294,23 +292,16 @@ export function applyDimensionInput(options) {
     // Handle error feedback for functions that return success boolean
     if (result === false && inlineDisplay && getCurrentValue) {
         // Restore previous value in display
-        inlineDisplay.textContent = getCurrentValue();
+        inlineDisplay.value = getCurrentValue();
 
-        // Flash red border on error
-        inlineDisplay.style.transition = 'none';
-        inlineDisplay.style.outline = '2px solid var(--color-danger)';
+        // Flash the error border
+        inlineDisplay.classList.add('caption-field-invalid');
         setTimeout(() => {
-            inlineDisplay.style.transition = 'outline var(--transition-base)';
-            inlineDisplay.style.outline = '';
+            inlineDisplay.classList.remove('caption-field-invalid');
         }, errorFlashDuration);
     } else if (result !== false && inlineDisplay) {
         // Update display with new value on success
-        inlineDisplay.textContent = clampedValue;
-    }
-
-    // Update chevron states if function provided
-    if (updateChevronStates && typeof updateChevronStates === 'function') {
-        updateChevronStates();
+        inlineDisplay.value = clampedValue;
     }
 
     return result;

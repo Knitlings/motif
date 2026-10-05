@@ -8,349 +8,183 @@
     <meta name="description" content="Learn how to use Motif pattern editor">
     <link rel="stylesheet" href="/src/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/src/styles/main.css">
-    <style>
-        /* Table of contents styling */
-        .toc {
-            background: transparent !important;
-            padding: 0 !important;
-            margin: 2.5rem 0 !important;
-            border-left: 3px solid var(--color-primary) !important;
-            padding-left: 1.5rem !important;
-        }
-
-        .toc h2 {
-            font-size: 1.5rem !important;
-            font-weight: 700 !important;
-            margin: 0 0 1rem 0 !important;
-            color: var(--color-text-primary);
-            border: none !important;
-        }
-
-        .toc ul {
-            list-style: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        .toc li {
-            margin: 0 0 0.6rem 0 !important;
-        }
-
-        .toc a {
-            text-decoration: none;
-            color: var(--color-text);
-            font-size: 1rem;
-            font-weight: 500;
-            transition: color 0.2s ease;
-            display: inline-block;
-        }
-
-        .toc a:hover {
-            color: var(--color-primary);
-        }
-
-        /* Back to contents link */
-        .back-to-contents {
-            font-size: 0.875rem;
-            color: var(--color-text-secondary);
-            text-decoration: none;
-            margin-left: 1rem;
-            transition: color 0.2s ease;
-        }
-
-        .back-to-contents:hover {
-            color: var(--color-primary);
-        }
-
-        /* Input mode toggle */
-        .input-mode-toggle {
-            display: flex;
-            gap: 0;
-            margin: 1.5rem 0;
-            border: 1px solid var(--color-border);
-            border-radius: 6px;
-            overflow: hidden;
-            width: fit-content;
-        }
-
-        .input-mode-btn {
-            padding: 0.5rem 1.5rem;
-            background: var(--color-bg);
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--color-text);
-            transition: all 0.2s ease;
-            border-right: 1px solid var(--color-border);
-        }
-
-        .input-mode-btn:last-child {
-            border-right: none;
-        }
-
-        .input-mode-btn:hover {
-            background: var(--color-bg-secondary, #f5f5f5);
-        }
-
-        .input-mode-btn.active {
-            background: var(--color-primary);
-            color: white;
-        }
-
-        .input-mode-btn:focus {
-            outline: 2px solid var(--color-primary);
-            outline-offset: -2px;
-            z-index: 1;
-        }
-
-        /* Content visibility based on input mode */
-        body[data-input-mode="desktop"] .touch-only {
-            display: none;
-        }
-
-        body[data-input-mode="touch"] .desktop-only {
-            display: none;
-        }
-
-        /* .both is always visible */
-
-        /* UI element references */
-        .ui-element {
-            font-weight: 600;
-            color: var(--color-primary);
-            white-space: nowrap;
-        }
-    </style>
 </head>
 <body>
-    <div class="content-page">
-        <a href="/" class="back-link">← Back to Motif</a>
+    <header class="top-bar">
+        <a href="/" class="wordmark" aria-label="Motif, back to the editor">Motif</a>
+        <a href="/" class="top-bar-back">← Back to Motif</a>
+    </header>
 
-        <h1>Help</h1>
+    <main class="help-page">
+        <div class="help-side">
+            <h1>Help</h1>
 
-        <div class="toc">
-            <h2>Contents</h2>
-            <ul>
-                <li><a href="#pattern">Pattern</a></li>
-                <li><a href="#preview">Preview</a></li>
-                <li><a href="#colours">Colours</a></li>
-                <li><a href="#undo">Undo and redo</a></li>
-                <li><a href="#download">Download</a></li>
-                <li><a href="#settings">Settings</a></li>
-                <li class="desktop-only"><a href="#shortcuts">Keyboard shortcuts</a></li>
-            </ul>
-        </div>
-
-        <div class="input-mode-toggle" role="tablist" aria-label="Input mode selection">
-            <button class="input-mode-btn" data-mode="desktop" role="tab" aria-selected="false" aria-controls="help-content">Desktop</button>
-            <button class="input-mode-btn" data-mode="touch" role="tab" aria-selected="false" aria-controls="help-content">Touch</button>
-        </div>
-
-        <h2 id="pattern">Pattern <a href="#" class="back-to-contents">↑</a></h2>
-        <p class="both">Draw a single repeat of your pattern—the preview will show how it tiles.</p>
-
-        <h3>Paint</h3>
-        <p class="desktop-only">Click a cell to paint it with the active pattern colour. Click and drag to paint multiple cells at once.</p>
-        <p class="touch-only">Tap a cell to paint it with the active colour.</p>
-
-        <h3>Erase</h3>
-        <p class="desktop-only">Click a painted cell to toggle between the background colour and the active pattern colour.</p>
-        <p class="desktop-only">Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
-        <p class="desktop-only">Click the × below the pattern to clear the entire pattern to the background colour.</p>
-        <p class="touch-only">Tap a painted cell to toggle between background colour and the active pattern colour.</p>
-        <p class="touch-only">Tap the × below the pattern to clear the entire pattern to the background colour.</p>
-
-        <h3>Resize</h3>
-        <div class="desktop-only">
-        <p>To resize the pattern grid, you can:</p>
-        <ul>
-        <li>Click the arrows above the pattern grid to add a row or column. Hold <kbd>Shift</kbd> and click to remove.</li>
-        <li>Enter the number of rows and columns desired.</li>
-        <li>Drag the edges of the pattern grid to shrink and enlarge it.</li>
-        </ul>
-        </div>
-        <div class="touch-only">
-        <p>To resize the pattern grid, you can:</p>
-        <ul>
-        <li>Tap the arrows above the pattern grid to add a row or column. Long-press and tap to remove.</li>
-        <li>Enter the number of rows and columns desired.</li>
-        <li>Drag the edges of the pattern grid to shrink and enlarge it.</li>
-        </ul>
-        </div>
-
-        <h2 id="preview">Preview <a href="#" class="back-to-contents">↑</a></h2>
-
-        <p class="both">The preview shows several repeats of your pattern, so you can see how your it connects when repeating and catch problems that only appear when the pattern is tiled.</p>
-
-        <h3>Adjusting preview repeats</h3>
-        <p class="both">You can change how many times the pattern repeats horizontally and vertically by entering the desired number of repeats.</p>
-        <p class="both">The maximum number of repeats depends on your pattern's largest dimension to keep the preview running smoothly:</p>
-
-        <table class="both">
-            <thead>
-                <tr>
-                    <th>Largest Dimension</th>
-                    <th>Maximum Repeats</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>15 and smaller</td>
-                    <td>10×10</td>
-                </tr>
-                <tr>
-                    <td>16 to 19</td>
-                    <td>8×8</td>
-                </tr>
-                <tr>
-                    <td>20 to 26</td>
-                    <td>6×6</td>
-                </tr>
-                <tr>
-                    <td>27 to 31</td>
-                    <td>5×5</td>
-                </tr>
-                <tr>
-                    <td>32 to 39</td>
-                    <td>4×4</td>
-                </tr>
-                <tr>
-                    <td>40 to 52</td>
-                    <td>3×3</td>
-                </tr>
-                <tr>
-                    <td>53 to 79</td>
-                    <td>2×2</td>
-                </tr>
-                <tr>
-                    <td>80 and larger</td>
-                    <td>1×1</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <p class="both">For example, a 2×20 pattern has a largest dimension of 20, so it allows up to 6×6 repeats.</p>
-
-        <p class="both">When you resize your pattern larger, the preview repeats will automatically reduce if needed. A status message appears when you're near or at the maximum for your pattern size.</p>
-
-        <h2 id="colours">Colours <a href="#" class="back-to-contents">↑</a></h2>
-
-        <p class="both">The pattern colours are displayed in circles at the top of the screen. The active pattern colour is indicated by a larger circle. Motif keeps track of what cells use what pattern colour, so you can easily change them all at once and try new combinations.</p>
-        <p class="both">If there are more pattern colours than can be displayed next to each other, an overflow menu will show the remaining colours.</p>
-
-        <h3>Changing and deleting pattern colours</h3>
-        <p class="desktop-only">Click any pattern colour to select, edit or delete it.</p>
-        <p class="desktop-only">You can also directly select a pattern colour using the keyboard: <kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd> for pattern colours 1-10, and the same with <kbd>Shift</kbd> for pattern colour 11-20.
-        <p class="touch-only">Tap any pattern colour to select, edit or delete it.</p>
-
-        <h3>Adding pattern colours</h3>
-        <p class="desktop-only">Click the + button to add a new pattern colour. You can add up to 20 colours per pattern.</p>
-        <p class="touch-only">Tap the + button to add a new pattern colour. You can add up to 20 colours per pattern.</p>
-
-        <h3>Swapping colours</h3>
-        <p class="both">Drag one pattern colour onto another to merge their positions and remove the target colour. You can also drag pattern colours to the background colour to merge them.</p>
-
-        <h3>Background colour</h3>
-        <p class="both">This is the default colour for cells. It is displayed in a square.</p>
-        <p class="desktop-only">Click a painted cell to toggle between the background colour and the active pattern colour. Hold <kbd>Shift</kbd> and click cells to turn them into background.</p>
-        <p class="touch-only">Tap a painted cell to toggle between the background colour and the active pattern colour. Long-press the background colour and then tap cells to turn them into background.</p>
-
-        <h3>Palette</h3>
-        <p class="both">The palette button shows you a small preview of the selected palette. Palettes are curated selections of colours you can easily apply to your pattern colours.</p>
-        <p class="desktop-only">Click the palette button to see the current palette or select another one.</p>
-        <p class="touch-only">Tap the palette button to see the current palette or select another one.</p>
-        <p class="desktop-only">Click a palette colour to set it as the active pattern colour.</p>
-        <p class="desktop-only">Hold <kbd>Shift</kbd> and click a palette colour to set it as the background colour.</p>
-        <p class="touch-only">Tap a palette colour to set it as the active pattern colour.</p>
-        <p class="touch-only">Long-press a palette colour to set it as the background colour.</p>
-        <p class="desktop-only">Click <span class="ui-element">Load palette</span> to apply the current palette to the pattern colours, replacing them.</p>
-        <p class="touch-only">Tap <span class="ui-element">Load palette</span> to apply the current palette to the pattern colours, replacing them.</p>
-        <p class="desktop-only">Click <span class="ui-element">Custom</span> to edit your own palette. Click a colour in the custom palette to select, edit or delete it. Click the plus button to add a new colour to the custom palette.</p>
-        <p class="touch-only">Tap <span class="ui-element">Custom</span> to edit your own palette. Tap a colour in the custom palette to select, edit or delete it. Tap the plus button to add a new colour to the custom palette.</p>
-
-        <h2 id="undo">Undo and Redo <a href="#" class="back-to-contents">↑</a></h2>
-
-        <p class="desktop-only">Click the curved arrow buttons below the canvas to undo and redo your changes.</p>
-        <p class="desktop-only">You can also use <kbd>Cmd/Ctrl</kbd> + <kbd>Z</kbd> to undo and <kbd>Cmd/Ctrl</kbd> + <kbd>Y</kbd> to redo.</p>
-        <p class="touch-only">Tap the curved arrow buttons below the canvas to undo and redo your changes.</p>
-
-
-        <h2 id="download">Download<a href="#" class="back-to-contents">↑</a></h2>
-
-        <p class="desktop-only">Click the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
-        <p class="touch-only">Tap the <span class="ui-element">Download</span> button below the pattern to open the download dialogue.</p>
-
-        <h3>Download options</h3>
-        <ul class="both">
-            <li><strong>Source:</strong>
-                <ul>
-                    <li><span class="ui-element">Pattern</span>: Single repeat of the pattern as shown in the pattern grid.</li>
-                    <li><span class="ui-element">Pattern repeat with surroundings</span>: One repeat plus your selection of neighbouring rows or columns.</li>
-                    <li><span class="ui-element">Preview</span>: Multiple tiled repeats as shown in the preview grid.</li>
+            <nav id="contents" aria-labelledby="contents-label">
+                <div id="contents-label" class="side-label">Contents</div>
+                <ul class="toc">
+                    <li><a href="#pattern">Pattern</a></li>
+                    <li><a href="#preview">Preview</a></li>
+                    <li><a href="#colours">Colours</a></li>
+                    <li><a href="#undo">Undo and redo</a></li>
+                    <li><a href="#download">Download</a></li>
+                    <li><a href="#settings">Settings</a></li>
+                    <li class="desktop-only"><a href="#shortcuts">Keyboard shortcuts</a></li>
                 </ul>
-            </li>
-            <li><strong>Format:</strong> Choose between <span class="ui-element">PNG</span> or <span class="ui-element">SVG</span>.</li>
-            <li><strong>Include row counts:</strong> Add row count numbers to the right side of your downloaded image.</li>
-        </ul>
+            </nav>
 
-        <h3>Pattern repeat with surroundings</h3>
-        <p class="both">When you select <span class="ui-element">Pattern repeat with surroundings</span>, you can specify how many neighbouring rows and columns to include.</p>
-        <p class="both">For smaller patterns you'll see a visual selection mode where you can drag the edges on the preview to choose your surrounding area.</p>
-        <p class="both">For larger patterns, use the form inputs to enter the number of row/columns you want to include next to the pattern repeat.</p>
-
-        <h2 id="settings">Settings <a href="#" class="back-to-contents">↑</a></h2>
-        <p class="both">Access these options in the settings menu (☰):</p>
-
-        <h3>Import/Export</h3>
-
-        <p class="desktop-only">Click <span class="ui-element">Import JSON</span> to load a previously saved Motif JSON file. The JSON file contains your pattern dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
-        <p class="desktop-only">Click <span class="ui-element">Export JSON</span> to create a JSON file you can import later.</p>
-        <p class="touch-only">Tap <span class="ui-element">Import JSON</span> to load a previously saved JSON file. The JSON file contains your pattern dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
-        <p class="touch-only">Tap <span class="ui-element">Export JSON</span> to create a JSON file you can import later.</p>
-
-        <h3>Cell aspect ratio</h3>
-        <p class="desktop-only">Click the drop down to choose from preset ratios like "Square 1:1" or "Knit stitch 4:3". To set a custom aspect ratio, click <span class="ui-element">Custom</span> and enter a decimal (e.g. 1.25) or a ratio (e.g. 3:4). You can also drag the slider.</p>
-        <p class="touch-only">Tap the drop down to choose from preset ratios like "Square 1:1" or "Knit stitch 4:3". To set a custom aspect ratio, tap <span class="ui-element">Custom</span> and enter a decimal (e.g. 1.25) or a ratio (e.g. 3:4). You can also drag the slider.</p>
-
-
-        <div class="desktop-only">
-        <h2 id="shortcuts">Keyboard Shortcuts <a href="#" class="back-to-contents">↑</a></h2>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Action</th>
-                    <th>Shortcut</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Undo</td>
-                    <td><kbd>Cmd/Ctrl</kbd> + <kbd>Z</kbd></td>
-                </tr>
-                <tr>
-                    <td>Redo</td>
-                    <td><kbd>Cmd/Ctrl</kbd> + <kbd>Y</kbd></td>
-                </tr>
-                <tr>
-                    <td>Clear canvas</td>
-                    <td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td>
-                </tr>
-                <tr>
-                    <td>Select pattern colours 1-10</td>
-                    <td><kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd></td>
-                </tr>
-                <tr>
-                    <td>Select pattern colours 11-20</td>
-                    <td><kbd>Shift</kbd> + <kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd></td>
-                </tr>
-            </tbody>
-        </table>
+            <fieldset>
+                <legend>Instructions for</legend>
+                <label class="choice"><input type="radio" class="choice-input" name="input-mode" value="desktop"> Desktop</label>
+                <label class="choice"><input type="radio" class="choice-input" name="input-mode" value="touch"> Touch</label>
+            </fieldset>
         </div>
 
-        <p style="margin-top: 2rem;"><a href="/">← Back to Motif</a></p>
-    </div>
+        <div class="prose">
+            <div class="section-head"><h2 id="pattern">Pattern</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p>Draw a single repeat of your pattern—the preview will show how it tiles.</p>
+
+            <h3>Paint</h3>
+            <p class="desktop-only">Click a cell to paint it with the active pattern colour. Click and drag to paint multiple cells at once.</p>
+            <p class="touch-only">Tap a cell to paint it with the active pattern colour.</p>
+
+            <h3>Erase</h3>
+            <p class="desktop-only">Click a painted cell to toggle between the background colour and the active pattern colour.</p>
+            <p class="touch-only">Tap a painted cell to toggle between the background colour and the active pattern colour.</p>
+            <p class="desktop-only">Hold <kbd>Shift</kbd> and click cells to paint with the background colour instead of the active colour.</p>
+            <p class="desktop-only">Click the × after the caption below the pattern to clear the entire pattern to the background colour.</p>
+            <p class="touch-only">Tap the × after the caption below the pattern to clear the entire pattern to the background colour.</p>
+
+            <h3>Resize</h3>
+            <p>To resize the pattern, you can:</p>
+            <ul>
+                <li>Enter the number of stitches and rows in the caption below the pattern.</li>
+                <li>Drag the edges of the pattern to shrink and enlarge it.</li>
+            </ul>
+            <p>A pattern too large for the page scrolls inside its frame. It has no edges to drag, so resize it with the numbers in the caption.</p>
+            <p class="touch-only">Drag inside the frame to move around the pattern. Drag anywhere else to move the page.</p>
+
+            <div class="section-head"><h2 id="preview">Preview</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p>The preview shows several repeats of your pattern, so you can see how it connects when repeating and catch problems that only appear when the pattern is tiled.</p>
+
+            <h3>Adjusting preview repeats</h3>
+            <p>You can change how many times the pattern repeats horizontally and vertically by entering the desired number of repeats in the caption above the preview.</p>
+            <p>The maximum number of repeats depends on your pattern's largest dimension to keep the preview running smoothly:</p>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr><th scope="col">Largest dimension</th><th scope="col">Maximum repeats</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>15 and smaller</td><td>10×10</td></tr>
+                        <tr><td>16 to 19</td><td>8×8</td></tr>
+                        <tr><td>20 to 26</td><td>6×6</td></tr>
+                        <tr><td>27 to 31</td><td>5×5</td></tr>
+                        <tr><td>32 to 39</td><td>4×4</td></tr>
+                        <tr><td>40 to 52</td><td>3×3</td></tr>
+                        <tr><td>53 to 79</td><td>2×2</td></tr>
+                        <tr><td>80 and larger</td><td>1×1</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>For example, a 2×20 pattern has a largest dimension of 20, so it allows up to 6×6 repeats.</p>
+            <p>When you resize your pattern larger, the preview repeats will automatically reduce if needed. A status message appears when you're near or at the maximum for your pattern size.</p>
+
+            <div class="section-head"><h2 id="colours">Colours</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p>The pattern colours are shown in the key below the pattern, numbered from 1. The active pattern colour has a ring around it. Motif keeps track of what cells use what pattern colour, so you can easily change them all at once and try new combinations.</p>
+            <p>If there are more pattern colours than fit in the key, a button such as <span class="ui-element">+3</span> shows the remaining colours.</p>
+
+            <h3>Changing and deleting pattern colours</h3>
+            <p class="desktop-only">Click a pattern colour to select it. Click the selected colour again to change or remove it.</p>
+            <p class="touch-only">Tap a pattern colour to select it. Tap the selected colour again to change or remove it.</p>
+            <p class="desktop-only">You can also directly select a pattern colour using the keyboard: <kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd> for pattern colours 1-10, and the same with <kbd>Shift</kbd> for pattern colours 11-20.</p>
+            <p>The first pattern colour can't be removed.</p>
+
+            <h3>Adding pattern colours</h3>
+            <p class="desktop-only">Click the + button to add a new pattern colour. You can add up to 20 colours per pattern.</p>
+            <p class="touch-only">Tap the + button to add a new pattern colour. You can add up to 20 colours per pattern.</p>
+
+            <h3>Swapping colours</h3>
+            <p>Drag one pattern colour onto another to merge their positions and remove the target colour. You can also drag pattern colours to the background colour to merge them.</p>
+
+            <h3>Background colour</h3>
+            <p>This is the default colour for cells. It has its own place in the key, labelled <span class="ui-element">Background</span>.</p>
+            <p class="desktop-only">Click the background colour to change it. Click a painted cell to toggle between the background colour and the active pattern colour. Hold <kbd>Shift</kbd> and click cells to turn them into background.</p>
+            <p class="touch-only">Tap the background colour to change it. Tap a painted cell to toggle between the background colour and the active pattern colour. Long-press the background colour and then tap cells to turn them into background.</p>
+
+            <h3>Palette</h3>
+            <p>Palettes are curated selections of colours you can easily apply to your pattern colours. The key shows the selected palette's name and its colours.</p>
+            <p class="desktop-only">Click the palette's name to select another one.</p>
+            <p class="touch-only">Tap the <span class="ui-element">Palette</span> row to see the palette's colours or select another one.</p>
+            <p class="desktop-only">Click a palette colour to set it as the active pattern colour.</p>
+            <p class="touch-only">Tap a palette colour to set it as the active pattern colour.</p>
+            <p class="desktop-only">Hold <kbd>Shift</kbd> and click a palette colour to set it as the background colour.</p>
+            <p class="touch-only">Long-press a palette colour to set it as the background colour.</p>
+            <p class="desktop-only">Click <span class="ui-element">Load palette</span> to apply the current palette to the pattern colours, replacing them.</p>
+            <p class="touch-only">Tap <span class="ui-element">Load palette</span> to apply the current palette to the pattern colours, replacing them.</p>
+            <p class="desktop-only">Click <span class="ui-element">Custom</span> to edit your own palette. Click a colour in the custom palette to select, edit or delete it. Click the + button to add a new colour to the custom palette.</p>
+            <p class="touch-only">Tap <span class="ui-element">Custom</span> to edit your own palette. Tap a colour in the custom palette to select, edit or delete it. Tap the + button to add a new colour to the custom palette.</p>
+
+            <div class="section-head"><h2 id="undo">Undo and redo</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p class="desktop-only">Click the curved arrow buttons after the caption below the pattern to undo and redo your changes.</p>
+            <p class="touch-only">Tap the curved arrow buttons after the caption below the pattern to undo and redo your changes.</p>
+            <p class="desktop-only">You can also use <kbd>Cmd/Ctrl</kbd> + <kbd>Z</kbd> to undo and <kbd>Cmd/Ctrl</kbd> + <kbd>Y</kbd> to redo.</p>
+
+            <div class="section-head"><h2 id="download">Download</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p class="desktop-only">Click the <span class="ui-element">Download</span> button after the caption above the preview to open the download dialogue.</p>
+            <p class="touch-only">Tap the <span class="ui-element">Download</span> button after the caption above the preview to open the download dialogue.</p>
+
+            <h3>Download options</h3>
+            <ul>
+                <li><strong>Source:</strong>
+                    <ul>
+                        <li><span class="ui-element">Pattern</span>: Single repeat of the pattern as shown in the pattern grid.</li>
+                        <li><span class="ui-element">Pattern repeat with surroundings</span>: One repeat plus your selection of neighbouring rows or columns.</li>
+                        <li><span class="ui-element">Preview</span>: Multiple tiled repeats as shown in the preview.</li>
+                    </ul>
+                </li>
+                <li><strong>Format:</strong> Choose between <span class="ui-element">PNG</span> or <span class="ui-element">SVG</span>.</li>
+                <li><strong>Include row counts:</strong> Add row count numbers to the right side of your downloaded image.</li>
+            </ul>
+
+            <h3>Pattern repeat with surroundings</h3>
+            <p>When you select <span class="ui-element">Pattern repeat with surroundings</span>, you can specify how many neighbouring rows and columns to include.</p>
+            <p>For smaller patterns you'll see a visual selection mode where you can drag the edges on the preview to choose your surrounding area, or enter the numbers in the caption above the preview.</p>
+            <p>For larger patterns, use the form inputs to enter the number of rows and columns you want to include next to the pattern repeat.</p>
+
+            <div class="section-head"><h2 id="settings">Settings</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+            <p>Access these options in the <span class="ui-element">Menu</span>:</p>
+
+            <h3>Import/Export</h3>
+            <p class="desktop-only">Click <span class="ui-element">Import JSON</span> to load a previously saved Motif JSON file. The JSON file contains your pattern dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
+            <p class="touch-only">Tap <span class="ui-element">Import JSON</span> to load a previously saved Motif JSON file. The JSON file contains your pattern dimensions, cell aspect ratio, colour palette, pattern data, and preview settings in a human-readable format that can be manipulated programmatically.</p>
+            <p class="desktop-only">Click <span class="ui-element">Export JSON</span> to create a JSON file you can import later.</p>
+            <p class="touch-only">Tap <span class="ui-element">Export JSON</span> to create a JSON file you can import later.</p>
+
+            <h3>Cell aspect ratio</h3>
+            <p class="desktop-only">Click the drop down to choose from preset ratios like "Square 1:1" or "Knit stitch 4:3". To set a custom aspect ratio, click <span class="ui-element">Custom</span> and enter a decimal (e.g. 1.25) or a ratio (e.g. 3:4). You can also drag the slider.</p>
+            <p class="touch-only">Tap the drop down to choose from preset ratios like "Square 1:1" or "Knit stitch 4:3". To set a custom aspect ratio, tap <span class="ui-element">Custom</span> and enter a decimal (e.g. 1.25) or a ratio (e.g. 3:4). You can also drag the slider.</p>
+
+            <div class="desktop-only">
+                <div class="section-head"><h2 id="shortcuts">Keyboard shortcuts</h2><a href="#contents" class="to-contents">↑ Contents</a></div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th scope="col">Action</th><th scope="col">Shortcut</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Undo</td><td><kbd>Cmd/Ctrl</kbd> + <kbd>Z</kbd></td></tr>
+                            <tr><td>Redo</td><td><kbd>Cmd/Ctrl</kbd> + <kbd>Y</kbd></td></tr>
+                            <tr><td>Clear canvas</td><td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td></tr>
+                            <tr><td>Select pattern colours 1-10</td><td><kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd></td></tr>
+                            <tr><td>Select pattern colours 11-20</td><td><kbd>Shift</kbd> + <kbd>1</kbd>-<kbd>9</kbd>, <kbd>0</kbd></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <p class="back-to-motif"><a href="/">← Back to Motif</a></p>
+        </div>
+    </main>
 
     <script type="module" src="/help.js"></script>
 </body>

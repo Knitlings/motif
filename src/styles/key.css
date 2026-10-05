@@ -1,0 +1,580 @@
+/* ============================================
+   KEY
+   The framed legend under the chart: numbered swatches, the background in its own
+   cell, and the palette as a strip beneath (see the design system's Key component)
+   ============================================ */
+
+.key {
+    --swatch: 28px;
+    --strip-height: 24px;
+    --palette-row: 40px;
+    --menu-row-padding: 9px;
+
+    position: relative;
+    width: 421px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    font: var(--text-ui);
+    color: var(--ink);
+    border: var(--line-rule) solid var(--frame);
+}
+
+.key button,
+.key input {
+    min-height: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+}
+
+.key-row {
+    display: flex;
+    align-items: stretch;
+}
+
+.key-label {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-weight: 600;
+    border-right: var(--line-rule) solid var(--frame);
+}
+
+/* The row never wraps: colours that don't fit go behind "+N" */
+.key-swatches {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    column-gap: 12px;
+    padding: 10px 12px;
+}
+
+.key-place {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.key-swatch,
+.key-more,
+.key-add {
+    width: var(--swatch);
+    height: var(--swatch);
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 0;
+    cursor: pointer;
+    touch-action: pan-y;
+}
+
+.key-swatch {
+    border: var(--line-rule) solid var(--ink-muted);
+}
+
+.key-swatch:hover {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 1px var(--ink);
+}
+
+.key-swatch:focus-visible {
+    outline: var(--line-emphasis) solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* Selected: the fine ring, a surface gap then ink, drawn outward */
+.key-swatch[aria-pressed="true"],
+.key-well.is-active {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink);
+}
+
+.key-swatch[aria-pressed="true"]:focus-visible,
+.key-well.is-active:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 0 0 3.5px var(--ink);
+}
+
+.key-number {
+    font-style: italic;
+    line-height: 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+.key-swatch[aria-pressed="true"] + .key-number {
+    font-weight: 600;
+}
+
+.key-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    background: none;
+    border: var(--line-rule) solid var(--ink);
+}
+
+.key-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: var(--line-rule) dashed var(--ink-muted);
+}
+
+.key-more:hover,
+.key-add:hover,
+.key-more[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+.key-add-small {
+    width: 26px;
+    height: 26px;
+    margin-left: var(--space-2);
+}
+
+/* The background: ruled off, a colour well that opens the picker */
+.key-background {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 12px;
+    border-left: var(--line-rule) solid var(--frame);
+    cursor: pointer;
+}
+
+.key-background-label {
+    font: var(--text-caption);
+    color: var(--ink-secondary);
+}
+
+.key-well {
+    appearance: none;
+    -webkit-appearance: none;
+    width: var(--swatch);
+    height: var(--swatch);
+    flex-shrink: 0;
+    padding: 0;
+    background: none;
+    border: var(--line-rule) solid var(--ink-muted);
+    border-radius: 0;
+    cursor: pointer;
+    touch-action: pan-y;
+}
+
+.key-well::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.key-well::-webkit-color-swatch {
+    border: 0;
+    border-radius: 0;
+}
+
+.key-well::-moz-color-swatch {
+    border: 0;
+    border-radius: 0;
+}
+
+.key-well-small {
+    width: 24px;
+    height: 24px;
+}
+
+/* Dragging a swatch onto another (merge) or onto the background (swap) */
+.key.is-dragging,
+.key.is-dragging * {
+    cursor: grabbing;
+}
+
+.is-drag-source {
+    opacity: 0.5;
+}
+
+.is-drop-target {
+    outline: var(--line-select) dashed var(--ink);
+    outline-offset: 3px;
+}
+
+/* ---------- Palette row ---------- */
+
+.key-palette-row {
+    display: flex;
+    align-items: center;
+    min-height: var(--palette-row);
+    padding-right: 14px;
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-palette-button {
+    flex-shrink: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 12px 0 14px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.key-palette-button:hover,
+.key-palette-button[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+/* One strip of colours; each up to 36px wide, narrowed evenly to fit */
+.key-strip {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    border: var(--line-rule) solid var(--ink-muted);
+}
+
+.key-chip-place {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+}
+
+.key-chip {
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--strip-height);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.key-chip:hover {
+    box-shadow: inset 0 0 0 1px var(--ink), inset 0 0 0 2px var(--surface);
+}
+
+.key-chip:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: var(--line-emphasis) solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* ---------- Panels above the key ---------- */
+
+.key-popover {
+    position: absolute;
+    z-index: 20; /* above the chart's edge grips */
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: var(--line-rule) solid var(--frame);
+}
+
+.key-swatch-menu {
+    left: -1px;
+    bottom: calc(100% + 8px);
+    width: 168px;
+}
+
+.key-chip-menu {
+    left: -1px;
+    bottom: calc(100% + 6px);
+    width: 150px;
+}
+
+.key-more-panel {
+    left: -1px;
+    right: -1px;
+    bottom: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: 12px;
+    row-gap: var(--space-2);
+    padding: 10px 14px;
+}
+
+.key-palette-list {
+    left: -1px;
+    right: -1px;
+    bottom: var(--palette-row);
+}
+
+.key-menu-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: var(--menu-row-padding) 14px;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+label.key-menu-row {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.key-menu-row + .key-menu-row {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-menu-row:hover {
+    background: var(--ground);
+}
+
+/* Palette list: a row per palette with its strip; the selected one gets the filled square */
+.key-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    border-bottom: var(--line-hairline) solid var(--rule);
+    cursor: pointer;
+}
+
+.key-option:hover {
+    background: var(--ground);
+}
+
+.key-option:focus-visible {
+    outline: var(--line-emphasis) solid var(--accent);
+    outline-offset: -2px;
+}
+
+.key-option-mark {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+}
+
+.key-option[aria-selected="true"] {
+    font-weight: 600;
+}
+
+.key-option[aria-selected="true"] .key-option-mark {
+    background: var(--ink);
+}
+
+.key-option-name {
+    width: 56px;
+}
+
+.key-option-strip {
+    flex-grow: 1;
+    display: flex;
+    height: 12px;
+    border: var(--line-rule) solid var(--ink-muted);
+}
+
+.key-option-strip span {
+    flex: 1 1 0;
+}
+
+.key-load {
+    padding-left: 34px;
+    margin-top: -0.5px;
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+/* The hint under the key: always there, says what clicking the swatch again does */
+.key-hint {
+    width: 421px;
+    max-width: 100%;
+    font: var(--text-caption);
+    color: var(--ink-muted);
+    text-align: center;
+}
+
+/* ---------- Stacked: larger targets ---------- */
+
+.plate.is-stacked .key {
+    --swatch: 36px;
+    --strip-height: 28px;
+    --palette-row: 44px;
+    --menu-row-padding: 13px;
+}
+
+/* ---------- Phone: "Key" strip on top, 44px swatches, palette in a section ---------- */
+
+/* Outranks the stacked sizes above */
+.plate .key.key-phone {
+    --swatch: 44px;
+    --strip-height: 44px;
+    --menu-row-padding: 12px;
+
+    width: 100%;
+    font-size: 15px;
+    line-height: 20px;
+}
+
+.key-top {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    border-bottom: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-label {
+    padding: 0 12px;
+    border-right: 0;
+}
+
+.key-phone .key-background {
+    flex-direction: row;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    color: var(--ink-secondary);
+}
+
+.key-phone .key-background-label {
+    font: inherit;
+}
+
+.key-phone .key-background .key-well {
+    width: 30px;
+    height: 30px;
+}
+
+/* Six places, spread across the row: four colours, "+N" and add */
+.key-phone .key-swatches,
+.key-more-row {
+    display: grid;
+    grid-template-columns: repeat(6, var(--swatch));
+    justify-content: space-between;
+    row-gap: 12px;
+    padding: 12px clamp(0px, (100% - 6 * var(--swatch)) / 2, 16px);
+}
+
+.key-more-row {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-place {
+    gap: 4px;
+}
+
+.key-phone .key-number,
+.key-place-caption {
+    font-size: 15px;
+    line-height: 18px;
+}
+
+.key-place-caption {
+    font-style: italic;
+    color: var(--ink-secondary);
+}
+
+.key-phone .key-more {
+    font-size: 15px;
+    line-height: 20px;
+}
+
+.key-phone .key-swatch-menu {
+    width: 172px;
+}
+
+/* The palette's row: the word, its name and a strip that only shows its colours */
+.key-palette-trigger {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-top: var(--line-hairline) solid var(--rule);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.key-palette-trigger:active,
+.key-palette-trigger[aria-expanded="true"] {
+    background: var(--ground);
+}
+
+.key-palette-word {
+    color: var(--ink-secondary);
+}
+
+.key-palette-trigger .key-option-strip {
+    height: 14px;
+}
+
+.key-palette-trigger svg {
+    flex-shrink: 0;
+}
+
+.key-palette-section {
+    display: flex;
+    flex-direction: column;
+    border-top: var(--line-rule) solid var(--frame);
+}
+
+.key-strip-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 12px;
+}
+
+/* A custom colour's Use / Edit / Delete, as a row under the strip */
+.key-chip-row {
+    display: flex;
+    align-items: stretch;
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-chip-row .key-menu-row {
+    width: auto;
+    min-height: 44px;
+    padding: 0 12px;
+}
+
+.key-chip-row .key-menu-row:first-child {
+    flex: 1 1 auto;
+}
+
+.key-chip-row .key-menu-row + .key-menu-row {
+    justify-content: flex-start;
+    border-top: 0;
+    border-left: var(--line-hairline) solid var(--rule);
+}
+
+.key-chip-row .key-well-small {
+    width: 30px;
+    height: 30px;
+}
+
+.key-palette-section .key-listbox {
+    border-top: var(--line-hairline) solid var(--rule);
+}
+
+.key-phone .key-option {
+    min-height: 44px;
+    padding: 0 12px;
+}
+
+.key-phone .key-option-name {
+    width: 60px;
+}
+
+.key-phone .key-menu-row {
+    min-height: 44px;
+}
+
+.key-phone .key-load {
+    padding: 0 12px 0 32px;
+}

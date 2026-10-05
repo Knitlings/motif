@@ -1,0 +1,316 @@
+/* ============================================
+   TOP BAR
+   Shared by the editor and the help and about pages
+   ============================================ */
+
+.top-bar {
+    height: 64px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+    padding: 0 64px;
+    background: var(--surface);
+    border-bottom: var(--line-rule) solid var(--frame);
+}
+
+/* The wordmark: Motif over an accent rule as wide as the word */
+.wordmark {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    font: var(--text-heading);
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.wordmark::after {
+    content: "";
+    height: var(--line-emphasis);
+    background: var(--accent);
+}
+
+.wordmark:hover {
+    color: var(--ink);
+}
+
+/* ============================================
+   CONTENT PAGES (help and about)
+   ============================================ */
+
+.content-page {
+    width: 640px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 40px 0 64px;
+}
+
+.content-page h1 {
+    font: var(--text-display);
+    margin: 0;
+}
+
+/* Running text: body style, headings ruled off */
+.prose {
+    font: var(--text-body);
+}
+
+.content-page > .prose {
+    margin-top: var(--space-6);
+}
+
+.prose p {
+    margin: 0 0 12px;
+}
+
+.prose h2,
+.prose .section-head {
+    margin: 32px 0 12px;
+    padding-top: 20px;
+    border-top: var(--line-rule) solid var(--frame);
+    font: var(--text-heading);
+}
+
+/* Room above a heading reached from the contents */
+.prose h2[id] {
+    scroll-margin-top: var(--space-6);
+}
+
+.prose .section-head h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.prose > h2:first-child,
+.prose > .section-head:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.prose h3 {
+    margin: 20px 0 6px;
+    font: var(--text-subhead);
+    color: var(--ink);
+}
+
+.prose strong {
+    font-weight: 600;
+}
+
+.prose ul {
+    margin: 0 0 12px;
+    padding-left: 20px;
+    list-style: square;
+}
+
+.prose li {
+    margin: 0 0 6px;
+}
+
+.prose ul ul {
+    margin: 6px 0 0;
+}
+
+/* Names of things on the screen: semibold ink, never coloured */
+.ui-element {
+    font-weight: 600;
+}
+
+/* A key in a ruled box */
+.prose kbd {
+    font: var(--text-ui);
+    font-variant-numeric: tabular-nums;
+    padding: 0 5px;
+    border: var(--line-rule) solid var(--ink-muted);
+    white-space: nowrap;
+}
+
+/* Table: as wide as its content, a rule above and under the head, hairlines between rows */
+.table-scroll {
+    overflow-x: auto;
+}
+
+.prose table {
+    margin: 4px 0 16px;
+    border-collapse: collapse;
+    border-top: var(--line-rule) solid var(--frame);
+    font: var(--text-ui);
+    font-variant-numeric: tabular-nums;
+}
+
+.prose th {
+    padding: 6px var(--space-8) 6px 0;
+    text-align: left;
+    font-weight: 400;
+    color: var(--ink-secondary);
+    border-bottom: var(--line-rule) solid var(--frame);
+}
+
+.prose td {
+    padding: 6px var(--space-8) 6px 0;
+    border-bottom: var(--line-hairline) solid var(--rule);
+}
+
+.prose th:last-child,
+.prose td:last-child {
+    padding-right: 0;
+}
+
+.back-to-motif {
+    margin: 32px 0 0;
+}
+
+/* ============================================
+   HELP: title, contents and the Desktop / Touch choice in a side column
+   ============================================ */
+
+.help-page {
+    width: 976px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 40px 0 64px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.help-side {
+    position: sticky;
+    top: var(--space-6);
+    width: 288px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding-right: 48px;
+}
+
+.help-side h1 {
+    font: var(--text-display);
+}
+
+.help-page > .prose {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 48px;
+    border-left: var(--line-rule) solid var(--frame);
+}
+
+.side-label,
+.help-side legend {
+    margin-bottom: var(--space-2);
+    padding: 0;
+    font: var(--text-caption);
+    color: var(--ink-secondary);
+}
+
+.toc {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: var(--text-body);
+}
+
+.toc li {
+    margin: 0 0 6px;
+}
+
+.help-side fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.help-side legend {
+    float: left;
+    width: 100%;
+}
+
+/* "↑ Contents" links only on the narrow layout, where the contents scroll away */
+.to-contents {
+    display: none;
+    font: var(--text-ui);
+    white-space: nowrap;
+}
+
+/* Instructions for one way of working at a time */
+body[data-input-mode="desktop"] .touch-only,
+body[data-input-mode="touch"] .desktop-only {
+    display: none;
+}
+
+/* ============================================
+   NARROW: one column, contents first as 44px rows
+   ============================================ */
+
+@media (max-width: 1024px) {
+    .top-bar {
+        height: 56px;
+        padding: 0 var(--space-4);
+    }
+
+    .top-bar-back {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .content-page,
+    .help-page {
+        padding: var(--space-6) var(--space-4) 40px;
+    }
+
+    .help-page {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .help-side {
+        position: static;
+        width: auto;
+        padding-right: 0;
+        gap: var(--space-6);
+        margin-bottom: var(--space-8);
+    }
+
+    .help-page > .prose {
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .toc li {
+        margin: 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        border-bottom: var(--line-hairline) solid var(--rule);
+    }
+
+    .help-side fieldset {
+        gap: 0;
+    }
+
+    .choice {
+        min-height: 44px;
+        font-size: 15px;
+        line-height: 20px;
+    }
+
+    .prose .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-4);
+    }
+
+    .to-contents {
+        display: inline;
+    }
+}

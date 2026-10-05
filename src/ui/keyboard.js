@@ -46,6 +46,11 @@ export function setupKeyboardShortcuts(deps) {
             return;
         }
 
+        // A dialog holds the keyboard while it is open
+        if (document.querySelector('dialog[open]')) {
+            return;
+        }
+
         const ctrlKey = Utils.isMac() ? e.metaKey : e.ctrlKey;
 
         // Undo: Ctrl/Cmd + Z

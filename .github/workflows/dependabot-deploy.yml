@@ -25,6 +25,27 @@ jobs:
           ref: staging
           fetch-depth: 0
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      # Test staging here rather than relying on the PR's own checks: PRs
+      # created with GITHUB_TOKEN don't reliably trigger CI, and the
+      # immediate merge below would otherwise land before CI could run.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
       - name: Create and merge staging → main PR
         run: |
           EXISTING_PR=$(gh pr list --base main --head staging --state open --json number --jq '.[0].number')
@@ -40,13 +61,17 @@ jobs:
             PR_URL="$EXISTING_PR"
           fi
 
+          # Merge only the commit tested above, so anything pushed to staging
+          # since then can't ride along untested.
+          TESTED_SHA=$(git rev-parse HEAD)
+
           # Try an immediate merge first; fall back to --auto if the PR isn't
-          # mergeable yet (e.g. CI still running). `gh pr merge --auto` silently
-          # no-ops when no required check is pending, so relying on it alone
-          # can leave the PR stuck open indefinitely.
-          if ! gh pr merge --squash "$PR_URL" 2>/dev/null; then
+          # mergeable yet. `gh pr merge --auto` silently no-ops when no
+          # required check is pending, so relying on it alone can leave the
+          # PR stuck open indefinitely.
+          if ! gh pr merge --squash --match-head-commit "$TESTED_SHA" "$PR_URL" 2>/dev/null; then
             echo "Immediate merge not possible, queueing auto-merge"
-            gh pr merge --auto --squash "$PR_URL"
+            gh pr merge --auto --squash --match-head-commit "$TESTED_SHA" "$PR_URL"
           fi
 
           # Wait for auto-merge to complete (CI must pass first)
@@ -79,12 +104,6 @@ jobs:
           # can find a common ancestor (otherwise: "refusing to merge
           # unrelated histories").
           fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci

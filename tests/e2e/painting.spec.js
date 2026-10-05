@@ -26,24 +26,15 @@ test.describe('Canvas Painting', () => {
     await expect(canvas).toBeVisible();
   });
 
-  test('should show canvas instructions initially', async ({ page }) => {
-    const instructions = page.locator('#canvasInstructions');
-    await expect(instructions).toBeVisible();
-  });
+  test('should say what is being painted with under the key', async ({ page }) => {
+    const hint = page.locator('#keyHint');
+    await expect(hint).toBeVisible();
+    await expect(hint).toContainText('Painting with 1');
 
-  test('should hide canvas instructions after first interaction', async ({ page }) => {
-    const instructions = page.locator('#canvasInstructions');
-    const canvas = page.locator('#editCanvas');
-
-    // Verify instructions are visible initially
-    await expect(instructions).toBeVisible();
-
-    // Click on canvas
-    await canvas.click({ position: { x: 50, y: 50 } });
-
-    // Wait for fade-out animation and verify instructions are hidden
-    await page.waitForTimeout(500);
-    await expect(instructions).not.toBeVisible();
+    // The hint is below the key
+    const keyBox = await page.locator('#key').boundingBox();
+    const hintBox = await hint.boundingBox();
+    expect(hintBox.y).toBeGreaterThan(keyBox.y + keyBox.height);
   });
 
   test('should enable undo button after painting', async ({ page }) => {
