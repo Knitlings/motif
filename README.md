@@ -21,7 +21,7 @@ See the [Help page](https://motif.works/help.html) and [About page](https://moti
 
 ### Screenshots
 
-![A large pattern is repeated two times vertically](.github/media/screenshot1.png)
+![A large pattern is repeated three times across and twice up](.github/media/screenshot1.png)
 
 ![A border pattern is repeated three times horizontally](.github/media/screenshot2.png)
 
@@ -70,4 +70,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+Icons from [Phosphor Icons](https://phosphoricons.com) (Light weight), MIT License.
 

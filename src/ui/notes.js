@@ -7,6 +7,8 @@
 // takes it, and a lasting warning that hasn't been dismissed returns when the newer note
 // leaves. An error raised while a dialog is open shows in that dialog instead.
 
+import { canTakeFocus } from './focus.js';
+
 const STATUS_DURATION = 4000;
 
 const WARNING_MARK = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 1L13 12H1z"/><path d="M7 5v3.5M7 10v.5"/></svg>';
@@ -35,7 +37,20 @@ function buildNote(kind, text, onDismiss) {
         dismiss.type = 'button';
         dismiss.className = 'note-dismiss';
         dismiss.textContent = 'Dismiss';
-        dismiss.addEventListener('click', onDismiss);
+        // Dismissing removes the button, so focus goes back to where it came from:
+        // else the dialog's first control, or the chart
+        let cameFrom = null;
+        dismiss.addEventListener('focus', (e) => { cameFrom = e.relatedTarget; });
+        dismiss.addEventListener('click', () => {
+            const hadFocus = document.activeElement === dismiss;
+            const dialog = note.closest('dialog');
+            onDismiss();
+            if (!hadFocus) return;
+            const back = canTakeFocus(cameFrom) ? cameFrom
+                : dialog ? [...dialog.querySelectorAll('input, button, select, textarea')].find(canTakeFocus)
+                : document.getElementById('chartHeading');
+            back?.focus();
+        });
         note.append(dismiss);
     }
     return note;

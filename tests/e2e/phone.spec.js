@@ -92,7 +92,7 @@ test.describe('Phone', () => {
   });
 
   test('opens the palette as a section in the key', async ({ page }) => {
-    const trigger = page.getByRole('button', { name: 'Palette: Motif' });
+    const trigger = page.getByRole('button', { name: 'Palette Motif' });
     await trigger.click();
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const section = page.locator('#keyPaletteSection');
@@ -101,7 +101,7 @@ test.describe('Phone', () => {
     // Giving a colour or choosing a palette leaves it open
     await section.getByRole('button', { name: 'Make colour 1 #000000' }).click();
     await section.getByRole('option', { name: /Warm/ }).click();
-    await expect(page.getByRole('button', { name: 'Palette: Warm' })).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('button', { name: 'Palette Warm' })).toHaveAttribute('aria-expanded', 'true');
 
     // A custom colour's menu is a row under the strip
     await section.getByRole('option', { name: /Custom/ }).click();
@@ -114,11 +114,11 @@ test.describe('Phone', () => {
   });
 
   test('closes the palette section with Escape', async ({ page }) => {
-    await page.getByRole('button', { name: 'Palette: Motif' }).click();
+    await page.getByRole('button', { name: 'Palette Motif' }).click();
     await page.locator('#keyPaletteSection .key-chip').first().focus();
     await page.keyboard.press('Escape');
     await expect(page.locator('#keyPaletteSection')).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Palette: Motif' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Palette Motif' })).toBeFocused();
   });
 
   test('puts the surroundings picker\'s numbers on a line of their own', async ({ page }) => {

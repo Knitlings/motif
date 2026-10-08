@@ -8,6 +8,29 @@
 
   ## [Unreleased]
 
+  ## [2.0.0] - 2026-10-08
+
+  ### Changed
+  - A new look: Spectral type, square corners and one top bar
+  - The pattern's size and the preview's repeats are set in fields in the captions under the chart and above the preview, replacing the size headings and arrow buttons
+  - Colours live in a key under the chart: numbered swatches, the background in its own cell, and the palette as a strip beneath. Click the selected swatch again to change or remove it
+  - Charts fill their column; charts too large for the page scroll in a frame
+  - Surrounding stitches for a download are chosen with grips on the preview and fields in its caption
+  - Messages appear as notes in the top bar instead of pop-up dialogs, and busy buttons read "Preparing…" instead of a loading overlay
+  - Help and about pages rewritten for the new layout
+  - "Colour" throughout, and "pattern" rather than "canvas"
+
+  ### Added
+  - Stitch and row numbers beside the chart, counted from the right and the bottom
+  - One repeat is outlined on the preview
+  - A phone layout with 44px controls; tap a square to paint it, and drag to scroll
+
+  ### Fixed
+  - Keyboard and screen reader use: edge grips resize with the arrow keys, Import JSON works from the keyboard, each row of colours is one tab stop walked with the arrow keys, and focus returns to a sensible place after dialogs, removing a colour or dismissing a message
+
+  ### Dependencies
+  - Routine updates from Dependabot, including Vite 8, Vitest 4 and Playwright, with deploys moved to Cloudflare's wrangler-action
+
   ## [1.3.0] - 2026-03-17
 
   ### Added

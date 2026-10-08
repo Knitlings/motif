@@ -15,20 +15,24 @@
     border-bottom: var(--line-rule) solid var(--frame);
 }
 
-/* The wordmark: Motif over an accent rule as wide as the word */
+/* The wordmark: the repeat mark, then Motif, standing on the name's baseline */
 .wordmark {
     display: inline-flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
     font: var(--text-heading);
     color: var(--ink);
     text-decoration: none;
 }
 
-.wordmark::after {
+/* 7 × 7 stitches at 2px each; colours are accent and rule (see Logos in the design system) */
+.wordmark::before {
     content: "";
-    height: var(--line-emphasis);
-    background: var(--accent);
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    background: url("../assets/motif-mark.svg") no-repeat;
 }
 
 .wordmark:hover {

@@ -12,7 +12,7 @@
     --ink-muted: #6b6a63;     /* Captions and metadata, 5.4:1: the lightest text grey */
     --rule: #c8c7c3;          /* Hairline divisions */
     --frame: var(--ink);      /* Panel frames: drawn, not tinted */
-    --accent: #6a4d7e;        /* Links, active navigation, focus rings, wordmark rule only */
+    --accent: #6a4d7e;        /* Links, active navigation, focus rings, wordmark mark only */
     --accent-strong: #4e3a5e; /* Hover and active for anything in accent */
     --signal-error: #a32d2d;  /* Errors and destructive confirmation only */
 

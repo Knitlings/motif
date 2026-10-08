@@ -405,6 +405,20 @@ label.key-menu-row {
     --menu-row-padding: 13px;
 }
 
+/* Touch tablets: 44px targets, as on the phone */
+@media (pointer: coarse) {
+    .plate.is-stacked .key {
+        --swatch: 44px;
+        --strip-height: 44px;
+        --palette-row: 52px;
+    }
+
+    .plate.is-stacked .key .key-add-small {
+        width: 44px;
+        height: 44px;
+    }
+}
+
 /* ---------- Phone: "Key" strip on top, 44px swatches, palette in a section ---------- */
 
 /* Outranks the stacked sizes above */

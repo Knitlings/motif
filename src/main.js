@@ -37,6 +37,7 @@ import { applyDimensionInput } from './ui/handlers.js';
 import { setupTooltips } from './ui/tooltip.js';
 import { createKey } from './ui/key.js';
 import { createNotes, showDialogNote } from './ui/notes.js';
+import { listStep } from './ui/focus.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -265,6 +266,10 @@ let chartNumbersDrawn = '';
  */
 function applyChartFrame(layout) {
     const frame = document.getElementById('chartFrame');
+    // Named once: by the frame when it scrolls, else by the chart itself
+    const canvasLabel = layout.framed ? 'Pattern chart' : `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`;
+    const canvas = document.getElementById('editCanvas');
+    if (canvas.getAttribute('aria-label') !== canvasLabel) canvas.setAttribute('aria-label', canvasLabel);
     frame.classList.toggle('is-framed', layout.framed);
     frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
     frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
@@ -363,6 +368,10 @@ function showDeleteColorDialog(colorIndex) {
     showConfirmDialog('Remove colour?', message, 'Remove', (confirmed) => {
         if (confirmed) {
             deletePatternColor(colorIndex);
+            // The swatch that took its place, or else the selected one
+            if (!key.focus(`swatch-${Math.min(colorIndex, patternColors.length - 1)}`)) {
+                key.focus(`swatch-${activePatternIndex}`);
+            }
         }
     });
 }
@@ -782,7 +791,7 @@ document.getElementById('redoBtn').onclick = () => {
 
 document.getElementById('clearBtn').onclick = () => {
     showConfirmDialog(
-        'Clear canvas?',
+        'Clear pattern?',
         'This will erase all painted cells. This action can be undone.',
         'Clear',
         (confirmed) => {
@@ -790,7 +799,7 @@ document.getElementById('clearBtn').onclick = () => {
                 grid = createEmptyGrid(gridWidth, gridHeight);
                 saveToHistory();
                 updateCanvas();
-                announceToScreenReader('Canvas cleared');
+                announceToScreenReader('Pattern cleared');
             }
         }
     );
@@ -2263,10 +2272,10 @@ function setupHamburgerMenu() {
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
         // Up and down inside the ratio field and slider belong to them
         if (e.target.matches('.menu-custom input')) return;
-        e.preventDefault();
         const items = rows();
-        const at = items.indexOf(document.activeElement);
-        const next = e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+        const next = listStep(e, items.indexOf(document.activeElement), items.length);
+        if (next === null) return;
+        e.preventDefault();
         items[next].focus();
     });
 
