@@ -260,11 +260,11 @@ a.menu-row:hover {
     flex-shrink: 0;
 }
 
-.menu-option[aria-pressed="true"] {
+.menu-option[aria-checked="true"] {
     font-weight: 600;
 }
 
-.menu-option[aria-pressed="true"]::before {
+.menu-option[aria-checked="true"]::before {
     background: var(--ink);
 }
 

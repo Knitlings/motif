@@ -29,11 +29,11 @@ test.describe('Menu', () => {
     await expect(row).toContainText('Square 1:1');
 
     await row.click();
-    await page.getByRole('button', { name: 'Knit stitch 4:3', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Knit stitch 4:3', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('radio', { name: 'Knit stitch 4:3', exact: true }).click();
+    await expect(page.getByRole('radio', { name: 'Knit stitch 4:3', exact: true })).toHaveAttribute('aria-checked', 'true');
     await expect(row).toContainText('Knit stitch 4:3');
 
-    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    await page.getByRole('radio', { name: 'Custom', exact: true }).click();
     const field = page.getByLabel('Ratio', { exact: true });
     await expect(field).toBeFocused();
     await field.fill('2');

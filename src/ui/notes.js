@@ -35,7 +35,20 @@ function buildNote(kind, text, onDismiss) {
         dismiss.type = 'button';
         dismiss.className = 'note-dismiss';
         dismiss.textContent = 'Dismiss';
-        dismiss.addEventListener('click', onDismiss);
+        // Dismissing removes the button, so focus goes back to where it came from:
+        // else the dialog's first control, or the chart
+        let cameFrom = null;
+        dismiss.addEventListener('focus', (e) => { cameFrom = e.relatedTarget; });
+        dismiss.addEventListener('click', () => {
+            const hadFocus = document.activeElement === dismiss;
+            const dialog = note.closest('dialog');
+            onDismiss();
+            if (!hadFocus) return;
+            const back = cameFrom?.isConnected ? cameFrom
+                : dialog ? dialog.querySelector('input, button, select, textarea')
+                : document.getElementById('chartSection');
+            back?.focus();
+        });
         note.append(dismiss);
     }
     return note;

@@ -89,6 +89,40 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
     function focusById(id) {
         const target = root.querySelector(`[data-focus-id="${id}"]`);
         if (target) target.focus();
+        return Boolean(target);
+    }
+
+    // ---------- Keyboard: one tab stop per row of colours ----------
+
+    const ROVING_ITEMS = '.key-swatch, .key-more, .key-add, .key-chip';
+
+    /**
+     * A row of colours is one tab stop (the selected or open one, else the first);
+     * the arrow keys, Home and End move along it
+     */
+    function setUpRoving(container) {
+        const items = [...container.querySelectorAll(ROVING_ITEMS)];
+        if (!items.length) return;
+        const current = items.find(item => item.getAttribute('aria-pressed') === 'true'
+            || item.getAttribute('aria-expanded') === 'true') || items[0];
+        items.forEach(item => item.setAttribute('tabindex', item === current ? '0' : '-1'));
+
+        container.addEventListener('focusin', (e) => {
+            if (!items.includes(e.target)) return;
+            items.forEach(item => item.setAttribute('tabindex', item === e.target ? '0' : '-1'));
+        });
+        container.addEventListener('keydown', (e) => {
+            const at = items.indexOf(e.target);
+            if (at < 0) return;
+            const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+            let next;
+            if (step) next = (at + step + items.length) % items.length;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = items.length - 1;
+            else return;
+            e.preventDefault();
+            items[next].focus();
+        });
     }
 
     // ---------- Pointer gestures: drag to merge or swap, long press ----------
@@ -218,7 +252,6 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
             style: { backgroundColor: hex },
             'aria-label': `Colour ${number}, ${hex}`,
             'aria-pressed': selected ? 'true' : 'false',
-            'aria-haspopup': selected && !inMore ? 'true' : null,
             'aria-expanded': selected && !inMore ? String(menuOpen) : null,
             title: selected ? `Change or remove colour ${number}` : `Colour ${number} · ${shortcutFor(index)}`,
             'data-drop': String(index),
@@ -271,6 +304,8 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
                 onclick: () => {
                     open = null;
                     render();
+                    // The dialog gives focus back to the swatch when it closes
+                    focusById(`swatch-${index}`);
                     actions.removeColor(index);
                 }
             })
@@ -295,7 +330,7 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         const hidden = [...Array(count).keys()].filter(i => !shown.includes(i));
         const moreOpen = open === 'more' && hidden.length > 0;
 
-        const group = el('div', { class: 'key-swatches', role: 'group', 'aria-labelledby': 'keyLabel' },
+        const group = el('div', { class: 'key-swatches', role: 'group', 'aria-labelledby': 'keyLabel', 'data-roving': '' },
             shown.map(i => swatch(state, i)));
         // On a phone "+N" and add are captioned like the swatches' numbers
         const place = (button, caption) => (phone
@@ -339,7 +374,8 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
             ? el('div', {
                 class: phone ? 'key-more-row' : 'key-popover key-more-panel',
                 role: 'group',
-                'aria-label': 'More colours'
+                'aria-label': 'More colours',
+                'data-roving': ''
             }, hidden.map(i => swatch(state, i, { inMore: true })))
             : null;
 
@@ -389,6 +425,7 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         const strip = el('div', {
             class: 'key-strip',
             role: 'group',
+            'data-roving': '',
             'aria-label': isCustom ? 'Custom palette' : `Give colour ${activeNumber} a colour from the ${paletteName(id)} palette`,
             style: { maxWidth: `${colors.length * 36 + 2}px` }
         }, colors.map((hex, i) => chip(state, hex, i, isCustom)));
@@ -568,7 +605,6 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         const button = el('button', {
             type: 'button',
             class: 'key-palette-trigger',
-            'aria-label': `Palette: ${paletteName(id)}`,
             'aria-expanded': String(paletteSectionOpen),
             'aria-controls': 'keyPaletteSection',
             'data-focus-id': 'palette',
@@ -580,6 +616,7 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
             }
         }, [
             el('span', { class: 'key-palette-word', text: 'Palette' }),
+            ' ',
             el('span', { text: paletteName(id) }),
             el('span', { class: 'key-option-strip', 'aria-hidden': 'true' },
                 colors.map(hex => el('span', { style: { backgroundColor: hex } })))
@@ -602,6 +639,7 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         const strip = el('div', {
             class: 'key-strip',
             role: 'group',
+            'data-roving': '',
             'aria-label': isCustom ? 'Custom palette' : `Give colour ${activeNumber} a colour from the ${paletteName(id)} palette`,
             style: { maxWidth: `${colors.length * 56 + 2}px` }
         }, colors.map((hex, i) => chip(state, hex, i, isCustom, true)));
@@ -661,6 +699,7 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
             return;
         }
 
+        root.querySelectorAll('[data-roving]').forEach(setUpRoving);
         if (focusedId) focusById(focusedId);
         renderHint(state);
     }
@@ -694,6 +733,16 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         if (open !== null && !root.contains(e.target)) close();
     });
 
+    // Tabbing out of a panel floating over the page closes it; focus stays where it went
+    root.addEventListener('focusout', (e) => {
+        const popover = root.querySelector('.key-popover');
+        const to = e.relatedTarget;
+        if (open === null || !popover || !to) return;
+        if (popover.contains(to) || to.getAttribute('aria-expanded') === 'true') return;
+        // Wait for focus to arrive, so drawing the key again keeps it there
+        setTimeout(() => close());
+    });
+
     root.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         if (open === null) {
@@ -714,5 +763,5 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         close(returnTo);
     });
 
-    return { render, refreshSelection, close };
+    return { render, refreshSelection, close, focus: focusById };
 }

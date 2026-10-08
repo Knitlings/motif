@@ -265,6 +265,7 @@ let chartNumbersDrawn = '';
  */
 function applyChartFrame(layout) {
     const frame = document.getElementById('chartFrame');
+    document.getElementById('editCanvas').setAttribute('aria-label', `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`);
     frame.classList.toggle('is-framed', layout.framed);
     frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
     frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
@@ -363,6 +364,10 @@ function showDeleteColorDialog(colorIndex) {
     showConfirmDialog('Remove colour?', message, 'Remove', (confirmed) => {
         if (confirmed) {
             deletePatternColor(colorIndex);
+            // The swatch that took its place, or else the selected one
+            if (!key.focus(`swatch-${Math.min(colorIndex, patternColors.length - 1)}`)) {
+                key.focus(`swatch-${activePatternIndex}`);
+            }
         }
     });
 }
@@ -1914,7 +1919,7 @@ function syncAspectRatioControls({ updateField = true } = {}) {
         });
     }
     const chosen = preset || document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn === chosen)));
+    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-checked', String(btn === chosen)));
 
     const isCustom = chosen.dataset.ratio === 'custom';
     customRatioControls.hidden = !isCustom;

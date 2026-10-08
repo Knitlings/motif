@@ -11,10 +11,10 @@
 </head>
 <body>
     <!-- Skip to main content link for keyboard users -->
-    <a href="#editCanvas" class="skip-link">Skip to pattern</a>
+    <a href="#chartSection" class="skip-link">Skip to pattern</a>
 
     <header class="top-bar editor-top-bar">
-        <span class="wordmark">Motif</span>
+        <h1 class="wordmark">Motif</h1>
         <div class="top-bar-centre note-slot" id="noteSlot">
             <!-- Status, warning and error notes: src/ui/notes.js -->
         </div>
@@ -36,10 +36,10 @@
                         <span class="menu-value" id="cellAspectRatioValue">Square 1:1</span>
                     </button>
                     <div class="menu-section" id="cellAspectRatioSection" hidden>
-                        <div role="group" aria-label="Cell aspect ratio">
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="1.0" aria-pressed="true">Square 1:1</button>
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="0.75" aria-pressed="false">Knit stitch 4:3</button>
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="custom" aria-pressed="false">Custom</button>
+                        <div role="radiogroup" aria-label="Cell aspect ratio">
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="1.0" role="radio" aria-checked="true">Square 1:1</button>
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="0.75" role="radio" aria-checked="false">Knit stitch 4:3</button>
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="custom" role="radio" aria-checked="false">Custom</button>
                         </div>
                         <div class="menu-custom" id="customRatioControls" hidden>
                             <label for="ratioDisplay2" class="menu-custom-label">Ratio</label>
@@ -60,17 +60,18 @@
     <main class="plate" id="plate">
         <!-- Status announcements for screen readers -->
         <div id="statusAnnouncements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+        <p id="gripHelp" hidden>Drag it, or press the arrow keys</p>
 
-        <section class="plate-chart" aria-label="The pattern">
+        <section class="plate-chart" id="chartSection" tabindex="-1" aria-label="The pattern">
             <div class="chart-area">
                 <div class="chart-frame" id="chartFrame">
                     <div class="chart-grid">
                         <div class="canvas-resize-container">
-                            <canvas id="editCanvas" role="img" aria-label="Grid pattern editor canvas - click to paint, shift-click to erase"></canvas>
-                            <button type="button" class="edge-grip edge-grip-top resize-handle" data-direction="top" aria-label="Drag to add or remove rows at the top" aria-keyshortcuts="ArrowUp ArrowDown"></button>
-                            <button type="button" class="edge-grip edge-grip-right resize-handle" data-direction="right" aria-label="Drag to add or remove stitches on the right" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
-                            <button type="button" class="edge-grip edge-grip-bottom resize-handle" data-direction="bottom" aria-label="Drag to add or remove rows at the bottom" aria-keyshortcuts="ArrowDown ArrowUp"></button>
-                            <button type="button" class="edge-grip edge-grip-left resize-handle" data-direction="left" aria-label="Drag to add or remove stitches on the left" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
+                            <canvas id="editCanvas" role="img" aria-label="Pattern chart"></canvas>
+                            <button type="button" class="edge-grip edge-grip-top resize-handle" data-direction="top" aria-label="Add or remove rows at the top" aria-describedby="gripHelp" aria-keyshortcuts="ArrowUp ArrowDown"></button>
+                            <button type="button" class="edge-grip edge-grip-right resize-handle" data-direction="right" aria-label="Add or remove stitches on the right" aria-describedby="gripHelp" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
+                            <button type="button" class="edge-grip edge-grip-bottom resize-handle" data-direction="bottom" aria-label="Add or remove rows at the bottom" aria-describedby="gripHelp" aria-keyshortcuts="ArrowDown ArrowUp"></button>
+                            <button type="button" class="edge-grip edge-grip-left resize-handle" data-direction="left" aria-label="Add or remove stitches on the left" aria-describedby="gripHelp" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
                         </div>
                         <div class="chart-row-numbers" id="chartRowNumbers" aria-hidden="true"></div>
                         <div class="chart-stitch-numbers" id="chartStitchNumbers" aria-hidden="true"></div>
@@ -153,10 +154,10 @@
                     <canvas id="previewCanvas" role="img" aria-label="Tiled pattern preview"></canvas>
                     <!-- The download's heavy frame while surrounding stitches are chosen -->
                     <div class="picker-frame" id="pickerFrame" hidden>
-                        <button type="button" class="edge-grip edge-grip-top" data-side="top" aria-label="Drag to add or remove surrounding rows at the top" aria-keyshortcuts="ArrowUp ArrowDown"></button>
-                        <button type="button" class="edge-grip edge-grip-right" data-side="right" aria-label="Drag to add or remove surrounding stitches on the right" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
-                        <button type="button" class="edge-grip edge-grip-bottom" data-side="bottom" aria-label="Drag to add or remove surrounding rows at the bottom" aria-keyshortcuts="ArrowDown ArrowUp"></button>
-                        <button type="button" class="edge-grip edge-grip-left" data-side="left" aria-label="Drag to add or remove surrounding stitches on the left" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
+                        <button type="button" class="edge-grip edge-grip-top" data-side="top" aria-label="Add or remove surrounding rows at the top" aria-describedby="gripHelp" aria-keyshortcuts="ArrowUp ArrowDown"></button>
+                        <button type="button" class="edge-grip edge-grip-right" data-side="right" aria-label="Add or remove surrounding stitches on the right" aria-describedby="gripHelp" aria-keyshortcuts="ArrowRight ArrowLeft"></button>
+                        <button type="button" class="edge-grip edge-grip-bottom" data-side="bottom" aria-label="Add or remove surrounding rows at the bottom" aria-describedby="gripHelp" aria-keyshortcuts="ArrowDown ArrowUp"></button>
+                        <button type="button" class="edge-grip edge-grip-left" data-side="left" aria-label="Add or remove surrounding stitches on the left" aria-describedby="gripHelp" aria-keyshortcuts="ArrowLeft ArrowRight"></button>
                     </div>
                 </div>
             </div>

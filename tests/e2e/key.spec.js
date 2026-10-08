@@ -19,7 +19,7 @@ async function setColourInput(locator, hex) {
 const isPhone = (page) => page.viewportSize().width <= 600;
 
 async function showPaletteColours(page) {
-  if (isPhone(page)) await page.getByRole('button', { name: /^Palette: / }).click();
+  if (isPhone(page)) await page.getByRole('button', { name: /^Palette:? / }).click();
 }
 
 async function drag(page, from, to) {
@@ -133,7 +133,7 @@ test.describe('Key', () => {
   });
 
   test('loads the palette into the key', async ({ page }) => {
-    await page.getByRole('button', { name: 'Palette: Motif' }).click();
+    await page.getByRole('button', { name: /^Palette:? Motif/ }).click();
     await page.getByRole('button', { name: 'Load palette' }).click();
     // Twelve colours: some go behind "+N"
     await expect(page.getByRole('button', { name: /more colours/ })).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('Key', () => {
   });
 
   test('edits the custom palette', async ({ page }) => {
-    await page.getByRole('button', { name: 'Palette: Motif' }).click();
+    await page.getByRole('button', { name: /^Palette:? Motif/ }).click();
     await page.getByRole('option', { name: /Custom/ }).click();
     // On a phone the section stays open on choosing a palette
     if (!isPhone(page)) await expect(page.getByRole('listbox', { name: 'Palette' })).toBeHidden();

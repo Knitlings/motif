@@ -64,14 +64,14 @@ test.describe('UI Controls', () => {
     const initialHeight = parseInt(await heightDisplay.inputValue());
 
     // Outward adds a stitch at that edge, inward removes one
-    const rightGrip = page.getByRole('button', { name: 'Drag to add or remove stitches on the right' });
+    const rightGrip = page.getByRole('button', { name: 'Add or remove stitches on the right' });
     await rightGrip.focus();
     await page.keyboard.press('ArrowRight');
     await expect(widthDisplay).toHaveValue(String(initialWidth + 1));
     await page.keyboard.press('ArrowLeft');
     await expect(widthDisplay).toHaveValue(String(initialWidth));
 
-    const topGrip = page.getByRole('button', { name: 'Drag to add or remove rows at the top' });
+    const topGrip = page.getByRole('button', { name: 'Add or remove rows at the top' });
     await topGrip.focus();
     await page.keyboard.press('ArrowUp');
     await expect(heightDisplay).toHaveValue(String(initialHeight + 1));

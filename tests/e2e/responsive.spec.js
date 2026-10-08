@@ -35,7 +35,7 @@ for (const { name, viewport, topBar } of VIEWPORTS) {
     });
 
     test('opens the palette list', async ({ page }) => {
-      await page.getByRole('button', { name: /^Palette:/ }).click();
+      await page.getByRole('button', { name: /^Palette:? / }).click();
       await expect(page.getByRole('listbox', { name: 'Palette' })).toBeVisible();
     });
 
