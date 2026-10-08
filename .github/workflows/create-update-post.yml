@@ -3,10 +3,18 @@ name: Create Update Post
 on:
   release:
     types: [published]
+  # Re-run a post for a published release (a release event runs the workflow as it was at the tag)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v2.0.0'
+        required: true
 
 jobs:
   create-post:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - name: Checkout motif repo
         uses: actions/checkout@v7
@@ -24,7 +32,7 @@ jobs:
         id: changelog
         run: |
           cd motif
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="$TAG"
           VERSION_NO_V="${VERSION#v}"  # Remove 'v' prefix if present
 
           # Extract the changelog section for this version
@@ -67,9 +75,8 @@ jobs:
         run: |
           cd knitlings
 
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="$TAG"
           VERSION_NO_V="${VERSION#v}"
-          RELEASE_NAME="${{ github.event.release.name }}"
           RELEASE_DATE=$(date +%Y-%m-%d)
           RELEASE_URL="https://github.com/Knitlings/motif/releases/tag/${VERSION}"
 
@@ -100,17 +107,17 @@ jobs:
           cat "$FILENAME"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           path: knitlings
           token: ${{ secrets.KNITLINGS_PAT }}
-          commit-message: "Add update post for Motif ${{ github.event.release.tag_name }}"
-          branch: update-motif-${{ github.event.release.tag_name }}
-          title: "Update: Motif ${{ github.event.release.tag_name }}"
+          commit-message: "Add update post for Motif ${{ env.TAG }}"
+          branch: update-motif-${{ env.TAG }}
+          title: "Update: Motif ${{ env.TAG }}"
           body: |
-            Automated update post from Motif release ${{ github.event.release.tag_name }}
+            Automated update post from Motif release ${{ env.TAG }}
 
-            Release: ${{ github.event.release.html_url }}
+            Release: https://github.com/Knitlings/motif/releases/tag/${{ env.TAG }}
 
             ## Changelog
 
