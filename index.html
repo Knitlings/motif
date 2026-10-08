@@ -11,7 +11,7 @@
 </head>
 <body>
     <!-- Skip to main content link for keyboard users -->
-    <a href="#chartSection" class="skip-link">Skip to pattern</a>
+    <a href="#chartHeading" class="skip-link">Skip to pattern</a>
 
     <header class="top-bar editor-top-bar">
         <h1 class="wordmark">Motif</h1>
@@ -36,10 +36,10 @@
                         <span class="menu-value" id="cellAspectRatioValue">Square 1:1</span>
                     </button>
                     <div class="menu-section" id="cellAspectRatioSection" hidden>
-                        <div role="radiogroup" aria-label="Cell aspect ratio">
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="1.0" role="radio" aria-checked="true">Square 1:1</button>
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="0.75" role="radio" aria-checked="false">Knit stitch 4:3</button>
-                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="custom" role="radio" aria-checked="false">Custom</button>
+                        <div role="group" aria-label="Cell aspect ratio">
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="1.0" aria-pressed="true">Square 1:1</button>
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="0.75" aria-pressed="false">Knit stitch 4:3</button>
+                            <button type="button" class="menu-row menu-option ratio-preset-btn" data-ratio="custom" aria-pressed="false">Custom</button>
                         </div>
                         <div class="menu-custom" id="customRatioControls" hidden>
                             <label for="ratioDisplay2" class="menu-custom-label">Ratio</label>
@@ -62,7 +62,8 @@
         <div id="statusAnnouncements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
         <p id="gripHelp" hidden>Drag it, or press the arrow keys</p>
 
-        <section class="plate-chart" id="chartSection" tabindex="-1" aria-label="The pattern">
+        <section class="plate-chart" aria-labelledby="chartHeading">
+            <h2 id="chartHeading" class="sr-only" tabindex="-1">The pattern</h2>
             <div class="chart-area">
                 <div class="chart-frame" id="chartFrame">
                     <div class="chart-grid">

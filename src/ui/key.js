@@ -10,6 +10,7 @@
 // through the actions passed in, so main.js keeps the state, history and saving.
 
 import { CONFIG, UI_CONSTANTS } from '../config.js';
+import { listStep } from './focus.js';
 
 const PALETTE_IDS = ['motif', 'warm', 'cool', 'autumn', 'custom'];
 const DRAG_THRESHOLD = 5;
@@ -114,12 +115,8 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         container.addEventListener('keydown', (e) => {
             const at = items.indexOf(e.target);
             if (at < 0) return;
-            const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-            let next;
-            if (step) next = (at + step + items.length) % items.length;
-            else if (e.key === 'Home') next = 0;
-            else if (e.key === 'End') next = items.length - 1;
-            else return;
+            const next = listStep(e, at, items.length, ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+            if (next === null) return;
             e.preventDefault();
             items[next].focus();
         });
@@ -566,13 +563,10 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
             onkeydown: (e) => {
                 const items = [...listbox.querySelectorAll('[role="option"]')];
                 const at = items.indexOf(document.activeElement);
-                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                const next = listStep(e, at, items.length);
+                if (next !== null) {
                     e.preventDefault();
-                    const next = (at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
                     items[next].focus();
-                } else if (e.key === 'Home' || e.key === 'End') {
-                    e.preventDefault();
-                    items[e.key === 'Home' ? 0 : items.length - 1].focus();
                 } else if ((e.key === 'Enter' || e.key === ' ') && at >= 0) {
                     e.preventDefault();
                     items[at].click();
@@ -733,14 +727,39 @@ export function createKey({ getState, actions, isStacked, isPhone, isTouch }) {
         if (open !== null && !root.contains(e.target)) close();
     });
 
-    // Tabbing out of a panel floating over the page closes it; focus stays where it went
+    // Tabbing out of a panel floating over the page closes it; focus stays where it went.
+    // Clicks are left to the click handlers: drawing the key again between pressing and
+    // releasing would lose the click.
+    let pointerHeld = false;
+    document.addEventListener('pointerdown', () => { pointerHeld = true; }, { capture: true });
+    window.addEventListener('pointerup', () => { pointerHeld = false; }, { capture: true });
+    window.addEventListener('pointercancel', () => { pointerHeld = false; }, { capture: true });
+
     root.addEventListener('focusout', (e) => {
         const popover = root.querySelector('.key-popover');
         const to = e.relatedTarget;
-        if (open === null || !popover || !to) return;
+        if (open === null || !popover || !to || pointerHeld) return;
         if (popover.contains(to) || to.getAttribute('aria-expanded') === 'true') return;
         // Wait for focus to arrive, so drawing the key again keeps it there
         setTimeout(() => close());
+    });
+
+    // The "+N" panel and the palette list sit apart from their buttons, after the palette row:
+    // Tab goes from the button into the panel, and Shift+Tab from the panel back to the button
+    root.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab' || open === null) return;
+        const popover = root.querySelector('.key-popover');
+        const trigger = root.querySelector('[aria-expanded="true"]');
+        if (!popover || !trigger || trigger.parentElement.contains(popover)) return;
+        const first = popover.querySelector('[tabindex="0"], [aria-selected="true"], button:not([tabindex="-1"])');
+        if (!e.shiftKey && e.target === trigger && first) {
+            e.preventDefault();
+            first.focus();
+        } else if (e.shiftKey && [popover, popover.firstElementChild].includes(e.target.closest('[data-roving], [role="listbox"]'))) {
+            // From the panel's first stop: its colours, or the list of palettes
+            e.preventDefault();
+            trigger.focus();
+        }
     });
 
     root.addEventListener('keydown', (e) => {

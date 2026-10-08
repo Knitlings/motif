@@ -19,7 +19,7 @@ test('the skip link moves focus to the chart', async ({ page }) => {
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Skip to pattern' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#chartSection')).toBeFocused();
+  await expect(page.locator('#chartHeading')).toBeFocused();
 });
 
 test('the chart is named with its size', async ({ page }) => {
@@ -72,6 +72,30 @@ test('tabbing out of the swatch menu closes it', async ({ page }) => {
   // Colour 1 has no Remove: its menu holds only the colour well
   await page.keyboard.press('Tab');
   await expect(menu).toBeHidden();
+});
+
+test('clicking another colour while the swatch menu is open selects it', async ({ page }) => {
+  await page.getByRole('button', { name: 'Add colour' }).click();
+  await swatch(page, 1).click();
+  await swatch(page, 1).click();
+  await expect(page.getByRole('group', { name: 'Colour 1', exact: true })).toBeVisible();
+  await page.getByRole('group', { name: 'Colour 1', exact: true }).getByLabel('Change colour 1').focus();
+  await swatch(page, 2).click();
+  await expect(swatch(page, 2)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Tab goes from "+N" into its panel and Shift+Tab comes back', async ({ page }) => {
+  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: 'Add colour' }).click();
+  await swatch(page, 1).click();
+  const more = page.getByRole('button', { name: /more colours/ });
+  await more.click();
+  const panel = page.getByRole('group', { name: 'More colours' });
+  await more.focus();
+  await page.keyboard.press('Tab');
+  await expect(panel.getByRole('button').first()).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(more).toBeFocused();
+  await expect(panel).toBeVisible();
 });
 
 test('dismissing a note returns focus to where it came from', async ({ page }) => {

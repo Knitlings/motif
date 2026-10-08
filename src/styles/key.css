@@ -410,6 +410,7 @@ label.key-menu-row {
     .plate.is-stacked .key {
         --swatch: 44px;
         --strip-height: 44px;
+        --palette-row: 52px;
     }
 
     .plate.is-stacked .key .key-add-small {

@@ -37,6 +37,7 @@ import { applyDimensionInput } from './ui/handlers.js';
 import { setupTooltips } from './ui/tooltip.js';
 import { createKey } from './ui/key.js';
 import { createNotes, showDialogNote } from './ui/notes.js';
+import { listStep } from './ui/focus.js';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -265,7 +266,10 @@ let chartNumbersDrawn = '';
  */
 function applyChartFrame(layout) {
     const frame = document.getElementById('chartFrame');
-    document.getElementById('editCanvas').setAttribute('aria-label', `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`);
+    // Named once: by the frame when it scrolls, else by the chart itself
+    const canvasLabel = layout.framed ? 'Pattern chart' : `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`;
+    const canvas = document.getElementById('editCanvas');
+    if (canvas.getAttribute('aria-label') !== canvasLabel) canvas.setAttribute('aria-label', canvasLabel);
     frame.classList.toggle('is-framed', layout.framed);
     frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
     frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
@@ -1919,7 +1923,7 @@ function syncAspectRatioControls({ updateField = true } = {}) {
         });
     }
     const chosen = preset || document.querySelector('.ratio-preset-btn[data-ratio="custom"]');
-    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-checked', String(btn === chosen)));
+    ratioPresetButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn === chosen)));
 
     const isCustom = chosen.dataset.ratio === 'custom';
     customRatioControls.hidden = !isCustom;
@@ -2268,10 +2272,10 @@ function setupHamburgerMenu() {
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
         // Up and down inside the ratio field and slider belong to them
         if (e.target.matches('.menu-custom input')) return;
-        e.preventDefault();
         const items = rows();
-        const at = items.indexOf(document.activeElement);
-        const next = e.key === 'ArrowDown' ? (at + 1) % items.length : (at - 1 + items.length) % items.length;
+        const next = listStep(e, items.indexOf(document.activeElement), items.length);
+        if (next === null) return;
+        e.preventDefault();
         items[next].focus();
     });
 
