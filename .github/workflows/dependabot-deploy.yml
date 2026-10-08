@@ -13,6 +13,9 @@ permissions:
   contents: write
   pull-requests: write
   deployments: write
+  # Read the PR's checks before merging
+  checks: read
+  statuses: read
 
 jobs:
   deploy:
@@ -64,6 +67,21 @@ jobs:
           # Merge only the commit tested above, so anything pushed to staging
           # since then can't ride along untested.
           TESTED_SHA=$(git rev-parse HEAD)
+
+          # Let the PR's own runs (CI, preview deploy) finish before merging.
+          # Merging first closes the PR before they start, and they then
+          # fail with zero jobs. If none show up, the tests above still gate.
+          echo "Waiting for PR checks to appear..."
+          for i in $(seq 1 12); do
+            COUNT=$(gh pr checks "$PR_URL" --json name --jq 'length' 2>/dev/null || echo 0)
+            [ "$COUNT" -gt 0 ] && break
+            sleep 10
+          done
+          if [ "$COUNT" -gt 0 ]; then
+            gh pr checks "$PR_URL" --watch --interval 15
+          else
+            echo "No PR checks appeared; merging on the tests above"
+          fi
 
           # Try an immediate merge first; fall back to --auto if the PR isn't
           # mergeable yet. `gh pr merge --auto` silently no-ops when no
