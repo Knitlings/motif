@@ -49,12 +49,24 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
+      # Open the PR as the deploy app rather than with GITHUB_TOKEN, whose
+      # PRs never get CI or preview runs (they fail with zero jobs instead).
+      - name: Get deploy app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEPLOY_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEPLOY_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
+          permission-contents: read
+
       - name: Create and merge staging → main PR
+        id: merge
         run: |
           EXISTING_PR=$(gh pr list --base main --head staging --state open --json number --jq '.[0].number')
 
           if [ -z "$EXISTING_PR" ]; then
-            PR_URL=$(gh pr create \
+            PR_URL=$(GH_TOKEN="$APP_TOKEN" gh pr create \
               --base main \
               --head staging \
               --title "chore: Dependabot dependency updates" \
@@ -69,8 +81,8 @@ jobs:
           TESTED_SHA=$(git rev-parse HEAD)
 
           # Let the PR's own runs (CI, preview deploy) finish before merging.
-          # Merging first closes the PR before they start, and they then
-          # fail with zero jobs. If none show up, the tests above still gate.
+          # If none show up (e.g. a PR left over from an earlier run), the
+          # tests above still gate.
           echo "Waiting for PR checks to appear..."
           for i in $(seq 1 12); do
             COUNT=$(gh pr checks "$PR_URL" --json name --jq 'length' 2>/dev/null || echo 0)
@@ -81,6 +93,15 @@ jobs:
             gh pr checks "$PR_URL" --watch --interval 15
           else
             echo "No PR checks appeared; merging on the tests above"
+          fi
+
+          # If staging moved since we tested it, a later run (queued in the
+          # same concurrency group) tests and deploys the newer head.
+          CURRENT_SHA=$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')
+          if [ "$CURRENT_SHA" != "$TESTED_SHA" ]; then
+            echo "::notice::staging moved from $TESTED_SHA to $CURRENT_SHA since testing; leaving the merge to the next run"
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           # Try an immediate merge first; fall back to --auto if the PR isn't
@@ -111,10 +132,12 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
 
       # Build and deploy directly since GITHUB_TOKEN merges don't trigger
       # other workflows (deploy-production.yml won't fire)
       - name: Checkout main (post-merge)
+        if: steps.merge.outputs.superseded != 'true'
         uses: actions/checkout@v7
         with:
           ref: main
@@ -124,12 +147,15 @@ jobs:
           fetch-depth: 0
 
       - name: Install dependencies
+        if: steps.merge.outputs.superseded != 'true'
         run: npm ci
 
       - name: Build for production
+        if: steps.merge.outputs.superseded != 'true'
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
+        if: steps.merge.outputs.superseded != 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -140,6 +166,7 @@ jobs:
       # Sync main back into staging (won't trigger sync-staging.yml
       # due to GITHUB_TOKEN limitation, so we do it here directly)
       - name: Sync main into staging
+        if: steps.merge.outputs.superseded != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
