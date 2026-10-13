@@ -19,8 +19,17 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Retried because this call intermittently fails with "Branch does not
+      # have required protected branch rules" when two dependabot PRs arrive
+      # close together.
       - name: Enable auto-merge
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          for i in 1 2 3; do
+            gh pr merge --auto --squash "$PR_URL" && exit 0
+            echo "Enabling auto-merge failed (attempt $i/3), retrying..."
+            sleep 20
+          done
+          exit 1
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
