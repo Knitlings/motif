@@ -7,6 +7,13 @@ async function setSize(page, width, height) {
   await page.locator('#gridHeightDisplay').press('Enter');
 }
 
+async function squareColour(page, x, y) {
+  return page.locator('#editCanvas').evaluate((canvas, [px, py]) => {
+    const [r, g, b] = canvas.getContext('2d').getImageData(px, py, 1, 1).data;
+    return `rgb(${r}, ${g}, ${b})`;
+  }, [x, y]);
+}
+
 test.describe('Chart size and numbers', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -59,22 +66,28 @@ test.describe('Chart size and numbers', () => {
     await expect(left).toBeInViewport();
   });
 
+  test('keeps the caption, key and preview in the window beside a wide chart', async ({ page }) => {
+    await setSize(page, 100, 100);
+    for (const selector of ['.caption-line-chart .caption-actions', '#key', '#previewCanvas']) {
+      const box = await page.locator(selector).boundingBox();
+      expect(box.x, selector).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, selector).toBeLessThanOrEqual(1440);
+    }
+  });
+
+  test('stacks a chart too tall for the window', async ({ page }) => {
+    await setSize(page, 20, 200);
+    await expect(page.locator('#plate')).toHaveClass(/is-stacked/);
+  });
+
   test('paints the right square on a scrolled page', async ({ page }) => {
     await setSize(page, 100, 100);
     await page.evaluate(() => { document.body.scrollLeft = 400; document.body.scrollTop = 300; });
+    // The square at 410, 310 on the canvas: column 21, row 16
+    const before = await squareColour(page, 410, 310);
     const box = await page.locator('#editCanvas').boundingBox();
     await page.mouse.click(box.x + 410, box.y + 310);
-    await expect(page.locator('#undoBtn')).toBeEnabled();
-  });
-
-  test('paints the right square in a scrolled frame', async ({ page }) => {
-    await setSize(page, 100, 100);
-    const frame = page.locator('#chartFrame');
-    await frame.evaluate(el => { el.scrollLeft = 400; el.scrollTop = 300; });
-
-    // Click the top-left square visible in the frame: column 20, row 15
-    const box = await frame.boundingBox();
-    await page.mouse.click(box.x + 10, box.y + 10);
-    await expect(page.locator('#undoBtn')).toBeEnabled();
+    await expect.poll(() => squareColour(page, 410, 310)).not.toBe(before);
+    expect(await squareColour(page, 390, 310)).toBe(before);
   });
 });

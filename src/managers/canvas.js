@@ -199,7 +199,7 @@ export const CanvasManager = {
      * @param {Object} [options]
      * @param {{left: number, right: number, top: number, bottom: number}|null} [options.surroundings]
      *   - Surrounding stitches being chosen on a 3 x 3 preview (replaces the one-repeat outline)
-     * @returns {{stacked: boolean, previewWidth: number, outlined: boolean, cellWidth: number, cellHeight: number,
+     * @returns {{stacked: boolean, wide: boolean, previewWidth: number, outlined: boolean, cellWidth: number, cellHeight: number,
      *   stitchNumberEvery: number, rowNumberEvery: number}} The layout chosen
      */
     update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor, options = {}) {
@@ -217,7 +217,7 @@ export const CanvasManager = {
         const isLandscape = effectiveWidth > currentHeight;
         const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
 
-        let cellSize, shouldStack;
+        let cellSize, shouldStack, wide;
         const isPhone = effectiveWidth <= CONFIG.PHONE_BREAKPOINT;
         const plateWidth = effectiveWidth - 2 * (isMobile ? CONFIG.PLATE_PADDING_NARROW : CONFIG.PLATE_PADDING_DESKTOP);
         if (isPhone) {
@@ -230,16 +230,23 @@ export const CanvasManager = {
             const maxChartHeight = roomHeight - CONFIG.PHONE_NUMBERS_HEIGHT - 2;
             cellSize = this.fitCells(gridWidth, gridHeight, aspectRatio, maxChartWidth, maxChartHeight);
             shouldStack = true;
+            wide = gridWidth * cellSize.width > maxChartWidth + 0.5;
         } else {
             // Desktop plate: the chart fills its column, as wide as the key. The column widens
             // with a chart held at the 20px floor; chart and preview stay side by side while
             // both fit at their natural sizes. Tablets always stack. Too large for the page,
-            // the chart keeps its squares and grips and the page scrolls.
+            // the chart keeps its squares and grips and the page scrolls; it stacks then, so
+            // the caption and key stay under it and the preview below.
+            const headerHeight = isMobile ? CONFIG.HEADER_HEIGHT_MOBILE : CONFIG.HEADER_HEIGHT_DESKTOP;
             cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, CONFIG.CHART_COLUMN_WIDTH);
             const chartWidth = gridWidth * cellSize.width;
+            const chartHeight = gridHeight * cellSize.height;
             const chartColumnWidth = Math.max(CONFIG.CHART_COLUMN_MIN_WIDTH, chartWidth + CONFIG.CHART_COLUMN_RESERVE);
             const previewNaturalWidth = chartWidth * previewRepeatX * CONFIG.PREVIEW_SCALE;
-            shouldStack = isMobile || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
+            const pageHeight = window.innerHeight - headerHeight - 2 * CONFIG.PLATE_PADDING_VERTICAL;
+            wide = chartColumnWidth > plateWidth;
+            shouldStack = isMobile || wide || chartHeight + CONFIG.CHART_NUMBERS_HEIGHT > pageHeight
+                || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
         }
 
         // Calculate final canvas dimensions
@@ -297,6 +304,7 @@ export const CanvasManager = {
 
         return {
             stacked: shouldStack,
+            wide,
             previewWidth,
             outlined,
             cellWidth: cellSize.width,

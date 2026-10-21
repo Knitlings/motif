@@ -63,6 +63,8 @@ export const CONFIG = {
     CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
     PREVIEW_COLUMN_PADDING: 48,
     PLATE_PADDING_DESKTOP: 64,
+    PLATE_PADDING_VERTICAL: 24,      // The plate's padding above and below the chart
+    CHART_NUMBERS_HEIGHT: 26,        // Stitch numbers under the chart
     NUMBER_EVERY_UP_TO: 20,          // Number every stitch (or row) up to this many; above it every 5th, with a darker rule every 10th
     TENTH_RULE_COLOR: '#6b6a63',     // ink-muted
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy

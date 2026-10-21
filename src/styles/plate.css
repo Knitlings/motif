@@ -52,11 +52,9 @@
    A white page divided by rules: the chart's column, then the preview
    ============================================ */
 
-/* A chart too large for the window widens the plate past it, and the page scrolls */
 .plate {
     display: flex;
     align-items: center;
-    min-width: min-content;
     min-height: calc(100vh - 64px);
     padding: var(--space-6) 64px;
 }
@@ -173,6 +171,24 @@
 /* The chart with its stitch and row numbers, counted from the right and the bottom */
 .chart-frame {
     position: relative;
+}
+
+/* Wider than the window: the chart starts at the plate's left edge and runs past the right,
+   and the page scrolls to it. Everything else keeps to the window's width: the chart adds
+   nothing to its column's width. */
+.plate.is-wide .plate-chart {
+    align-self: stretch;
+}
+
+.plate.is-wide .chart-area {
+    align-self: stretch;
+    contain: inline-size;
+}
+
+.plate.is-wide .chart-frame {
+    width: max-content;
+    margin: 0 auto; /* centred while it still fits; at the left once it doesn't */
+    padding-right: var(--space-4);
 }
 
 .chart-grid {

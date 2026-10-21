@@ -242,12 +242,14 @@ function updateCanvas() {
 /**
  * Arrange the plate for the layout the canvas manager chose, and keep the preview's
  * caption in step with it
- * @param {{stacked: boolean, previewWidth: number, outlined: boolean}} layout
+ * @param {{stacked: boolean, wide: boolean, previewWidth: number, outlined: boolean}} layout
  */
 function applyPlateLayout(layout) {
     const plate = document.getElementById('plate');
     const wasStacked = plate.classList.contains('is-stacked');
     plate.classList.toggle('is-stacked', layout.stacked);
+    // A chart wider than the window runs off its right edge; the rest stays in the window
+    plate.classList.toggle('is-wide', layout.wide);
     // The key's row has one place fewer when stacked
     if (wasStacked !== layout.stacked) renderKey();
     // Both of the preview's caption lines (its own and the surroundings picker's) are as wide as it

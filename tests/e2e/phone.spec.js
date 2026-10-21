@@ -61,6 +61,12 @@ test.describe('Phone', () => {
     const grip = page.locator('#chartFrame .edge-grip-right');
     await grip.scrollIntoViewIfNeeded();
     await expect(grip).toBeInViewport();
+
+    // The caption's buttons and the key keep to the phone's width
+    for (const selector of ['.caption-line-chart .caption-actions', '#key']) {
+      const box = await page.locator(selector).boundingBox();
+      expect(box.x + box.width, selector).toBeLessThanOrEqual(390);
+    }
   });
 
   test('shows the colours beyond the row in a second row beneath', async ({ page }) => {
