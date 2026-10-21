@@ -8,6 +8,15 @@
 
   ## [Unreleased]
 
+  ## [2.0.1] - 2026-10-21
+
+  ### Fixed
+  - Typing a smaller stitch or row count could silently delete part of a pattern that sat off to one side of the chart; the pattern now stays whole
+  - Charts too large for the window no longer scroll inside a frame without their edge grips: the page scrolls instead, the grips stay, and the caption, key and preview stay in view
+
+  ### Dependencies
+  - Routine updates from Dependabot
+
   ## [2.0.0] - 2026-10-08
 
   ### Changed
