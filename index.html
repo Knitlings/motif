@@ -223,7 +223,19 @@
             </fieldset>
 
             <div class="dialog-fieldset dialog-fieldset-plain">
-                <label class="choice"><input type="checkbox" class="choice-input" name="rowCounts" id="rowCountsCheckbox"> Include row counts</label>
+                <label class="choice"><input type="checkbox" class="choice-input" name="rowCounts" id="rowCountsCheckbox" aria-controls="rowCountDirection"> Include row counts</label>
+                <div class="dialog-suboptions" id="rowCountDirection" role="radiogroup" aria-label="Number the rows" hidden>
+                    <label class="choice"><input type="radio" class="choice-input" name="rowCountDirection" value="bottom" checked> From the bottom</label>
+                    <label class="choice"><input type="radio" class="choice-input" name="rowCountDirection" value="top"> From the top</label>
+                </div>
+                <label class="choice"><input type="checkbox" class="choice-input" name="runLengths" id="runLengthsCheckbox" aria-controls="runLengthControls"> Show run lengths</label>
+                <div class="dialog-suboptions" id="runLengthControls" hidden>
+                    <div class="slider-row">
+                        <label for="minRunLengthInput" class="slider-label">Count runs of</label>
+                        <input type="number" class="field-input field-input-short" id="minRunLengthInput" name="minRunLength" min="2" step="1" value="5" disabled aria-describedby="minRunLengthUnit">
+                        <span class="slider-unit" id="minRunLengthUnit">or more stitches</span>
+                    </div>
+                </div>
             </div>
 
             <div class="dialog-note" aria-live="polite"></div>

@@ -30,13 +30,145 @@ export function sanitizeGrid(grid) {
     });
 }
 
+// ============================================
+// RUN LENGTHS
+// The number of stitches written on each long run of one colour along a row
+// ============================================
+
+const RUN_LENGTH_DARK = '#1a1a18';
+const RUN_LENGTH_LIGHT = '#ffffff';
+
+/**
+ * Find the runs of one colour along each row that are long enough to be numbered. A row of one
+ * colour isn't numbered, so no run is longer than the chart's width less one (99 stitches): every
+ * row of a preview or surroundings repeats at the chart's width
+ * @param {(row: number, col: number) => string} colourAt - Colour shown at a stitch of the image
+ * @param {number} cols - Stitches across the image
+ * @param {number} rows - Rows down the image
+ * @param {number} minLength - Shortest run to number
+ * @returns {{row: number, col: number, length: number, colour: string}[]} Runs, by first stitch
+ */
+export function findLongRuns(colourAt, cols, rows, minLength) {
+    const runs = [];
+    for (let row = 0; row < rows; row++) {
+        let start = 0;
+        for (let col = 1; col <= cols; col++) {
+            if (col < cols && colourAt(row, col).toLowerCase() === colourAt(row, start).toLowerCase()) continue;
+            const length = col - start;
+            if (length >= minLength && length < cols) runs.push({ row, col: start, length, colour: colourAt(row, start) });
+            start = col;
+        }
+    }
+    return runs;
+}
+
+/**
+ * Relative luminance of a hex colour (#rgb or #rrggbb)
+ * @param {string} hex
+ * @returns {number|null} 0–1, or null if the colour can't be read
+ */
+function luminance(hex) {
+    let digits = String(hex).replace('#', '');
+    if (digits.length === 3) digits = digits.split('').map(d => d + d).join('');
+    if (!/^[0-9a-f]{6}$/i.test(digits)) return null;
+    const [r, g, b] = [0, 2, 4].map(i => {
+        const c = parseInt(digits.slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Ink for a run length: whichever of dark or white contrasts more with the stitches
+ * @param {string} colour - The run's colour
+ * @returns {string}
+ */
+export function runLengthInk(colour) {
+    const l = luminance(colour);
+    if (l === null) return RUN_LENGTH_DARK;
+    const onWhite = 1.05 / (l + 0.05);
+    const onDark = (l + 0.05) / (luminance(RUN_LENGTH_DARK) + 0.05);
+    return onWhite > onDark ? RUN_LENGTH_LIGHT : RUN_LENGTH_DARK;
+}
+
+/**
+ * Font size for a run length: the row counts' size, smaller if the number would overflow its stitch
+ * @param {number} length - Stitches in the run
+ * @param {number} cellWidth
+ * @param {number} cellHeight
+ * @returns {number}
+ */
+function runLengthFontSize(length, cellWidth, cellHeight) {
+    // Monospace digits are about 0.6em wide; leave a little room at the stitch's sides
+    const fitsWidth = (cellWidth * 0.9) / (String(length).length * 0.6);
+    return Math.min(cellHeight * 0.6, fitsWidth);
+}
+
+/**
+ * Centre of the stitch a run length is written in: the middle one, or left of the middle two
+ * @param {{col: number, length: number}} run
+ * @param {number} cellWidth
+ * @returns {number}
+ */
+function runLengthX(run, cellWidth) {
+    return (run.col + Math.floor((run.length - 1) / 2) + 0.5) * cellWidth;
+}
+
+/**
+ * Write run lengths onto a canvas export
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {ReturnType<typeof findLongRuns>} runs
+ * @param {number} cellWidth
+ * @param {number} cellHeight
+ */
+function drawRunLengths(ctx, runs, cellWidth, cellHeight) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const run of runs) {
+        ctx.font = `600 ${runLengthFontSize(run.length, cellWidth, cellHeight)}px monospace`;
+        ctx.fillStyle = runLengthInk(run.colour);
+        ctx.fillText(String(run.length), runLengthX(run, cellWidth), (run.row + 0.5) * cellHeight);
+    }
+}
+
+/**
+ * Run lengths as SVG text
+ * @param {ReturnType<typeof findLongRuns>} runs
+ * @param {number} cellWidth
+ * @param {number} cellHeight
+ * @returns {string}
+ */
+function svgRunLengths(runs, cellWidth, cellHeight) {
+    let svg = `  <!-- Run lengths -->\n`;
+    for (const run of runs) {
+        const fontSize = runLengthFontSize(run.length, cellWidth, cellHeight);
+        const x = runLengthX(run, cellWidth);
+        const y = run.row * cellHeight + cellHeight / 2 + fontSize / 3;
+        svg += `  <text x="${x}" y="${y}" text-anchor="middle" font-family="monospace" font-size="${fontSize}" font-weight="600" fill="${runLengthInk(run.colour)}">${run.length}</text>\n`;
+    }
+    return svg;
+}
+
+/**
+ * Colour shown for a cell value
+ * @param {number} value - 0 for the background, 1–N for pattern colours
+ * @param {string[]} patternColors
+ * @param {string} backgroundColor
+ * @returns {string}
+ */
+function cellColour(value, patternColors, backgroundColor) {
+    return value === 0 ? backgroundColor : (patternColors[value - 1] || backgroundColor);
+}
+
 /**
  * Export grid as SVG with grid lines
  * @param {ApplicationState} state - Application state containing grid, colors, dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Blob} SVG blob for download
  */
-export function exportSvg(state, includeRowCounts = false) {
+export function exportSvg(state, includeRowCounts = false, minRunLength = null, rowCountsFromTop = false) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor } = state;
 
     // Calculate cell dimensions from canvas
@@ -105,12 +237,17 @@ export function exportSvg(state, includeRowCounts = false) {
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < gridHeight; row++) {
-            // Row numbers start at 1 from the bottom
-            const rowNumber = gridHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : gridHeight - row;
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns((row, col) => cellColour(grid[row][col], patternColors, backgroundColor),
+            gridWidth, gridHeight, minRunLength);
+        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
     }
 
     svgContent += `</svg>`;
@@ -123,13 +260,15 @@ export function exportSvg(state, includeRowCounts = false) {
  * @param {ApplicationState} state - Application state containing grid dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
  * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export function exportPng(state, includeRowCounts = false, customCellSize = null) {
+export function exportPng(state, includeRowCounts = false, customCellSize = null, minRunLength = null, rowCountsFromTop = false) {
     const canvas = document.getElementById('editCanvas');
 
-    // Fast path: no row counts and no custom size — just export the existing canvas
-    if (!includeRowCounts && customCellSize === null) {
+    // Fast path: no numbers and no custom size — just export the existing canvas
+    if (!includeRowCounts && customCellSize === null && minRunLength === null) {
         return new Promise((resolve) => {
             canvas.toBlob((blob) => {
                 resolve(blob);
@@ -224,12 +363,17 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < gridHeight; row++) {
-            // Row numbers start at 1 from the bottom
-            const rowNumber = gridHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : gridHeight - row;
             const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns((row, col) => cellColour(grid[row][col], patternColors, backgroundColor),
+            gridWidth, gridHeight, minRunLength);
+        drawRunLengths(ctx, runs, cellWidth, cellHeight);
     }
 
     // Export the temporary canvas
@@ -246,9 +390,11 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
  * @param {ApplicationState} state - Application state
  * @param {Object} context - Context stitches {left, right, top, bottom}
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Blob} SVG blob for download
  */
-export function exportPatternWithContextSvg(state, context, includeRowCounts = false) {
+export function exportPatternWithContextSvg(state, context, includeRowCounts = false, minRunLength = null, rowCountsFromTop = false) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor } = state;
     const { left = 0, right = 0, top = 0, bottom = 0 } = context;
 
@@ -344,12 +490,20 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
-            // Row numbers start at 1 from the bottom
-            const rowNumber = totalHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns((row, col) => {
+            const gridRow = (((row - topContext + gridHeight) % gridHeight) + gridHeight) % gridHeight;
+            const gridCol = (((col - leftContext + gridWidth) % gridWidth) + gridWidth) % gridWidth;
+            return cellColour(grid[gridRow][gridCol], patternColors, backgroundColor);
+        }, totalWidth, totalHeight, minRunLength);
+        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
     }
 
     svgContent += `</svg>`;
@@ -364,9 +518,11 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
  * @param {Object} context - Context stitches {left, right, top, bottom}
  * @param {boolean} includeRowCounts - Whether to include row count numbers
  * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export async function exportPatternWithContextPng(state, context, includeRowCounts = false, customCellSize = null) {
+export async function exportPatternWithContextPng(state, context, includeRowCounts = false, customCellSize = null, minRunLength = null, rowCountsFromTop = false) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor, aspectRatio } = state;
     const { left = 0, right = 0, top = 0, bottom = 0 } = context;
 
@@ -469,11 +625,20 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
-            const rowNumber = totalHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
             const x = totalWidth * cellWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns((row, col) => {
+            const gridRow = (((row - topContext + gridHeight) % gridHeight) + gridHeight) % gridHeight;
+            const gridCol = (((col - leftContext + gridWidth) % gridWidth) + gridWidth) % gridWidth;
+            return cellColour(grid[gridRow][gridCol], patternColors, backgroundColor);
+        }, totalWidth, totalHeight, minRunLength);
+        drawRunLengths(ctx, runs, cellWidth, cellHeight);
     }
 
     // Export canvas as PNG
@@ -489,13 +654,15 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
  * @param {ApplicationState} state - Application state containing grid dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
  * @param {number} customCellSize - Optional custom cell size in pixels (overrides canvas size)
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Promise<Blob>} - PNG blob for download
  */
-export function exportPreviewPng(state, includeRowCounts = false, customCellSize = null) {
+export function exportPreviewPng(state, includeRowCounts = false, customCellSize = null, minRunLength = null, rowCountsFromTop = false) {
     const canvas = document.getElementById('previewCanvas');
 
-    // Fast path: no row counts and no custom size — just export the existing canvas
-    if (!includeRowCounts && customCellSize === null) {
+    // Fast path: no numbers and no custom size — just export the existing canvas
+    if (!includeRowCounts && customCellSize === null && minRunLength === null) {
         return new Promise((resolve) => {
             canvas.toBlob((blob) => {
                 resolve(blob);
@@ -602,12 +769,18 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
-            // Row numbers start at 1 from the bottom
-            const rowNumber = totalHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
             const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
             ctx.fillText(rowNumber.toString(), x, y);
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns(
+            (row, col) => cellColour(grid[row % gridHeight][col % gridWidth], patternColors, backgroundColor),
+            totalWidth, totalHeight, minRunLength);
+        drawRunLengths(ctx, runs, cellWidth, cellHeight);
     }
 
     // Export the temporary canvas
@@ -622,9 +795,11 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
  * Export preview as SVG with grid lines
  * @param {ApplicationState} state - Application state containing grid, colors, dimensions
  * @param {boolean} includeRowCounts - Whether to include row count numbers
+ * @param {number|null} minRunLength - Number runs of one colour at least this long; null for none
+ * @param {boolean} rowCountsFromTop - Number the rows from the top (for knitting top down)
  * @returns {Blob} SVG blob for download
  */
-export function exportPreviewSvg(state, includeRowCounts = false) {
+export function exportPreviewSvg(state, includeRowCounts = false, minRunLength = null, rowCountsFromTop = false) {
     const { grid, gridWidth, gridHeight, patternColors, backgroundColor, previewRepeatX, previewRepeatY } = state;
 
     // Calculate cell dimensions from preview canvas
@@ -703,12 +878,18 @@ export function exportPreviewSvg(state, includeRowCounts = false) {
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
-            // Row numbers start at 1 from the bottom
-            const rowNumber = totalHeight - row;
+            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
             svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
         }
+    }
+
+    if (minRunLength !== null) {
+        const runs = findLongRuns(
+            (row, col) => cellColour(grid[row % gridHeight][col % gridWidth], patternColors, backgroundColor),
+            totalWidth, totalHeight, minRunLength);
+        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
     }
 
     svgContent += `</svg>`;

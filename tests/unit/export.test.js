@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { exportJson, importJson, downloadFile, exportSvg, exportPng, exportPreviewSvg, exportPreviewPng } from '../../src/core/export.js';
+import { exportJson, importJson, downloadFile, exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, findLongRuns, runLengthInk } from '../../src/core/export.js';
 
 describe('Export/Import Functions', () => {
     describe('exportJson()', () => {
@@ -480,6 +480,121 @@ describe('Export/Import Functions', () => {
             expect(blob).toBeInstanceOf(Blob);
 
             getElementByIdSpy.mockRestore();
+        });
+    });
+
+    describe('findLongRuns()', () => {
+        const fromRows = (rows) => (row, col) => rows[row][col];
+
+        it('should find runs of one colour at least the minimum long', () => {
+            const rows = [['#aaa', '#aaa', '#aaa', '#bbb', '#bbb', '#aaa']];
+            expect(findLongRuns(fromRows(rows), 6, 1, 2)).toEqual([
+                { row: 0, col: 0, length: 3, colour: '#aaa' },
+                { row: 0, col: 3, length: 2, colour: '#bbb' }
+            ]);
+        });
+
+        it('should skip runs shorter than the minimum', () => {
+            const rows = [['#aaa', '#aaa', '#bbb', '#bbb', '#bbb', '#bbb', '#bbb']];
+            expect(findLongRuns(fromRows(rows), 7, 1, 5)).toEqual([
+                { row: 0, col: 2, length: 5, colour: '#bbb' }
+            ]);
+        });
+
+        it('should count along rows, not down columns', () => {
+            const rows = [['#aaa', '#bbb'], ['#aaa', '#bbb'], ['#aaa', '#bbb']];
+            expect(findLongRuns(fromRows(rows), 2, 3, 2)).toEqual([]);
+        });
+
+        it('should treat the same colour in different cases as one run', () => {
+            const rows = [['#AAAAAA', '#aaaaaa', '#aaaaaa', '#bbbbbb']];
+            expect(findLongRuns(fromRows(rows), 4, 1, 3)).toHaveLength(1);
+        });
+
+        it('should skip a row that is all one colour', () => {
+            const rows = [['#aaa', '#aaa', '#aaa'], ['#aaa', '#aaa', '#bbb']];
+            expect(findLongRuns(fromRows(rows), 3, 2, 2)).toEqual([
+                { row: 1, col: 0, length: 2, colour: '#aaa' }
+            ]);
+        });
+    });
+
+    describe('runLengthInk()', () => {
+        it('should write white on dark stitches', () => {
+            expect(runLengthInk('#8d2e3e')).toBe('#ffffff');
+            expect(runLengthInk('#000')).toBe('#ffffff');
+        });
+
+        it('should write dark on light stitches', () => {
+            expect(runLengthInk('#fdf9f8')).toBe('#1a1a18');
+            expect(runLengthInk('#ffad33')).toBe('#1a1a18');
+        });
+
+        it('should fall back to dark for colours it cannot read', () => {
+            expect(runLengthInk('red')).toBe('#1a1a18');
+        });
+    });
+
+    describe('row count direction in SVG exports', () => {
+        const state = {
+            grid: [[0], [0], [0]],
+            gridWidth: 1,
+            gridHeight: 3,
+            patternColors: ['#8d2e3e'],
+            backgroundColor: '#fdf9f8',
+            previewRepeatX: 1,
+            previewRepeatY: 2
+        };
+        const rowNumbers = (svg) => [...svg.matchAll(/fill="#666">(\d+)<\/text>/g)].map(m => m[1]);
+
+        it('should number rows from the bottom by default', async () => {
+            expect(rowNumbers(await exportSvg(state, true).text())).toEqual(['3', '2', '1']);
+        });
+
+        it('should number rows from the top for knitting top down', async () => {
+            expect(rowNumbers(await exportSvg(state, true, null, true).text())).toEqual(['1', '2', '3']);
+        });
+
+        it('should number the whole preview from the top', async () => {
+            expect(rowNumbers(await exportPreviewSvg(state, true, null, true).text())).toEqual(['1', '2', '3', '4', '5', '6']);
+        });
+    });
+
+    describe('run lengths in SVG exports', () => {
+        const state = {
+            grid: [[1, 1, 1, 1, 1, 0], [0, 0, 1, 0, 0, 0]],
+            gridWidth: 6,
+            gridHeight: 2,
+            patternColors: ['#8d2e3e'],
+            backgroundColor: '#fdf9f8',
+            previewRepeatX: 2,
+            previewRepeatY: 1
+        };
+        const runLengthTexts = (svg) => [...svg.matchAll(/<text[^>]*text-anchor="middle"[^>]*>(\d+)<\/text>/g)].map(m => m[1]);
+
+        it('should number runs in the pattern, background included', async () => {
+            const text = await exportSvg(state, false, 3).text();
+            expect(runLengthTexts(text)).toEqual(['5', '3']);
+        });
+
+        it('should write each number inside one stitch, left of the middle for even runs', async () => {
+            const evenState = { ...state, grid: [[1, 1, 1, 1, 0, 0], [1, 1, 1, 0, 0, 0]] };
+            const cellWidth = document.getElementById('editCanvas').width / 6;
+            const text = await exportSvg(evenState, false, 3).text();
+            const xs = [...text.matchAll(/<text x="([\d.]+)"[^>]*text-anchor="middle"/g)].map(m => Number(m[1]));
+            // Run of 4 in stitches 0–3: stitch 1; runs of 3 in stitches 0–2 and 3–5: stitches 1 and 4
+            expect(xs).toEqual([1.5 * cellWidth, 1.5 * cellWidth, 4.5 * cellWidth]);
+        });
+
+        it('should leave them out when off', async () => {
+            const text = await exportSvg(state, false).text();
+            expect(runLengthTexts(text)).toEqual([]);
+        });
+
+        it('should count runs across repeats in the preview', async () => {
+            // Row 2 tiled twice: 0 0 1 0 0 0 | 0 0 1 0 0 0 — three background stitches join two across the seam
+            const text = await exportPreviewSvg(state, false, 5).text();
+            expect(runLengthTexts(text)).toEqual(['5', '5', '5']);
         });
     });
 });

@@ -8,6 +8,10 @@
 
   ## [Unreleased]
 
+  ### Added
+  - "Show run lengths" in the download dialog writes the number of stitches on each run of one colour along a row, for runs of 5 or more stitches or any length you choose
+  - Row counts in a download can be numbered from the top, for knitting top down
+
   ## [2.0.1] - 2026-10-21
 
   ### Fixed
