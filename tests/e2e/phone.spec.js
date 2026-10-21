@@ -54,23 +54,13 @@ test.describe('Phone', () => {
     await expect.poll(() => squareColour(page, 20, 20)).toBe(before);
   });
 
-  test('frames a chart too large for the phone, as wide as the page and as tall as the first screen allows', async ({ page }) => {
+  test('lets a chart too large for the phone run past the page, keeping its grips', async ({ page }) => {
     await setSize(page, 100, 100);
-    const frame = page.locator('#chartFrame');
-    await expect(frame).toHaveClass(/is-framed/);
-    const box = await frame.boundingBox();
-    expect(box.width).toBe(358);
-    expect(box.height).toBe(442);
-    await expect(page.locator('#chartFrame .edge-grip').first()).toBeHidden();
-
-    // The caption, key and hint (or the note in its place: the preview is cut to 1 × 1) still fit on the first screen
-    const hint = await page.locator('#keyHint:visible, #noteSlotPhone:visible').boundingBox();
-    expect(hint.y + hint.height).toBeLessThanOrEqual(844);
-  });
-
-  test('keeps a chart of 16 stitches unframed', async ({ page }) => {
-    await setSize(page, 16, 16);
-    await expect(page.locator('#chartFrame')).not.toHaveClass(/is-framed/);
+    const canvasWidth = await page.locator('#editCanvas').evaluate(c => c.width);
+    expect(canvasWidth).toBeGreaterThanOrEqual(2000);
+    const grip = page.locator('#chartFrame .edge-grip-right');
+    await grip.scrollIntoViewIfNeeded();
+    await expect(grip).toBeInViewport();
   });
 
   test('shows the colours beyond the row in a second row beneath', async ({ page }) => {

@@ -73,8 +73,7 @@ export function setupCanvasInteractions(deps) {
 
     /**
      * Setup all canvas event listeners. A mouse paints as it drags. A finger or pen paints the
-     * square it taps; a drag is left to the browser, so it moves a framed chart in its frame
-     * and moves the page anywhere else.
+     * square it taps; a drag is left to the browser, so it moves the page.
      */
     function setupCanvasEvents() {
         const canvas = canvasManager.editCanvas;

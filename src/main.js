@@ -255,34 +255,19 @@ function applyPlateLayout(layout) {
     document.getElementById('previewTotal').textContent =
         `, ${gridWidth * previewRepeatX} stitches by ${gridHeight * previewRepeatY} rows in all.`;
     document.getElementById('previewOutlineNote').hidden = !layout.outlined;
-    applyChartFrame(layout);
+    applyChartNumbers(layout);
 }
 
 let chartNumbersDrawn = '';
 
 /**
- * Frame a chart too large for the page, and number its stitches and rows from the
- * right and the bottom (each one up to 20, every fifth beyond)
+ * Name the chart, and number its stitches and rows from the right and the bottom
+ * (each one up to 20, every fifth beyond)
  */
-function applyChartFrame(layout) {
-    const frame = document.getElementById('chartFrame');
-    // Named once: by the frame when it scrolls, else by the chart itself
-    const canvasLabel = layout.framed ? 'Pattern chart' : `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`;
+function applyChartNumbers(layout) {
+    const canvasLabel = `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows`;
     const canvas = document.getElementById('editCanvas');
     if (canvas.getAttribute('aria-label') !== canvasLabel) canvas.setAttribute('aria-label', canvasLabel);
-    frame.classList.toggle('is-framed', layout.framed);
-    frame.style.width = layout.framed ? `${layout.frameWidth}px` : '';
-    frame.style.height = layout.framed ? `${layout.frameHeight}px` : '';
-    if (layout.framed) {
-        // The frame scrolls, so it takes keyboard focus and says so
-        frame.setAttribute('tabindex', '0');
-        frame.setAttribute('role', 'group');
-        frame.setAttribute('aria-label', `Pattern chart, ${gridWidth} stitches by ${gridHeight} rows. It scrolls in both directions`);
-    } else {
-        frame.removeAttribute('tabindex');
-        frame.removeAttribute('role');
-        frame.removeAttribute('aria-label');
-    }
 
     const signature = [gridWidth, gridHeight, layout.cellWidth, layout.cellHeight].join(',');
     if (signature === chartNumbersDrawn) return;
