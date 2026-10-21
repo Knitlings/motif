@@ -124,8 +124,15 @@ export function resizeGrid(params) {
     const newGridCenterX = Math.floor(newWidth / 2);
     const newGridCenterY = Math.floor(newHeight / 2);
 
-    const shiftX = newGridCenterX - oldGridCenterX;
-    const shiftY = newGridCenterY - oldGridCenterY;
+    let shiftX = newGridCenterX - oldGridCenterX;
+    let shiftY = newGridCenterY - oldGridCenterY;
+
+    // Content off-centre can fit the new size yet be shifted past its edge (10 stitches at
+    // the left of 100, shrunk to 50): nudge the shift just enough to keep all of it
+    if (bounds) {
+        shiftX = Utils.clamp(shiftX, -bounds.minCol, newWidth - 1 - bounds.maxCol);
+        shiftY = Utils.clamp(shiftY, -bounds.minRow, newHeight - 1 - bounds.maxRow);
+    }
 
     // Copy all cells from old grid to new grid, applying the centering shift
     for (let row = 0; row < gridHeight; row++) {
@@ -134,8 +141,7 @@ export function resizeGrid(params) {
             const newRow = row + shiftY;
 
             // Only copy if the shifted position is within the new grid bounds
-            // Cells that shift outside the bounds are discarded (though this shouldn't
-            // happen since we already checked content bounds above)
+            // (only empty cells fall outside, since the shift keeps all content in)
             if (newRow >= 0 && newRow < newHeight && newCol >= 0 && newCol < newWidth) {
                 newGrid[newRow][newCol] = grid[row][col];
             }

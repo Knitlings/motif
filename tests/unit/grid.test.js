@@ -187,6 +187,29 @@ describe('Grid Operations', () => {
             document.body.removeChild(mockContainer);
         });
 
+        it('should keep content at the edge of a wide grid when shrinking', () => {
+            // 10 stitches at the far left of 100; centring alone would shift them all out
+            const grid = createEmptyGrid(100, 4);
+            for (let col = 0; col < 10; col++) grid[1][col] = 1;
+
+            const result = resizeGrid({ grid, gridWidth: 100, gridHeight: 4, newWidth: 50, newHeight: 4 });
+
+            expect(result.width).toBe(50);
+            expect(result.grid.flat().filter(cell => cell > 0)).toHaveLength(10);
+            expect(result.grid[1].slice(0, 10).every(cell => cell === 1)).toBe(true);
+        });
+
+        it('should keep content spread past the centre when shrinking', () => {
+            const grid = createEmptyGrid(10, 100);
+            grid[0][5] = 1;
+            grid[59][5] = 2;
+
+            const result = resizeGrid({ grid, gridWidth: 10, gridHeight: 100, newWidth: 10, newHeight: 70 });
+
+            expect(result.grid[0][5]).toBe(1);
+            expect(result.grid[59][5]).toBe(2);
+        });
+
         it('should handle expanding empty grid', () => {
             const grid = [
                 [0, 0],
