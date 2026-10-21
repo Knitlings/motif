@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { exportJson, importJson, downloadFile, exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, findLongRuns, runLengthInk } from '../../src/core/export.js';
+import { exportJson, importJson, downloadFile, exportSvg, exportPng, exportPreviewSvg, exportPreviewPng, exportPatternWithContextSvg, findLongRuns, runLengthInk } from '../../src/core/export.js';
 
 describe('Export/Import Functions', () => {
     describe('exportJson()', () => {
@@ -511,6 +511,14 @@ describe('Export/Import Functions', () => {
             expect(findLongRuns(fromRows(rows), 4, 1, 3)).toHaveLength(1);
         });
 
+        it('should skip runs touching a side that cuts through the pattern', () => {
+            const rows = [['#aaa', '#aaa', '#bbb', '#bbb', '#ccc', '#ccc']];
+            expect(findLongRuns(fromRows(rows), 6, 1, 2, { cutLeft: true, cutRight: true })).toEqual([
+                { row: 0, col: 2, length: 2, colour: '#bbb' }
+            ]);
+            expect(findLongRuns(fromRows(rows), 6, 1, 2, { cutRight: true })).toHaveLength(2);
+        });
+
         it('should skip a row that is all one colour', () => {
             const rows = [['#aaa', '#aaa', '#aaa'], ['#aaa', '#aaa', '#bbb']];
             expect(findLongRuns(fromRows(rows), 3, 2, 2)).toEqual([
@@ -584,6 +592,13 @@ describe('Export/Import Functions', () => {
             const xs = [...text.matchAll(/<text x="([\d.]+)"[^>]*text-anchor="middle"/g)].map(m => Number(m[1]));
             // Run of 4 in stitches 0–3: stitch 1; runs of 3 in stitches 0–2 and 3–5: stitches 1 and 4
             expect(xs).toEqual([1.5 * cellWidth, 1.5 * cellWidth, 4.5 * cellWidth]);
+        });
+
+        it('should leave out runs cut by the sides of a surroundings download', async () => {
+            // Row 1 with one stitch either side: 0 | 1 1 1 1 1 0 | 1 — the 5 is whole, the edge stitches are cut
+            const wideState = { ...state, grid: [[1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0]] };
+            const text = await exportPatternWithContextSvg(wideState, { left: 1, right: 1 }, false, 2).text();
+            expect(runLengthTexts(text)).toEqual(['5']);
         });
 
         it('should leave them out when off', async () => {

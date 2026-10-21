@@ -240,6 +240,16 @@ test.describe('Export Functions', () => {
     await expect(field).toBeHidden();
   });
 
+  test('accepts a shortest run written with a decimal point', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    await page.getByLabel('Show run lengths').check();
+    await page.getByLabel('Count runs of').fill('5.0');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#downloadModalSubmitBtn').click();
+    expect((await downloadPromise).suggestedFilename()).toMatch(/motif-pattern-.*\.png/);
+  });
+
   test('ignores a bad shortest run once run lengths are off', async ({ page }) => {
     await page.locator('#downloadBtn').click();
     await page.getByLabel('Show run lengths').check();

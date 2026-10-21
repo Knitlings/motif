@@ -905,22 +905,25 @@ cellSizeInput.addEventListener('input', () => {
 const rowCountsCheckbox = document.getElementById('rowCountsCheckbox');
 rowCountsCheckbox.addEventListener('change', updateSizePreview);
 
-// Which way the rows are numbered shows only while row counts are on
+// Sub-options: which way the rows are numbered, and the shortest run to number
 const rowCountDirection = document.getElementById('rowCountDirection');
-rowCountsCheckbox.addEventListener('change', () => {
-    rowCountDirection.hidden = !rowCountsCheckbox.checked;
-});
-
-// Run lengths: the shortest run to number shows only while they're on
 const runLengthsCheckbox = document.getElementById('runLengthsCheckbox');
 const runLengthControls = document.getElementById('runLengthControls');
 const minRunLengthInput = document.getElementById('minRunLengthInput');
 const downloadNote = downloadForm.querySelector('.dialog-note');
-runLengthsCheckbox.addEventListener('change', () => {
+
+/**
+ * Show each option's sub-options only while it's ticked. Also run when the dialog opens: a browser
+ * can restore the ticks after a reload without a change event
+ */
+function syncDownloadSubOptions() {
+    rowCountDirection.hidden = !rowCountsCheckbox.checked;
     runLengthControls.hidden = !runLengthsCheckbox.checked;
-    // Off, its value is left out of the browser's checks
+    // Off, the shortest run is left out of the browser's checks
     minRunLengthInput.disabled = !runLengthsCheckbox.checked;
-});
+}
+rowCountsCheckbox.addEventListener('change', syncDownloadSubOptions);
+runLengthsCheckbox.addEventListener('change', syncDownloadSubOptions);
 minRunLengthInput.addEventListener('input', () => minRunLengthInput.removeAttribute('aria-invalid'));
 
 function showMinRunLengthError() {
@@ -941,9 +944,8 @@ minRunLengthInput.addEventListener('invalid', (e) => {
  */
 function readMinRunLength() {
     if (!runLengthsCheckbox.checked) return null;
-    const text = minRunLengthInput.value.trim();
-    const value = Number(text);
-    return /^\d+$/.test(text) && value >= 2 ? value : undefined;
+    const value = minRunLengthInput.valueAsNumber;
+    return Number.isInteger(value) && value >= 2 ? value : undefined;
 }
 
 // Calculate and display dimension preview
@@ -1098,6 +1100,7 @@ downloadBtn.onclick = () => {
     // Update size controls
     updateCellSizeConstraints();
     updateCurrentDisplayLabel();
+    syncDownloadSubOptions();
     minRunLengthInput.removeAttribute('aria-invalid');
 };
 

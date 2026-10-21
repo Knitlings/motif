@@ -46,17 +46,23 @@ const RUN_LENGTH_LIGHT = '#ffffff';
  * @param {number} cols - Stitches across the image
  * @param {number} rows - Rows down the image
  * @param {number} minLength - Shortest run to number
+ * @param {{cutLeft?: boolean, cutRight?: boolean}} [cuts] - Sides of the image that cut through the
+ *   pattern (surroundings): a run touching one may carry on past it, so it isn't numbered
  * @returns {{row: number, col: number, length: number, colour: string}[]} Runs, by first stitch
  */
-export function findLongRuns(colourAt, cols, rows, minLength) {
+export function findLongRuns(colourAt, cols, rows, minLength, { cutLeft = false, cutRight = false } = {}) {
     const runs = [];
     for (let row = 0; row < rows; row++) {
         let start = 0;
+        let colour = colourAt(row, 0);
         for (let col = 1; col <= cols; col++) {
-            if (col < cols && colourAt(row, col).toLowerCase() === colourAt(row, start).toLowerCase()) continue;
+            const next = col < cols ? colourAt(row, col) : null;
+            if (next !== null && next.toLowerCase() === colour.toLowerCase()) continue;
             const length = col - start;
-            if (length >= minLength && length < cols) runs.push({ row, col: start, length, colour: colourAt(row, start) });
+            const cut = (cutLeft && start === 0) || (cutRight && col === cols);
+            if (length >= minLength && length < cols && !cut) runs.push({ row, col: start, length, colour });
             start = col;
+            colour = next;
         }
     }
     return runs;
@@ -139,6 +145,7 @@ function drawRunLengths(ctx, runs, cellWidth, cellHeight) {
  * @returns {string}
  */
 function svgRunLengths(runs, cellWidth, cellHeight) {
+    if (runs.length === 0) return '';
     let svg = `  <!-- Run lengths -->\n`;
     for (const run of runs) {
         const fontSize = runLengthFontSize(run.length, cellWidth, cellHeight);
@@ -158,6 +165,52 @@ function svgRunLengths(runs, cellWidth, cellHeight) {
  */
 function cellColour(value, patternColors, backgroundColor) {
     return value === 0 ? backgroundColor : (patternColors[value - 1] || backgroundColor);
+}
+
+/**
+ * The runs to number in a download
+ * @param {ApplicationState} state
+ * @param {(row: number, col: number) => number} valueAt - Cell value at a stitch of the image
+ * @param {number} cols - Stitches across the image
+ * @param {number} rows - Rows down the image
+ * @param {number|null} minRunLength - Shortest run to number; null for none
+ * @param {{cutLeft?: boolean, cutRight?: boolean}} [cuts] - See findLongRuns
+ * @returns {ReturnType<typeof findLongRuns>}
+ */
+function runsToNumber(state, valueAt, cols, rows, minRunLength, cuts) {
+    if (minRunLength === null) return [];
+    const { patternColors, backgroundColor } = state;
+    return findLongRuns((row, col) => cellColour(valueAt(row, col), patternColors, backgroundColor),
+        cols, rows, minRunLength, cuts);
+}
+
+/**
+ * Row count for a row of the image: 1 at the bottom, or at the top for knitting top down
+ * @param {number} row - From the top, starting at 0
+ * @param {number} rows - Rows down the image
+ * @param {boolean} fromTop
+ * @returns {number}
+ */
+function rowNumber(row, rows, fromTop) {
+    return fromTop ? row + 1 : rows - row;
+}
+
+/**
+ * Cell value at a stitch of a surroundings download: one repeat after the left and top
+ * surroundings, which come from the neighbouring repeats
+ * @param {number[][]} grid
+ * @param {number} leftContext - Stitches of surroundings at the left
+ * @param {number} topContext - Rows of surroundings at the top
+ * @param {number} row - Row of the image
+ * @param {number} col - Stitch of the image
+ * @returns {number}
+ */
+function contextCellValue(grid, leftContext, topContext, row, col) {
+    const gridHeight = grid.length;
+    const gridWidth = grid[0].length;
+    const gridRow = (((row - topContext) % gridHeight) + gridHeight) % gridHeight;
+    const gridCol = (((col - leftContext) % gridWidth) + gridWidth) % gridWidth;
+    return grid[gridRow][gridCol];
 }
 
 /**
@@ -237,18 +290,15 @@ export function exportSvg(state, includeRowCounts = false, minRunLength = null, 
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < gridHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : gridHeight - row;
+            const number = rowNumber(row, gridHeight, rowCountsFromTop);
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${number}</text>\n`;
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns((row, col) => cellColour(grid[row][col], patternColors, backgroundColor),
-            gridWidth, gridHeight, minRunLength);
-        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
-    }
+    const runs = runsToNumber(state, (row, col) => grid[row][col], gridWidth, gridHeight, minRunLength);
+    svgContent += svgRunLengths(runs, cellWidth, cellHeight);
 
     svgContent += `</svg>`;
 
@@ -363,18 +413,15 @@ export function exportPng(state, includeRowCounts = false, customCellSize = null
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < gridHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : gridHeight - row;
+            const number = rowNumber(row, gridHeight, rowCountsFromTop);
             const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
-            ctx.fillText(rowNumber.toString(), x, y);
+            ctx.fillText(number.toString(), x, y);
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns((row, col) => cellColour(grid[row][col], patternColors, backgroundColor),
-            gridWidth, gridHeight, minRunLength);
-        drawRunLengths(ctx, runs, cellWidth, cellHeight);
-    }
+    const runs = runsToNumber(state, (row, col) => grid[row][col], gridWidth, gridHeight, minRunLength);
+    drawRunLengths(ctx, runs, cellWidth, cellHeight);
 
     // Export the temporary canvas
     return new Promise((resolve) => {
@@ -431,14 +478,7 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
     // Draw cells from a 3×3 conceptual tile, extracting only the needed portion
     for (let row = 0; row < totalHeight; row++) {
         for (let col = 0; col < totalWidth; col++) {
-            // Map to position in 3×3 tile (offset by context from top-left)
-            const tileRow = row - topContext + gridHeight; // Start from middle tile
-            const tileCol = col - leftContext + gridWidth;
-
-            // Get cell value using modulo to wrap within pattern
-            const gridRow = ((tileRow % gridHeight) + gridHeight) % gridHeight;
-            const gridCol = ((tileCol % gridWidth) + gridWidth) % gridWidth;
-            const cellValue = grid[gridRow][gridCol];
+            const cellValue = contextCellValue(grid, leftContext, topContext, row, col);
 
             if (cellValue !== 0) {
                 const color = patternColors[cellValue - 1];
@@ -490,21 +530,17 @@ export function exportPatternWithContextSvg(state, context, includeRowCounts = f
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
+            const number = rowNumber(row, totalHeight, rowCountsFromTop);
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${number}</text>\n`;
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns((row, col) => {
-            const gridRow = (((row - topContext + gridHeight) % gridHeight) + gridHeight) % gridHeight;
-            const gridCol = (((col - leftContext + gridWidth) % gridWidth) + gridWidth) % gridWidth;
-            return cellColour(grid[gridRow][gridCol], patternColors, backgroundColor);
-        }, totalWidth, totalHeight, minRunLength);
-        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
-    }
+    // The sides cut through the pattern wherever there are surroundings
+    const runs = runsToNumber(state, (row, col) => contextCellValue(grid, leftContext, topContext, row, col),
+        totalWidth, totalHeight, minRunLength, { cutLeft: leftContext > 0, cutRight: rightContext > 0 });
+    svgContent += svgRunLengths(runs, cellWidth, cellHeight);
 
     svgContent += `</svg>`;
 
@@ -562,14 +598,7 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
     // Draw cells
     for (let row = 0; row < totalHeight; row++) {
         for (let col = 0; col < totalWidth; col++) {
-            // Map to position in 3×3 tile
-            const tileRow = row - topContext + gridHeight;
-            const tileCol = col - leftContext + gridWidth;
-
-            // Get cell value using modulo
-            const gridRow = ((tileRow % gridHeight) + gridHeight) % gridHeight;
-            const gridCol = ((tileCol % gridWidth) + gridWidth) % gridWidth;
-            const cellValue = grid[gridRow][gridCol];
+            const cellValue = contextCellValue(grid, leftContext, topContext, row, col);
 
             const x = col * cellWidth;
             const y = row * cellHeight;
@@ -625,21 +654,17 @@ export async function exportPatternWithContextPng(state, context, includeRowCoun
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
+            const number = rowNumber(row, totalHeight, rowCountsFromTop);
             const x = totalWidth * cellWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
-            ctx.fillText(rowNumber.toString(), x, y);
+            ctx.fillText(number.toString(), x, y);
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns((row, col) => {
-            const gridRow = (((row - topContext + gridHeight) % gridHeight) + gridHeight) % gridHeight;
-            const gridCol = (((col - leftContext + gridWidth) % gridWidth) + gridWidth) % gridWidth;
-            return cellColour(grid[gridRow][gridCol], patternColors, backgroundColor);
-        }, totalWidth, totalHeight, minRunLength);
-        drawRunLengths(ctx, runs, cellWidth, cellHeight);
-    }
+    // The sides cut through the pattern wherever there are surroundings
+    const runs = runsToNumber(state, (row, col) => contextCellValue(grid, leftContext, topContext, row, col),
+        totalWidth, totalHeight, minRunLength, { cutLeft: leftContext > 0, cutRight: rightContext > 0 });
+    drawRunLengths(ctx, runs, cellWidth, cellHeight);
 
     // Export canvas as PNG
     return new Promise((resolve) => {
@@ -769,19 +794,16 @@ export function exportPreviewPng(state, includeRowCounts = false, customCellSize
         ctx.textBaseline = 'middle';
 
         for (let row = 0; row < totalHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
+            const number = rowNumber(row, totalHeight, rowCountsFromTop);
             const x = gridPixelWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2;
-            ctx.fillText(rowNumber.toString(), x, y);
+            ctx.fillText(number.toString(), x, y);
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns(
-            (row, col) => cellColour(grid[row % gridHeight][col % gridWidth], patternColors, backgroundColor),
-            totalWidth, totalHeight, minRunLength);
-        drawRunLengths(ctx, runs, cellWidth, cellHeight);
-    }
+    const runs = runsToNumber(state, (row, col) => grid[row % gridHeight][col % gridWidth],
+        totalWidth, totalHeight, minRunLength);
+    drawRunLengths(ctx, runs, cellWidth, cellHeight);
 
     // Export the temporary canvas
     return new Promise((resolve) => {
@@ -878,19 +900,16 @@ export function exportPreviewSvg(state, includeRowCounts = false, minRunLength =
         svgContent += `  <!-- Row counts -->\n`;
         const textPadding = Math.round(fontSize * 0.4);
         for (let row = 0; row < totalHeight; row++) {
-            const rowNumber = rowCountsFromTop ? row + 1 : totalHeight - row;
+            const number = rowNumber(row, totalHeight, rowCountsFromTop);
             const x = gridSvgWidth + textPadding;
             const y = row * cellHeight + cellHeight / 2 + fontSize / 3;
-            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${rowNumber}</text>\n`;
+            svgContent += `  <text x="${x}" y="${y}" font-family="monospace" font-size="${fontSize}" font-weight="500" fill="#666">${number}</text>\n`;
         }
     }
 
-    if (minRunLength !== null) {
-        const runs = findLongRuns(
-            (row, col) => cellColour(grid[row % gridHeight][col % gridWidth], patternColors, backgroundColor),
-            totalWidth, totalHeight, minRunLength);
-        svgContent += svgRunLengths(runs, cellWidth, cellHeight);
-    }
+    const runs = runsToNumber(state, (row, col) => grid[row % gridHeight][col % gridWidth],
+        totalWidth, totalHeight, minRunLength);
+    svgContent += svgRunLengths(runs, cellWidth, cellHeight);
 
     svgContent += `</svg>`;
 
