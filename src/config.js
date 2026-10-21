@@ -63,11 +63,8 @@ export const CONFIG = {
     CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
     PREVIEW_COLUMN_PADDING: 48,
     PLATE_PADDING_DESKTOP: 64,
-    CHART_NUMBERS_WIDTH: 32,         // Row numbers to the right of the chart
+    PLATE_PADDING_VERTICAL: 24,      // The plate's padding above and below the chart
     CHART_NUMBERS_HEIGHT: 26,        // Stitch numbers under the chart
-    CHART_FRAME_RESERVE: 320,
-    MIN_FRAME_HEIGHT: 240,
-    PLATE_PADDING_VERTICAL: 24,        // Room left under a framed chart for its caption and key
     NUMBER_EVERY_UP_TO: 20,          // Number every stitch (or row) up to this many; above it every 5th, with a darker rule every 10th
     TENTH_RULE_COLOR: '#6b6a63',     // ink-muted
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy
@@ -79,6 +76,7 @@ export const CONFIG = {
     PHONE_BREAKPOINT: 600,
     PHONE_CHART_TOP: 76,             // Top bar and the plate's top padding above the chart
     PHONE_CHART_RESERVE: 326,        // Caption, key and hint left on the first screen under the chart
+    PHONE_MIN_CHART_HEIGHT: 240,     // The chart's least height, however little of the first screen is left
     PHONE_NUMBERS_WIDTH: 21,         // Row numbers and their gap beside the chart
     PHONE_NUMBERS_HEIGHT: 20,        // Stitch numbers and their gap under it
     SURROUNDINGS_VEIL: 'rgba(255, 255, 255, 0.6)', // surface at 60%, outside a download's surroundings
@@ -198,11 +196,6 @@ export const UI_CONSTANTS = {
     CHART_COLUMN_RESERVE: 99,        // Gutter, grips and stitch numbers beside the chart
     PREVIEW_COLUMN_PADDING: 48,
     PLATE_PADDING_DESKTOP: 64,
-    CHART_NUMBERS_WIDTH: 32,         // Row numbers to the right of the chart
-    CHART_NUMBERS_HEIGHT: 26,        // Stitch numbers under the chart
-    CHART_FRAME_RESERVE: 320,
-    MIN_FRAME_HEIGHT: 240,
-    PLATE_PADDING_VERTICAL: 24,        // Room left under a framed chart for its caption and key
     NUMBER_EVERY_UP_TO: 20,          // Number every stitch (or row) up to this many; above it every 5th, with a darker rule every 10th
     TENTH_RULE_COLOR: '#6b6a63',     // ink-muted
     REPEAT_OUTLINE_WIDTH: 2.6,       // line-heavy

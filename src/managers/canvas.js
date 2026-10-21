@@ -199,8 +199,7 @@ export const CanvasManager = {
      * @param {Object} [options]
      * @param {{left: number, right: number, top: number, bottom: number}|null} [options.surroundings]
      *   - Surrounding stitches being chosen on a 3 x 3 preview (replaces the one-repeat outline)
-     * @returns {{stacked: boolean, previewWidth: number, outlined: boolean, framed: boolean,
-     *   frameWidth: number|null, frameHeight: number|null, cellWidth: number, cellHeight: number,
+     * @returns {{stacked: boolean, wide: boolean, previewWidth: number, outlined: boolean, cellWidth: number, cellHeight: number,
      *   stitchNumberEvery: number, rowNumberEvery: number}} The layout chosen
      */
     update(gridWidth, gridHeight, aspectRatio, previewRepeatX, previewRepeatY, grid, patternColors, backgroundColor, options = {}) {
@@ -218,57 +217,36 @@ export const CanvasManager = {
         const isLandscape = effectiveWidth > currentHeight;
         const isMobile = effectiveWidth <= CONFIG.MOBILE_BREAKPOINT || (isLandscape && currentHeight <= CONFIG.LANDSCAPE_HEIGHT_THRESHOLD);
 
-        let cellSize, shouldStack;
-        let framed = false;
-        let frameWidth = null;
-        let frameHeight = null;
+        let cellSize, shouldStack, wide;
         const isPhone = effectiveWidth <= CONFIG.PHONE_BREAKPOINT;
         const plateWidth = effectiveWidth - 2 * (isMobile ? CONFIG.PLATE_PADDING_NARROW : CONFIG.PLATE_PADDING_DESKTOP);
         if (isPhone) {
             // Phone: the chart takes the page's width and leaves the caption, key and hint on
-            // the first screen. Too large for that at 20px squares, it scrolls in a frame as
-            // wide as the page and as tall as what is left of the first screen.
-            const roomHeight = Math.max(CONFIG.MIN_FRAME_HEIGHT,
+            // the first screen. Too large for that at 20px squares, it runs past the page,
+            // which scrolls.
+            const roomHeight = Math.max(CONFIG.PHONE_MIN_CHART_HEIGHT,
                 this.phoneViewportHeight(effectiveWidth) - CONFIG.PHONE_CHART_TOP - CONFIG.PHONE_CHART_RESERVE);
             const maxChartWidth = plateWidth - CONFIG.PHONE_NUMBERS_WIDTH - 2;
             const maxChartHeight = roomHeight - CONFIG.PHONE_NUMBERS_HEIGHT - 2;
             cellSize = this.fitCells(gridWidth, gridHeight, aspectRatio, maxChartWidth, maxChartHeight);
-            const chartWidth = gridWidth * cellSize.width;
-            const chartHeight = gridHeight * cellSize.height;
             shouldStack = true;
-            if (chartWidth > maxChartWidth + 0.5 || chartHeight > maxChartHeight + 0.5) {
-                framed = true;
-                // In the frame the numbers sit in 30px and 20px strips; phone scrollbars overlay
-                frameWidth = Math.min(chartWidth + 30 + 2, plateWidth);
-                frameHeight = Math.min(chartHeight + 20 + 2, roomHeight);
-            }
+            wide = gridWidth * cellSize.width > maxChartWidth + 0.5;
         } else {
             // Desktop plate: the chart fills its column, as wide as the key. The column widens
             // with a chart held at the 20px floor; chart and preview stay side by side while
-            // both fit at their natural sizes. Tablets always stack.
+            // both fit at their natural sizes. Tablets always stack. Too large for the page,
+            // the chart keeps its squares and grips and the page scrolls; it stacks then, so
+            // the caption and key stay under it and the preview below.
             const headerHeight = isMobile ? CONFIG.HEADER_HEIGHT_MOBILE : CONFIG.HEADER_HEIGHT_DESKTOP;
             cellSize = this.calculateCellSize(gridWidth, gridHeight, aspectRatio, CONFIG.CHART_COLUMN_WIDTH);
             const chartWidth = gridWidth * cellSize.width;
             const chartHeight = gridHeight * cellSize.height;
             const chartColumnWidth = Math.max(CONFIG.CHART_COLUMN_MIN_WIDTH, chartWidth + CONFIG.CHART_COLUMN_RESERVE);
             const previewNaturalWidth = chartWidth * previewRepeatX * CONFIG.PREVIEW_SCALE;
-            shouldStack = isMobile || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
-
-            // Too large for the page at the 20px floor: the chart keeps its squares and
-            // scrolls in a frame as wide as the page, leaving room for caption and key
             const pageHeight = window.innerHeight - headerHeight - 2 * CONFIG.PLATE_PADDING_VERTICAL;
-            const numbered = { width: chartWidth + CONFIG.CHART_NUMBERS_WIDTH + 2, height: chartHeight + CONFIG.CHART_NUMBERS_HEIGHT + 2 };
-            if (numbered.width > plateWidth || numbered.height > pageHeight) {
-                framed = true;
-                shouldStack = true;
-                // In the frame the numbers sit in 30px and 20px strips; leave room for a scrollbar
-                const scrollbar = 16;
-                frameWidth = Math.min(chartWidth + 30 + 2 + scrollbar, plateWidth);
-                frameHeight = Math.min(
-                    chartHeight + 20 + 2 + scrollbar,
-                    Math.max(CONFIG.MIN_FRAME_HEIGHT, window.innerHeight - headerHeight - CONFIG.CHART_FRAME_RESERVE)
-                );
-            }
+            wide = chartColumnWidth > plateWidth;
+            shouldStack = isMobile || wide || chartHeight + CONFIG.CHART_NUMBERS_HEIGHT > pageHeight
+                || chartColumnWidth + CONFIG.PREVIEW_COLUMN_PADDING + previewNaturalWidth > plateWidth;
         }
 
         // Calculate final canvas dimensions
@@ -281,21 +259,11 @@ export const CanvasManager = {
 
         // Calculate final preview size
         let previewWidth, previewHeight;
-        if (framed) {
-            // A framed chart's preview is scaled to fit the page instead
-            const scale = Math.min(1, plateWidth / previewNaturalWidth);
+        if (shouldStack) {
+            // When stacked, the preview is no wider than the chart, nor than the page
+            const scale = Math.min(1, editCanvasWidth / previewNaturalWidth, plateWidth / previewNaturalWidth);
             previewWidth = previewNaturalWidth * scale;
             previewHeight = previewNaturalHeight * scale;
-        } else if (shouldStack) {
-            // When stacked, preview should not exceed edit canvas width for alignment
-            if (previewNaturalWidth > editCanvasWidth) {
-                const scale = editCanvasWidth / previewNaturalWidth;
-                previewWidth = editCanvasWidth;
-                previewHeight = previewNaturalHeight * scale;
-            } else {
-                previewWidth = previewNaturalWidth;
-                previewHeight = previewNaturalHeight;
-            }
         } else {
             // When side-by-side, use natural size
             previewWidth = previewNaturalWidth;
@@ -336,11 +304,9 @@ export const CanvasManager = {
 
         return {
             stacked: shouldStack,
+            wide,
             previewWidth,
             outlined,
-            framed,
-            frameWidth,
-            frameHeight,
             cellWidth: cellSize.width,
             cellHeight: cellSize.height,
             stitchNumberEvery: gridWidth > CONFIG.NUMBER_EVERY_UP_TO ? 5 : 1,
