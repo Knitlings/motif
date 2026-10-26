@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 test.describe('UI Controls', () => {
@@ -207,6 +208,87 @@ test.describe('Export Functions', () => {
 
     // Verify download occurred
     expect(download.suggestedFilename()).toMatch(/motif-pattern-.*\.svg/);
+  });
+
+  test('numbers the rows from the top when chosen', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    const fromTop = page.getByLabel('From the top');
+
+    await expect(fromTop).toBeHidden();
+    await page.getByLabel('Include row counts').check();
+    await expect(page.getByLabel('From the bottom')).toBeChecked();
+    await fromTop.check();
+    await page.locator('label:has(input[name="format"][value="svg"])').click();
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#downloadModalSubmitBtn').click();
+    const svg = readFileSync(await (await downloadPromise).path(), 'utf8');
+    const numbers = [...svg.matchAll(/fill="#666">(\d+)<\/text>/g)].map(m => Number(m[1]));
+    expect(numbers[0]).toBe(1);
+    expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+  });
+
+  test('shows the shortest run only while run lengths are on', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    const field = page.getByLabel('Count runs of');
+
+    await expect(field).toBeHidden();
+    await page.getByLabel('Show run lengths').check();
+    await expect(field).toBeVisible();
+    await expect(field).toHaveValue('5');
+    await page.getByLabel('Show run lengths').uncheck();
+    await expect(field).toBeHidden();
+  });
+
+  test('accepts a shortest run written with a decimal point', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    await page.getByLabel('Show run lengths').check();
+    await page.getByLabel('Count runs of').fill('5.0');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#downloadModalSubmitBtn').click();
+    expect((await downloadPromise).suggestedFilename()).toMatch(/motif-pattern-.*\.png/);
+  });
+
+  test('ignores a bad shortest run once run lengths are off', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    await page.getByLabel('Show run lengths').check();
+    await page.getByLabel('Count runs of').fill('1');
+    await page.getByLabel('Show run lengths').uncheck();
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#downloadModalSubmitBtn').click();
+    expect((await downloadPromise).suggestedFilename()).toMatch(/motif-pattern-.*\.png/);
+  });
+
+  test('refuses a shortest run under 2 and keeps the dialog open', async ({ page }) => {
+    await page.locator('#downloadBtn').click();
+    await page.getByLabel('Show run lengths').check();
+    const field = page.getByLabel('Count runs of');
+    await field.fill('1');
+    await page.locator('#downloadModalSubmitBtn').click();
+
+    await expect(page.locator('#downloadModal .dialog-note')).toContainText('Enter a whole number of 2 or more');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(field).toBeFocused();
+    await expect(page.locator('#downloadModal')).toBeVisible();
+  });
+
+  test('writes run lengths into an SVG download', async ({ page }) => {
+    // One stitch painted, so its row is not all background
+    await page.locator('#editCanvas').click({ position: { x: 5, y: 5 } });
+    await page.locator('#downloadBtn').click();
+    await page.locator('label:has(input[name="format"][value="svg"])').click();
+    await page.getByLabel('Show run lengths').check();
+    await page.getByLabel('Count runs of').fill('3');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#downloadModalSubmitBtn').click();
+    const download = await downloadPromise;
+    const svg = readFileSync(await download.path(), 'utf8');
+
+    // Only the painted row is numbered: the others are all background
+    expect(svg.match(/text-anchor="middle"[^>]*>\d+<\/text>/g)).toHaveLength(1);
   });
 
   test('should export pattern as PNG', async ({ page }) => {

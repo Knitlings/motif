@@ -73,6 +73,10 @@ button {
     flex-shrink: 0;
 }
 
+.field-input[aria-invalid="true"] {
+    border: var(--line-emphasis) solid var(--signal-error);
+}
+
 .field-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

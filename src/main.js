@@ -905,6 +905,49 @@ cellSizeInput.addEventListener('input', () => {
 const rowCountsCheckbox = document.getElementById('rowCountsCheckbox');
 rowCountsCheckbox.addEventListener('change', updateSizePreview);
 
+// Sub-options: which way the rows are numbered, and the shortest run to number
+const rowCountDirection = document.getElementById('rowCountDirection');
+const runLengthsCheckbox = document.getElementById('runLengthsCheckbox');
+const runLengthControls = document.getElementById('runLengthControls');
+const minRunLengthInput = document.getElementById('minRunLengthInput');
+const downloadNote = downloadForm.querySelector('.dialog-note');
+
+/**
+ * Show each option's sub-options only while it's ticked. Also run when the dialog opens: a browser
+ * can restore the ticks after a reload without a change event
+ */
+function syncDownloadSubOptions() {
+    rowCountDirection.hidden = !rowCountsCheckbox.checked;
+    runLengthControls.hidden = !runLengthsCheckbox.checked;
+    // Off, the shortest run is left out of the browser's checks
+    minRunLengthInput.disabled = !runLengthsCheckbox.checked;
+}
+rowCountsCheckbox.addEventListener('change', syncDownloadSubOptions);
+runLengthsCheckbox.addEventListener('change', syncDownloadSubOptions);
+minRunLengthInput.addEventListener('input', () => minRunLengthInput.removeAttribute('aria-invalid'));
+
+function showMinRunLengthError() {
+    minRunLengthInput.setAttribute('aria-invalid', 'true');
+    showDialogNote(downloadNote, 'error', 'Enter a whole number of 2 or more for the run lengths.');
+    minRunLengthInput.focus();
+}
+
+// The browser's own check (min="2") stops the download first: show the dialog's note instead of its bubble
+minRunLengthInput.addEventListener('invalid', (e) => {
+    e.preventDefault();
+    showMinRunLengthError();
+});
+
+/**
+ * The shortest run to number, if run lengths are on
+ * @returns {number|null|undefined} null when off, undefined when the field isn't a whole number of 2 or more
+ */
+function readMinRunLength() {
+    if (!runLengthsCheckbox.checked) return null;
+    const value = minRunLengthInput.valueAsNumber;
+    return Number.isInteger(value) && value >= 2 ? value : undefined;
+}
+
 // Calculate and display dimension preview
 function updateSizePreview() {
     const source = document.querySelector('input[name="source"]:checked')?.value;
@@ -1057,6 +1100,8 @@ downloadBtn.onclick = () => {
     // Update size controls
     updateCellSizeConstraints();
     updateCurrentDisplayLabel();
+    syncDownloadSubOptions();
+    minRunLengthInput.removeAttribute('aria-invalid');
 };
 
 downloadModalCancelBtn.onclick = () => downloadModal.close();
@@ -1071,16 +1116,24 @@ downloadForm.onsubmit = async (e) => {
     const source = formData.get('source');
     const format = formData.get('format');
     const includeRowCounts = formData.get('rowCounts') === 'on';
+    const rowCountsFromTop = formData.get('rowCountDirection') === 'top';
     const sizeMode = formData.get('size');
     const customCellSize = sizeMode === 'custom' ? parseInt(cellSizeInput.value) : null;
     const pickOnPreview = source === 'pattern-with-context' && getMaxPreviewRepeat(gridWidth, gridHeight) >= 3;
+    const minRunLength = readMinRunLength();
+
+    if (minRunLength === undefined) {
+        showMinRunLengthError();
+        return;
+    }
+    showDialogNote(downloadNote, 'error', null);
 
     // Surrounding stitches are chosen on the preview next
     if (pickOnPreview) {
         // Focus goes to the first of the picker's numbers once the dialog has handed it back
         downloadModal.addEventListener('close', () => pickerFields[0].focus(), { once: true });
         downloadModal.close();
-        enterVisualContextSelection(format, includeRowCounts, customCellSize);
+        enterVisualContextSelection(format, includeRowCounts, customCellSize, minRunLength, rowCountsFromTop);
         return;
     }
 
@@ -1100,23 +1153,23 @@ downloadForm.onsubmit = async (e) => {
                 bottom: parseInt(formData.get('contextBottom')) || 0
             };
             if (format === 'svg') {
-                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts);
+                blob = exportPatternWithContextSvg(getState(), context, includeRowCounts, minRunLength, rowCountsFromTop);
             } else {
-                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize);
+                blob = await exportPatternWithContextPng(getState(), context, includeRowCounts, customCellSize, minRunLength, rowCountsFromTop);
             }
             filename = `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`;
         } else if (source === 'pattern') {
             if (format === 'svg') {
-                blob = exportSvg(getState(), includeRowCounts);
+                blob = exportSvg(getState(), includeRowCounts, minRunLength, rowCountsFromTop);
             } else {
-                blob = await exportPng(getState(), includeRowCounts, customCellSize);
+                blob = await exportPng(getState(), includeRowCounts, customCellSize, minRunLength, rowCountsFromTop);
             }
             filename = `motif-pattern-${gridWidth}x${gridHeight}.${format}`;
         } else {
             if (format === 'svg') {
-                blob = exportPreviewSvg(getState(), includeRowCounts);
+                blob = exportPreviewSvg(getState(), includeRowCounts, minRunLength, rowCountsFromTop);
             } else {
-                blob = await exportPreviewPng(getState(), includeRowCounts, customCellSize);
+                blob = await exportPreviewPng(getState(), includeRowCounts, customCellSize, minRunLength, rowCountsFromTop);
             }
             filename = `motif-preview-${gridWidth}x${gridHeight}-${previewRepeatX}x${previewRepeatY}.${format}`;
         }
@@ -1143,6 +1196,8 @@ let contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
 let selectionFormat = 'png';
 let selectionIncludeRowCounts = false;
 let selectionCustomCellSize = null;
+let selectionMinRunLength = null;
+let selectionRowCountsFromTop = false;
 let pickerArea = null;
 
 const previewCanvas = document.getElementById('previewCanvas');
@@ -1205,12 +1260,14 @@ function placePickerFrame(area) {
     pickerFrame.style.height = `${area.height + 2 * heavy}px`;
 }
 
-function enterVisualContextSelection(format, includeRowCounts, customCellSize = null) {
+function enterVisualContextSelection(format, includeRowCounts, customCellSize = null, minRunLength = null, rowCountsFromTop = false) {
     savedPreviewRepeatX = previewRepeatX;
     savedPreviewRepeatY = previewRepeatY;
     selectionFormat = format;
     selectionIncludeRowCounts = includeRowCounts;
     selectionCustomCellSize = customCellSize;
+    selectionMinRunLength = minRunLength;
+    selectionRowCountsFromTop = rowCountsFromTop;
     contextSelection = { left: 0, right: 0, top: 0, bottom: 0 };
     visualContextSelectionActive = true;
 
@@ -1258,9 +1315,9 @@ async function downloadWithContext() {
 
         let blob;
         if (format === 'svg') {
-            blob = exportPatternWithContextSvg(getState(), context, selectionIncludeRowCounts);
+            blob = exportPatternWithContextSvg(getState(), context, selectionIncludeRowCounts, selectionMinRunLength, selectionRowCountsFromTop);
         } else {
-            blob = await exportPatternWithContextPng(getState(), context, selectionIncludeRowCounts, selectionCustomCellSize);
+            blob = await exportPatternWithContextPng(getState(), context, selectionIncludeRowCounts, selectionCustomCellSize, selectionMinRunLength, selectionRowCountsFromTop);
         }
         downloadFile(blob, `motif-pattern-surroundings-${gridWidth}x${gridHeight}.${format}`);
         announceToScreenReader(`Pattern exported as ${format.toUpperCase()}`);
