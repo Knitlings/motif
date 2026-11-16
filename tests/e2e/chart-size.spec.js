@@ -82,7 +82,9 @@ test.describe('Chart size and numbers', () => {
 
   test('paints the right square on a scrolled page', async ({ page }) => {
     await setSize(page, 100, 100);
-    await page.evaluate(() => { document.body.scrollLeft = 400; document.body.scrollTop = 300; });
+    await page.evaluate(() => window.scrollTo(400, 300));
+    // Phone projects only scroll the page vertically, so wait for the vertical scroll
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(300);
     // The square at 410, 310 on the canvas: column 21, row 16
     const before = await squareColour(page, 410, 310);
     const box = await page.locator('#editCanvas').boundingBox();
