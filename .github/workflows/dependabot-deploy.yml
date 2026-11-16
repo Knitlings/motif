@@ -49,6 +49,14 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
       # Open the PR as the deploy app rather than with GITHUB_TOKEN, whose
       # PRs never get CI or preview runs (they fail with zero jobs instead).
       - name: Get deploy app token
