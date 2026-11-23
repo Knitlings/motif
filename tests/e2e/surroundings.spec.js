@@ -6,6 +6,8 @@ async function openPicker(page) {
   await page.locator('label:has(input[name="source"][value="pattern-with-context"])').click({ force: true });
   await page.locator('#downloadModalSubmitBtn').click();
   await expect(page.locator('#pickerCaptionLine')).toBeVisible();
+  // Focus moves to the first number once the dialog has closed; let it land before acting
+  await expect(page.locator('#pickLeft')).toBeFocused();
 }
 
 async function frameBox(page) {

@@ -124,6 +124,8 @@ test.describe('Phone', () => {
 
     const caption = page.locator('#pickerCaptionLine');
     await expect(caption).toBeVisible();
+    // Focus moves to the first number once the dialog has closed, which can scroll the page
+    await expect(caption.getByLabel('Left')).toBeFocused();
     const title = await caption.locator('.picker-title').boundingBox();
     const download = await caption.getByRole('button', { name: 'Download' }).boundingBox();
     const left = await caption.getByLabel('Left').boundingBox();
